@@ -1,3 +1,2 @@
-// React Router adapter — placeholder for build verification
-// Full implementation in commit 17
-export {}
+export { scanRoutes } from './route-scanner'
+export type { RouteObject } from './route-scanner'
