@@ -1,0 +1,126 @@
+{
+  "name": "cmdk-engine",
+  "version": "0.0.0",
+  "description": "The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling.",
+  "license": "MIT",
+  "author": "Priyanshu <gargpriyanshu2004@gmail.com> (https://github.com/Priyans-hu)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Priyans-hu/cmdk-engine.git"
+  },
+  "homepage": "https://priyans-hu.github.io/cmdk-engine",
+  "bugs": {
+    "url": "https://github.com/Priyans-hu/cmdk-engine/issues"
+  },
+  "keywords": [
+    "command-palette",
+    "cmdk",
+    "command-menu",
+    "cmd-k",
+    "ctrl-k",
+    "headless",
+    "react",
+    "nextjs",
+    "command-bar",
+    "fuzzy-search",
+    "rbac",
+    "frecency",
+    "route-discovery",
+    "keyboard-shortcuts",
+    "spotlight",
+    "kbar",
+    "react-command-palette",
+    "search-ui",
+    "accessibility",
+    "command-line",
+    "cli",
+    "sitemap",
+    "route-scanner"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "cmdk-engine": "./dist/cli/index.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.mjs",
+      "require": "./dist/core/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.mjs",
+      "require": "./dist/react/index.cjs"
+    },
+    "./adapters/cmdk": {
+      "types": "./dist/adapters/cmdk/index.d.ts",
+      "import": "./dist/adapters/cmdk/index.mjs",
+      "require": "./dist/adapters/cmdk/index.cjs"
+    },
+    "./adapters/react-router": {
+      "types": "./dist/adapters/react-router/index.d.ts",
+      "import": "./dist/adapters/react-router/index.mjs",
+      "require": "./dist/adapters/react-router/index.cjs"
+    },
+    "./search/match-sorter": {
+      "types": "./dist/core/search-match-sorter.d.ts",
+      "import": "./dist/core/search-match-sorter.mjs",
+      "require": "./dist/core/search-match-sorter.cjs"
+    }
+  },
+  "main": "./dist/core/index.cjs",
+  "module": "./dist/core/index.mjs",
+  "types": "./dist/core/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "bun run build && changeset publish",
+    "prepublishOnly": "bun run build",
+    "size": "size-limit"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "size-limit": [
+    {
+      "path": "dist/core/index.mjs",
+      "limit": "4 KB"
+    },
+    {
+      "path": "dist/react/index.mjs",
+      "limit": "2 KB"
+    },
+    {
+      "path": "dist/adapters/cmdk/index.mjs",
+      "limit": "1.5 KB"
+    }
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
