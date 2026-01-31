@@ -2,21 +2,21 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
-      pull-requests: write
+      id-token: write
     outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
 
@@ -33,20 +33,23 @@ jobs:
 
       - run: bun run build
 
-      - id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: bun run release
-          title: "chore: version packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: bun run test
 
-  # Build standalone binaries after a successful npm publish
+      - name: Get version metadata
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Build standalone binaries after npm publish
   binaries:
-    needs: release
-    if: needs.release.outputs.published == 'true'
+    needs: publish
     strategy:
       matrix:
         include:
@@ -83,11 +86,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
+          TAG="${{ needs.publish.outputs.tag }}"
 
           # Create release if it doesn't exist
-          gh release create "${TAG}" --title "${TAG}" --notes "Release ${TAG}" 2>/dev/null || true
+          gh release create "${TAG}" --title "${TAG}" --generate-notes 2>/dev/null || true
 
           # Upload binary and checksum
           gh release upload "${TAG}" \
@@ -97,8 +99,7 @@ jobs:
 
   # Update Homebrew tap formula after binaries are uploaded
   update-homebrew:
-    needs: [release, binaries]
-    if: needs.release.outputs.published == 'true'
+    needs: [publish, binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -110,8 +111,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
+          TAG="${{ needs.publish.outputs.tag }}"
+          VERSION="${{ needs.publish.outputs.version }}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
