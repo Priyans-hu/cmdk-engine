@@ -122,5 +122,28 @@
   ],
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29",
+    "@size-limit/preset-small-lib": "^11.0",
+    "@testing-library/jest-dom": "^6.6",
+    "@testing-library/react": "^16.1",
+    "@types/react": "^19.0",
+    "@types/react-dom": "^19.0",
+    "@typescript-eslint/eslint-plugin": "^8.0",
+    "@typescript-eslint/parser": "^8.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "cmdk": "^1.1",
+    "commander": "^13.0",
+    "eslint": "^9.0",
+    "jsdom": "^26.0",
+    "match-sorter": "^8.0",
+    "prettier": "^3.5",
+    "react-router": "^7.0",
+    "react-router-dom": "^7.0",
+    "size-limit": "^11.0",
+    "tsup": "^8.5",
+    "typescript": "^5.7",
+    "vitest": "^3.0"
   }
 }
