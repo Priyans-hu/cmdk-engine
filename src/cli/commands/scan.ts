@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { resolve, dirname } from 'node:path'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { loadConfig } from '../config-loader'
 import { scanReactRouterFiles } from '../scanners/react-router'
 import { scanNextJsAppDir } from '../scanners/nextjs-app'

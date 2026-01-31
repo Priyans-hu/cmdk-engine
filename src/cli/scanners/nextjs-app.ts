@@ -1,7 +1,7 @@
-import { readdirSync, statSync, existsSync } from 'node:fs'
+import { readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
-import { pathToLabel, pathToGroup, pathToId, pathSegmentToLabel } from '../../core/utils'
+import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
 
 /**
  * Scan a Next.js app/ directory for routes.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { createFrecencyEngine, createInMemoryStorage } from '../../src/core/frecency'
 import type { ScoredItem, CommandItem } from '../../src/core/types'
 
@@ -54,7 +54,7 @@ describe('createFrecencyEngine', () => {
     engine.recordUsage('new-cmd')
 
     const oldScore = engine.getScore('old-cmd')
-    const newScore = engine.getScore('new-cmd')
+    engine.getScore('new-cmd') // verify it returns a value
 
     // Even though old-cmd has count=10, new-cmd is more recent
     // With halfLife=7 and 14 days passed, old score decays by factor of 4

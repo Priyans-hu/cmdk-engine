@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { scanReactRouterFiles } from '../../src/cli/scanners/react-router'
 import { scanNextJsAppDir } from '../../src/cli/scanners/nextjs-app'

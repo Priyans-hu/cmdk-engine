@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadConfig } from '../config-loader'
 

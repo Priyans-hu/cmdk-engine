@@ -12,7 +12,8 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  */
 export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEngine {
   // Lazy import to avoid bundling match-sorter in core
-  let matchSorterFn: typeof import('match-sorter').matchSorter | null = null
+  type MatchSorterFn = <T>(items: T[], value: string, options?: { keys?: string[] }) => T[]
+  let matchSorterFn: MatchSorterFn | null = null
 
   async function loadMatchSorter() {
     if (!matchSorterFn) {

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, extname, basename } from 'node:path'
+import { join, relative } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
 

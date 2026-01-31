@@ -1,4 +1,4 @@
-import type { CmdkEngineConfig, SitemapRoute } from '../../core/types'
+import type { SitemapRoute } from '../../core/types'
 
 /**
  * Generate a config snippet with route overrides pre-filled.

@@ -38,6 +38,5 @@ export function useCommandRegister(
       cleanupRef.current?.()
       cleanupRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, deps) // deps intentionally passed through from caller
 }
