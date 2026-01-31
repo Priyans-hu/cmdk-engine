@@ -1,0 +1,41 @@
+# cmdk-engine
+
+> The smart command palette engine for React. Built on cmdk.
+
+cmdk-engine is a headless command palette engine that extends cmdk with:
+- Route auto-discovery from React Router and Next.js
+- RBAC/permission-based command filtering
+- Frecency ranking (frequency + recency based ordering)
+- Keyword synonyms and user aliases
+- CLI tool for route scanning in CI/CD pipelines
+
+## Installation
+
+```bash
+bun add cmdk-engine
+# or
+npm install cmdk-engine
+```
+
+## Entry Points
+
+- `cmdk-engine` — Core engine (types, registry, search, access control, frecency)
+- `cmdk-engine/react` — React hooks (Provider, useCommandPalette, useCommandRegister)
+- `cmdk-engine/adapters/cmdk` — cmdk UI integration
+- `cmdk-engine/adapters/react-router` — React Router route auto-discovery
+- `cmdk-engine/search/match-sorter` — Optional match-sorter search backend
+
+## CLI
+
+```bash
+npx cmdk-engine init      # Create config file
+npx cmdk-engine scan      # Scan routes, generate sitemap
+npx cmdk-engine validate  # Validate config
+```
+
+## Links
+
+- Repository: https://github.com/Priyans-hu/cmdk-engine
+- Documentation: https://priyans-hu.github.io/cmdk-engine
+- npm: https://www.npmjs.com/package/cmdk-engine
+- Built on: https://github.com/pacocoursey/cmdk
