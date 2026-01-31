@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report a bug in cmdk-engine
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Install cmdk-engine
+        2. Set up with ...
+        3. Run ...
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: cmdk-engine Version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Which entry point?
+      options:
+        - cmdk-engine (core)
+        - cmdk-engine/react
+        - cmdk-engine/adapters/cmdk
+        - cmdk-engine/adapters/react-router
+        - cmdk-engine/search/match-sorter
+        - CLI (cmdk-engine scan/init/validate)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, React version, framework, OS
+      placeholder: |
+        - Node: 20.x
+        - React: 19.x
+        - Framework: Next.js 15
+        - OS: macOS 15
+    validations:
+      required: false
