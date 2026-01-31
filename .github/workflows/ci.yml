@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint-test-build:
@@ -29,7 +30,7 @@ jobs:
 
       - run: bun run typecheck
 
-      - run: bun test
+      - run: bun run test
 
       - run: bun run build
 
