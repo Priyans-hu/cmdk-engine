@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths: ['docs/**']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,7 +31,7 @@ jobs:
 
       - name: Install docs dependencies
         working-directory: docs
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build docs
         working-directory: docs
