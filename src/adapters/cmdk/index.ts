@@ -1,3 +1,2 @@
-// cmdk adapter — placeholder for build verification
-// Full implementation in commit 18
-export {}
+export { CommandPalette, useCommandPaletteShortcut } from './command-palette'
+export type { CommandPaletteProps } from './command-palette'
