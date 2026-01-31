@@ -1,13 +1,19 @@
+import { CodeBlock } from '@/components/code-block'
+
 export const metadata = { title: 'Examples' }
 
 export default function Examples() {
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem', lineHeight: 1.7 }}>
+    <>
       <h1>Examples</h1>
+      <p>Common patterns and integration examples for cmdk-engine.</p>
 
       <h2>React Router Integration</h2>
-      <pre style={{ background: '#f6f8fa', padding: '1rem', borderRadius: '6px', overflow: 'auto' }}>
-{`import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+      <p>Auto-discover routes from your React Router config and register them as commands.</p>
+      <CodeBlock
+        language="tsx"
+        filename="App.tsx"
+        code={`import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
 import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
@@ -50,11 +56,13 @@ function RegisterRoutes() {
   useCommandRegister(commands)
   return null
 }`}
-      </pre>
+      />
 
       <h2>With RBAC</h2>
-      <pre style={{ background: '#f6f8fa', padding: '1rem', borderRadius: '6px', overflow: 'auto' }}>
-{`import { createSimpleAccessProvider } from 'cmdk-engine'
+      <p>Filter commands based on user permissions. Commands with restricted permissions are automatically hidden.</p>
+      <CodeBlock
+        language="tsx"
+        code={`import { createSimpleAccessProvider } from 'cmdk-engine'
 import { CommandEngineProvider } from 'cmdk-engine/react'
 
 // User permissions from your auth system
@@ -78,11 +86,13 @@ useCommandRegister([{
   permissions: ['admin.access'], // hidden from non-admin users
   href: '/admin',
 }])`}
-      </pre>
+      />
 
       <h2>Custom UI (without cmdk)</h2>
-      <pre style={{ background: '#f6f8fa', padding: '1rem', borderRadius: '6px', overflow: 'auto' }}>
-{`import { useCommandPalette } from 'cmdk-engine/react'
+      <p>Build a fully custom command palette UI using only the headless hooks.</p>
+      <CodeBlock
+        language="tsx"
+        code={`import { useCommandPalette } from 'cmdk-engine/react'
 
 function CustomPalette() {
   const { search, setSearch, results, isOpen, toggle, recordUsage } =
@@ -123,18 +133,23 @@ function CustomPalette() {
     </div>
   )
 }`}
-      </pre>
+      />
 
       <h2>CLI: Pre-commit Hook</h2>
-      <pre style={{ background: '#f6f8fa', padding: '1rem', borderRadius: '6px', overflow: 'auto' }}>
-{`# Install husky
+      <p>Auto-scan routes on every commit to keep your command sitemap up to date.</p>
+      <CodeBlock
+        language="bash"
+        code={`# Install husky
 npx husky install
 
 # Add pre-commit hook
-npx husky add .husky/pre-commit "npx cmdk-engine scan && git add src/generated/command-routes.json"
-
-# Or with lint-staged in package.json:
-{
+npx husky add .husky/pre-commit "npx cmdk-engine scan && git add src/generated/command-routes.json"`}
+      />
+      <p>Or with lint-staged in <code>package.json</code>:</p>
+      <CodeBlock
+        language="json"
+        filename="package.json"
+        code={`{
   "lint-staged": {
     "src/routes/**/*.{ts,tsx}": [
       "npx cmdk-engine scan",
@@ -142,7 +157,7 @@ npx husky add .husky/pre-commit "npx cmdk-engine scan && git add src/generated/c
     ]
   }
 }`}
-      </pre>
-    </div>
+      />
+    </>
   )
 }
