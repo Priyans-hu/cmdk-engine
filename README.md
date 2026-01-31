@@ -32,6 +32,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 
 ## Installation
 
+### Library (for React projects)
+
 ```bash
 # npm
 npm install cmdk-engine cmdk
@@ -47,6 +49,23 @@ yarn add cmdk-engine cmdk
 ```
 
 > `cmdk` and `react` are peer dependencies.
+
+### CLI only (standalone, no Node.js required)
+
+```bash
+# Homebrew
+brew install Priyans-hu/cmdk-engine/cmdk-engine
+
+# Or with tap
+brew tap Priyans-hu/cmdk-engine
+brew install cmdk-engine
+
+# Shell script
+curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
+
+# npx (requires Node.js)
+npx cmdk-engine --help
+```
 
 ---
 

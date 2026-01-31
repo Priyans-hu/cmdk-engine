@@ -13,6 +13,9 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +32,8 @@ jobs:
 
       - run: bun run build
 
-      - uses: changesets/action@v1
+      - id: changesets
+        uses: changesets/action@v1
         with:
           publish: bun run release
           title: "chore: version packages"
@@ -37,3 +41,135 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Build standalone binaries after a successful npm publish
+  binaries:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+            binary_name: cmdk-engine-darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+            binary_name: cmdk-engine-darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+            binary_name: cmdk-engine-linux-x64
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Compile standalone binary
+        run: bun build dist/cli/index.js --compile --outfile dist/${{ matrix.binary_name }}
+
+      - name: Generate checksum
+        run: shasum -a 256 dist/${{ matrix.binary_name }} > dist/${{ matrix.binary_name }}.sha256
+
+      - name: Upload binary to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+
+          # Create release if it doesn't exist
+          gh release create "${TAG}" --title "${TAG}" --notes "Release ${TAG}" 2>/dev/null || true
+
+          # Upload binary and checksum
+          gh release upload "${TAG}" \
+            "dist/${{ matrix.binary_name }}" \
+            "dist/${{ matrix.binary_name }}.sha256" \
+            --clobber
+
+  # Update Homebrew tap formula after binaries are uploaded
+  update-homebrew:
+    needs: [release, binaries]
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version and checksums
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+          # Download checksums
+          gh release download "${TAG}" -p "*.sha256" -D /tmp/checksums
+
+          DARWIN_ARM64=$(cat /tmp/checksums/cmdk-engine-darwin-arm64.sha256 | awk '{print $1}')
+          DARWIN_X64=$(cat /tmp/checksums/cmdk-engine-darwin-x64.sha256 | awk '{print $1}')
+          LINUX_X64=$(cat /tmp/checksums/cmdk-engine-linux-x64.sha256 | awk '{print $1}')
+
+          echo "darwin_arm64_sha=${DARWIN_ARM64}" >> "$GITHUB_OUTPUT"
+          echo "darwin_x64_sha=${DARWIN_X64}" >> "$GITHUB_OUTPUT"
+          echo "linux_x64_sha=${LINUX_X64}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          # Clone the tap repo
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/Priyans-hu/homebrew-cmdk-engine.git" /tmp/tap
+          cd /tmp/tap
+
+          mkdir -p Formula
+
+          cat > Formula/cmdk-engine.rb << 'FORMULA_EOF'
+          class CmdkEngine < Formula
+            desc "Smart command palette engine — route scanner and config generator"
+            homepage "https://github.com/Priyans-hu/cmdk-engine"
+            version "${{ steps.meta.outputs.version }}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/Priyans-hu/cmdk-engine/releases/download/${{ steps.meta.outputs.tag }}/cmdk-engine-darwin-arm64"
+                sha256 "${{ steps.meta.outputs.darwin_arm64_sha }}"
+              else
+                url "https://github.com/Priyans-hu/cmdk-engine/releases/download/${{ steps.meta.outputs.tag }}/cmdk-engine-darwin-x64"
+                sha256 "${{ steps.meta.outputs.darwin_x64_sha }}"
+              end
+            end
+
+            on_linux do
+              url "https://github.com/Priyans-hu/cmdk-engine/releases/download/${{ steps.meta.outputs.tag }}/cmdk-engine-linux-x64"
+              sha256 "${{ steps.meta.outputs.linux_x64_sha }}"
+            end
+
+            def install
+              binary = Dir["cmdk-engine-*"].first
+              bin.install binary => "cmdk-engine"
+            end
+
+            test do
+              assert_match "cmdk-engine", shell_output("#{bin}/cmdk-engine --help")
+            end
+          end
+          FORMULA_EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/cmdk-engine.rb
+          git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}" || true
+          git push || true

@@ -92,6 +92,7 @@
     "version": "changeset version",
     "release": "bun run build && changeset publish",
     "prepublishOnly": "bun run build",
+    "build:binary": "bun run build && bun build dist/cli/index.js --compile --outfile dist/cmdk-engine",
     "size": "size-limit"
   },
   "peerDependencies": {
