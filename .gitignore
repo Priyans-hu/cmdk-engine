@@ -29,9 +29,7 @@ Thumbs.db
 docs/.next/
 docs/out/
 
-# Changeset
-.changeset/*.md
-!.changeset/config.json
+# Changeset — keep all changeset files tracked
 
 # Misc
 *.log

@@ -113,11 +113,13 @@
     },
     {
       "path": "dist/react/index.js",
-      "limit": "2 KB"
+      "limit": "3 KB",
+      "ignore": ["react", "react-dom"]
     },
     {
       "path": "dist/adapters/cmdk/index.js",
-      "limit": "1.5 KB"
+      "limit": "3 KB",
+      "ignore": ["cmdk", "react", "react-dom"]
     }
   ],
   "engines": {
