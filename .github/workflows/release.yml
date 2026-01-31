@@ -130,7 +130,7 @@ jobs:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           # Clone the tap repo
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/Priyans-hu/homebrew-cmdk-engine.git" /tmp/tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/Priyans-hu/homebrew-tap.git" /tmp/tap
           cd /tmp/tap
 
           mkdir -p Formula

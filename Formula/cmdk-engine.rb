@@ -1,9 +1,9 @@
 # Homebrew formula for cmdk-engine
-# Tap: brew tap Priyans-hu/cmdk-engine
-# Install: brew install Priyans-hu/cmdk-engine/cmdk-engine
+# Tap: brew tap Priyans-hu/tap
+# Install: brew install Priyans-hu/tap/cmdk-engine
 #
 # This formula is auto-updated by the release workflow.
-# The canonical version lives in: github.com/Priyans-hu/homebrew-cmdk-engine
+# The canonical version lives in: github.com/Priyans-hu/homebrew-tap
 
 class CmdkEngine < Formula
   desc "Smart command palette engine — route scanner and config generator"

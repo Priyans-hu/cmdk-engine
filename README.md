@@ -54,10 +54,10 @@ yarn add cmdk-engine cmdk
 
 ```bash
 # Homebrew
-brew install Priyans-hu/cmdk-engine/cmdk-engine
+brew install Priyans-hu/tap/cmdk-engine
 
 # Or with tap
-brew tap Priyans-hu/cmdk-engine
+brew tap Priyans-hu/tap
 brew install cmdk-engine
 
 # Shell script
