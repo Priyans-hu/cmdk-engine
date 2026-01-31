@@ -1,3 +1,9 @@
-// React hooks — placeholder for build verification
-// Full implementation in commits 14-16
-export {}
+// Provider
+export { CommandEngineProvider } from './context'
+export type { CommandEngineProviderProps, EngineContextValue } from './context'
+
+// Hooks
+export { useCommandPalette } from './use-command-palette'
+export type { UseCommandPaletteReturn } from './use-command-palette'
+export { useCommandRegister } from './use-command-register'
+export { useFrecency } from './use-frecency'
