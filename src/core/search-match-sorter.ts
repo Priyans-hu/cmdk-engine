@@ -47,16 +47,14 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
           .map((item) => ({ item, score: 0.5 }))
       }
 
-      const keys: Array<string | { key: string; threshold?: number }> = [
+      const keys: string[] = [
         'label',
         'description',
-        { key: 'keywords', threshold: options?.threshold },
+        'keywords',
         ...(options?.keys ?? []),
       ]
 
-      const matched = matchSorterFn(visible, query, {
-        keys: keys as Parameters<typeof matchSorterFn>[2]['keys'],
-      })
+      const matched = matchSorterFn(visible, query, { keys })
 
       // Convert to scored items (position-based scoring)
       return matched.map((item, index) => ({

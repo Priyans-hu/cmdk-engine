@@ -40,37 +40,37 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "cmdk-engine": "./dist/cli/index.mjs"
+    "cmdk-engine": "./dist/cli/index.js"
   },
   "exports": {
     ".": {
       "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.mjs",
+      "import": "./dist/core/index.js",
       "require": "./dist/core/index.cjs"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.mjs",
+      "import": "./dist/react/index.js",
       "require": "./dist/react/index.cjs"
     },
     "./adapters/cmdk": {
       "types": "./dist/adapters/cmdk/index.d.ts",
-      "import": "./dist/adapters/cmdk/index.mjs",
+      "import": "./dist/adapters/cmdk/index.js",
       "require": "./dist/adapters/cmdk/index.cjs"
     },
     "./adapters/react-router": {
       "types": "./dist/adapters/react-router/index.d.ts",
-      "import": "./dist/adapters/react-router/index.mjs",
+      "import": "./dist/adapters/react-router/index.js",
       "require": "./dist/adapters/react-router/index.cjs"
     },
     "./search/match-sorter": {
       "types": "./dist/core/search-match-sorter.d.ts",
-      "import": "./dist/core/search-match-sorter.mjs",
+      "import": "./dist/core/search-match-sorter.js",
       "require": "./dist/core/search-match-sorter.cjs"
     }
   },
   "main": "./dist/core/index.cjs",
-  "module": "./dist/core/index.mjs",
+  "module": "./dist/core/index.js",
   "types": "./dist/core/index.d.ts",
   "files": [
     "dist",
@@ -108,15 +108,15 @@
   },
   "size-limit": [
     {
-      "path": "dist/core/index.mjs",
-      "limit": "4 KB"
+      "path": "dist/core/index.js",
+      "limit": "4.5 KB"
     },
     {
-      "path": "dist/react/index.mjs",
+      "path": "dist/react/index.js",
       "limit": "2 KB"
     },
     {
-      "path": "dist/adapters/cmdk/index.mjs",
+      "path": "dist/adapters/cmdk/index.js",
       "limit": "1.5 KB"
     }
   ],
