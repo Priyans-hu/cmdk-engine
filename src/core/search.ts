@@ -49,6 +49,12 @@ export function createFuzzySearch(): SearchEngine {
 /**
  * Score a single item against a query.
  * Returns 0 if no match, up to 1 for perfect match.
+ *
+ * Scoring weights:
+ * - Label:            1.0x  (exact label match is highest signal)
+ * - Original keywords: 0.85x (user explicitly tagged these)
+ * - Description:      0.7x
+ * - Synonym keywords:  0.55x (injected by keyword engine, lower confidence)
  */
 function scoreItem(query: string, item: CommandItem): number {
   let bestScore = 0
@@ -61,10 +67,18 @@ function scoreItem(query: string, item: CommandItem): number {
     bestScore = Math.max(bestScore, fuzzyScore(query, item.description.toLowerCase()) * 0.7)
   }
 
-  // Score against each keyword (medium-high weight)
+  // Score against original keywords (medium-high weight)
   if (item.keywords) {
     for (const kw of item.keywords) {
       bestScore = Math.max(bestScore, fuzzyScore(query, kw.toLowerCase()) * 0.85)
+    }
+  }
+
+  // Score against synonym-expanded keywords (lower weight)
+  const synonymKeywords = (item.meta?._synonymKeywords as string[] | undefined)
+  if (synonymKeywords) {
+    for (const kw of synonymKeywords) {
+      bestScore = Math.max(bestScore, fuzzyScore(query, kw.toLowerCase()) * 0.55)
     }
   }
 

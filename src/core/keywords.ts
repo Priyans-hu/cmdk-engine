@@ -43,24 +43,25 @@ export function createKeywordEngine(
 
     /**
      * Enrich a command item's keywords with synonyms and user aliases.
-     * Returns a new CommandItem with expanded keywords array.
+     * Returns a new CommandItem with original keywords preserved and
+     * synonym-expanded keywords stored separately in meta._synonymKeywords.
+     * This lets the search engine score original keywords higher.
      */
     enrichItem(item: CommandItem): CommandItem {
-      const allKeywords = new Set<string>(item.keywords ?? [])
+      const originalKeywords = new Set<string>(item.keywords ?? [])
+      const synonymKeywords = new Set<string>()
 
       // Add synonyms for existing keywords
       for (const kw of item.keywords ?? []) {
         const kwLower = kw.toLowerCase()
-        // If keyword matches a synonym key, add its values
         if (synonyms[kwLower]) {
           for (const syn of synonyms[kwLower]) {
-            allKeywords.add(syn)
+            if (!originalKeywords.has(syn)) synonymKeywords.add(syn)
           }
         }
-        // If keyword matches a synonym value, add the key
         for (const [key, values] of Object.entries(synonyms)) {
           if (values.map((v) => v.toLowerCase()).includes(kwLower)) {
-            allKeywords.add(key)
+            if (!originalKeywords.has(key)) synonymKeywords.add(key)
           }
         }
       }
@@ -69,24 +70,32 @@ export function createKeywordEngine(
       const labelLower = item.label.toLowerCase()
       for (const [key, values] of Object.entries(synonyms)) {
         if (key.toLowerCase() === labelLower) {
-          for (const v of values) allKeywords.add(v)
+          for (const v of values) {
+            if (!originalKeywords.has(v)) synonymKeywords.add(v)
+          }
         }
         if (values.map((v) => v.toLowerCase()).includes(labelLower)) {
-          allKeywords.add(key)
+          if (!originalKeywords.has(key)) synonymKeywords.add(key)
         }
       }
 
-      // Add user aliases for this command
+      // Add user aliases as original keywords (user explicitly added these)
       const aliases = userAliases.get(item.id)
       if (aliases) {
         for (const alias of aliases) {
-          allKeywords.add(alias)
+          originalKeywords.add(alias)
         }
       }
 
       return {
         ...item,
-        keywords: Array.from(allKeywords),
+        keywords: Array.from(originalKeywords),
+        meta: {
+          ...item.meta,
+          ...(synonymKeywords.size > 0
+            ? { _synonymKeywords: Array.from(synonymKeywords) }
+            : {}),
+        },
       }
     },
 
