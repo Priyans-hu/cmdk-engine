@@ -267,11 +267,23 @@ export interface CommandEngineConfig {
   /** Synonym dictionary for keyword expansion */
   synonyms?: SynonymMap
   /** Frecency configuration */
-  frecency?: FrecencyOptions
+  frecency?: FrecencyOptions & RecentCommandsConfig
   /** Group definitions and ordering */
   groups?: CommandGroup[]
   /** Maximum results to return */
   maxResults?: number
+  /** Centralized handler when a command is selected. Auto-records frecency. */
+  onSelect?: (item: CommandItem) => void
+}
+
+/** Configuration for the "Recent" commands group */
+export interface RecentCommandsConfig {
+  /** Show a "Recent" group when search is empty (default: false) */
+  showRecent?: boolean
+  /** Number of recent items to show (default: 5) */
+  recentCount?: number
+  /** Label for the recent group (default: "Recent") */
+  recentLabel?: string
 }
 
 // ============================================================

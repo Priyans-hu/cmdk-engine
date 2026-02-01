@@ -17,6 +17,7 @@ export type {
   Sitemap,
   CommandPaletteState,
   CommandEngineConfig,
+  RecentCommandsConfig,
 } from './types'
 
 // Config helper

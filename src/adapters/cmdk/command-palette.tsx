@@ -122,6 +122,8 @@ export function CommandPalette({
     useCommandPalette()
   const { groupManager } = useEngineContext()
 
+  const { onSelect: configOnSelect } = useEngineContext().config
+
   const handleSelect = useCallback(
     (value: string) => {
       const item = results.find((r) => r.item.id === value)?.item
@@ -131,6 +133,8 @@ export function CommandPalette({
 
       if (onSelect) {
         onSelect(item)
+      } else if (configOnSelect) {
+        configOnSelect(item)
       } else if (item.action) {
         item.action(item)
       } else if (item.href) {
@@ -140,7 +144,7 @@ export function CommandPalette({
 
       close()
     },
-    [results, recordUsage, onSelect, close],
+    [results, recordUsage, onSelect, configOnSelect, close],
   )
 
   // Auto-select first item when results change (solves cmdk #280)

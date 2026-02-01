@@ -94,6 +94,18 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
   }
 
   /**
+   * Get the most recently used command IDs, sorted by last use (newest first).
+   */
+  function getRecent(count = 5): string[] {
+    return storage
+      .getAll()
+      .filter((e) => e.count > 0)
+      .sort((a, b) => b.lastUsed - a.lastUsed)
+      .slice(0, count)
+      .map((e) => e.id)
+  }
+
+  /**
    * Clean up entries older than maxAge.
    */
   function cleanup(): void {
@@ -117,6 +129,7 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
   return {
     recordUsage,
     getScore,
+    getRecent,
     rank,
     cleanup,
     clear,
