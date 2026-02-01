@@ -23,7 +23,7 @@ export interface CommandItem {
   /** Navigation target URL/path for route commands */
   href?: string
   /** Execution callback when command is selected */
-  action?: () => void | Promise<void>
+  action?: (item: CommandItem) => void | Promise<void>
   /** Whether this command is disabled */
   disabled?: boolean
   /** Hidden from results but still searchable */

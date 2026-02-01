@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { CommandItem, RouteCommandMeta } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
 
@@ -35,15 +36,14 @@ export function scanRoutes(routes: RouteObject[], parentPath = ''): CommandItem[
     // Only create commands for routes with paths (skip layout routes)
     if (route.path !== undefined && route.path !== '') {
       const meta = route.handle?.command
-      const id = meta?.label ? pathToId(fullPath) : pathToId(fullPath)
 
       commands.push({
-        id,
-        label: meta?.label ?? pathToLabel(fullPath),
+        id: pathToId(fullPath),
+        label: meta?.label ?? (route.title as string) ?? pathToLabel(fullPath),
         description: meta?.description,
         keywords: meta?.keywords,
         group: meta?.group ?? pathToGroup(fullPath),
-        icon: meta?.icon,
+        icon: meta?.icon ?? (route.icon as ReactNode),
         permissions: meta?.permissions,
         priority: meta?.priority,
         hidden: meta?.hidden,

@@ -132,7 +132,7 @@ export function CommandPalette({
       if (onSelect) {
         onSelect(item)
       } else if (item.action) {
-        item.action()
+        item.action(item)
       } else if (item.href) {
         // Navigate if no custom onSelect or action
         window.location.href = item.href
