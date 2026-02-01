@@ -106,7 +106,7 @@ describe('scanRoutes', () => {
     ]
 
     const commands = scanRoutes(routes)
-    expect(commands[0].id).toBe('billing-overview')
+    expect(commands[0].id).toBe('billing--overview')
   })
 
   it('handles empty routes array', () => {
@@ -135,5 +135,119 @@ describe('scanRoutes', () => {
 
     const commands = scanRoutes(routes)
     expect(commands[0].permissions).toEqual(['admin.view'])
+  })
+
+  it('auto-excludes auth routes by default', () => {
+    const routes: RouteObject[] = [
+      { path: '/dashboard' },
+      { path: '/login' },
+      { path: '/signup' },
+      { path: '/logout' },
+      { path: '/forgot-password' },
+    ]
+
+    const commands = scanRoutes(routes)
+    expect(commands).toHaveLength(1)
+    expect(commands[0].href).toBe('/dashboard')
+  })
+
+  it('excludes custom paths with exact string', () => {
+    const routes: RouteObject[] = [
+      { path: '/dashboard' },
+      { path: '/internal' },
+    ]
+
+    const commands = scanRoutes(routes, { exclude: ['/internal'] })
+    expect(commands).toHaveLength(1)
+    expect(commands[0].href).toBe('/dashboard')
+  })
+
+  it('excludes paths with glob pattern', () => {
+    const routes: RouteObject[] = [
+      { path: '/dashboard' },
+      { path: '/admin/users' },
+      { path: '/admin/settings' },
+    ]
+
+    const commands = scanRoutes(routes, { exclude: ['/admin/*'] })
+    expect(commands).toHaveLength(1)
+    expect(commands[0].href).toBe('/dashboard')
+  })
+
+  it('excludes paths with regex', () => {
+    const routes: RouteObject[] = [
+      { path: '/dashboard' },
+      { path: '/debug/logs' },
+      { path: '/debug/errors' },
+    ]
+
+    const commands = scanRoutes(routes, { exclude: [/^\/debug\//] })
+    expect(commands).toHaveLength(1)
+    expect(commands[0].href).toBe('/dashboard')
+  })
+
+  it('skips default excludes with noDefaultExclude', () => {
+    const routes: RouteObject[] = [
+      { path: '/login' },
+      { path: '/dashboard' },
+    ]
+
+    const commands = scanRoutes(routes, { noDefaultExclude: true })
+    expect(commands).toHaveLength(2)
+  })
+
+  it('skips dynamic routes by default', () => {
+    const routes: RouteObject[] = [
+      { path: '/billing' },
+      { path: '/billing/receipt/:uuid' },
+      { path: '/users/:id' },
+    ]
+
+    const commands = scanRoutes(routes)
+    expect(commands).toHaveLength(1)
+    expect(commands[0].href).toBe('/billing')
+  })
+
+  it('includes dynamic routes with handle.command', () => {
+    const routes: RouteObject[] = [
+      { path: '/billing' },
+      {
+        path: '/billing/:id',
+        handle: { command: { label: 'Billing Detail' } },
+      },
+    ]
+
+    const commands = scanRoutes(routes)
+    expect(commands).toHaveLength(2)
+    expect(commands[1].label).toBe('Billing Detail')
+  })
+
+  it('includes dynamic routes with includeDynamic option', () => {
+    const routes: RouteObject[] = [
+      { path: '/billing' },
+      { path: '/billing/:id' },
+    ]
+
+    const commands = scanRoutes(routes, { includeDynamic: true })
+    expect(commands).toHaveLength(2)
+  })
+
+  it('avoids duplicate IDs for similar paths', () => {
+    const routes: RouteObject[] = [
+      { path: '/agent-flow-runs' },
+      { path: '/agent/flow-runs' },
+    ]
+
+    const commands = scanRoutes(routes)
+    expect(commands[0].id).not.toBe(commands[1].id)
+  })
+
+  it('falls back to route.title for label', () => {
+    const routes: RouteObject[] = [
+      { path: '/conversations', title: 'Conversations' } as RouteObject,
+    ]
+
+    const commands = scanRoutes(routes)
+    expect(commands[0].label).toBe('Conversations')
   })
 })

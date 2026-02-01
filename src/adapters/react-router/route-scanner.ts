@@ -51,6 +51,10 @@ function matchesExclude(path: string, pattern: ExcludePattern): boolean {
   if (pattern instanceof RegExp) {
     return pattern.test(path)
   }
+  // Exact match for standalone '*' (React Router catch-all segment)
+  if (pattern === '*') {
+    return path === '*'
+  }
   // Glob: '/admin/*' matches '/admin/anything' and '/admin/deep/nested'
   if (pattern.includes('*')) {
     const prefix = pattern.replace(/\/?\*.*$/, '')
