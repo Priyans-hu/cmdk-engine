@@ -18,7 +18,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Route auto-discovery | No | Yes — CLI scanner + runtime adapters |
 | RBAC / permission filtering | No | Yes — any/all modes |
 | Frecency ranking | No | Yes — exponential decay algorithm |
-| Keyword synonyms | No | Yes — bidirectional synonym engine |
+| Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
+| Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
 | Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > alphabetical |
 | First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
 | Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
@@ -49,23 +50,6 @@ yarn add cmdk-engine cmdk
 
 > `cmdk` and `react` are peer dependencies.
 
-### CLI only (standalone, no Node.js required)
-
-```bash
-# Homebrew
-brew install Priyans-hu/tap/cmdk-engine
-
-# Or with tap
-brew tap Priyans-hu/tap
-brew install cmdk-engine
-
-# Shell script
-curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
-
-# npx (requires Node.js)
-npx cmdk-engine --help
-```
-
 ---
 
 ## Quick Start
@@ -95,6 +79,7 @@ function App() {
 
 ```tsx
 import { useCommandRegister } from 'cmdk-engine/react'
+import { CreditCard } from 'lucide-react'
 
 function BillingPage() {
   useCommandRegister([
@@ -104,6 +89,7 @@ function BillingPage() {
       href: '/billing/overview',
       keywords: ['balance', 'credits'],
       group: 'Billing',
+      icon: <CreditCard size={16} />, // React components, strings, or emoji
     },
   ])
 
@@ -123,11 +109,24 @@ function CommandMenu() {
       placeholder="Type a command or search..."
       onSelect={(item) => {
         if (item.href) navigate(item.href)
-        if (item.action) item.action()
+        if (item.action) item.action(item)
       }}
     />
   )
 }
+```
+
+Or use `config.onSelect` on the provider to handle all selections in one place:
+
+```tsx
+<CommandEngineProvider
+  config={{
+    onSelect: (item) => {
+      if (item.href) navigate(item.href)
+      if (item.action) item.action(item)
+    },
+  }}
+>
 ```
 
 ### 4. Or build your own UI with hooks
@@ -136,27 +135,28 @@ function CommandMenu() {
 import { useCommandPalette } from 'cmdk-engine/react'
 
 function CustomCommandMenu() {
-  const { search, setSearch, results, groups, isOpen, toggle, recordUsage } =
+  const { search, setSearch, groupedResults, isOpen, toggle, select } =
     useCommandPalette()
 
   return (
     <div>
       <input value={search} onChange={(e) => setSearch(e.target.value)} />
-      {results.map(({ item, score }) => (
-        <button
-          key={item.id}
-          onClick={() => {
-            recordUsage(item.id)
-            item.action?.()
-          }}
-        >
-          {item.label}
-        </button>
+      {groupedResults.map(({ group, items }) => (
+        <div key={group.id}>
+          <h3>{group.label}</h3>
+          {items.map(({ item }) => (
+            <button key={item.id} onClick={() => select(item)}>
+              {item.icon} {item.label}
+            </button>
+          ))}
+        </div>
       ))}
     </div>
   )
 }
 ```
+
+> `select()` records frecency, runs `onSelect`/`action`/`href`, and closes the palette — all in one call.
 
 ---
 
@@ -168,7 +168,6 @@ Auto-discover routes from your React Router config:
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
 import { useCommandRegister } from 'cmdk-engine/react'
 
-// Scan your route tree at startup
 const commands = scanRoutes(routeConfig)
 
 function App() {
@@ -177,10 +176,30 @@ function App() {
 }
 ```
 
+### Smart defaults
+
+The scanner automatically:
+- **Excludes auth routes** — `/login`, `/signup`, `/forgot-password`, `/oauth/callback`, etc.
+- **Excludes error pages** — `/404`, `/500`, `/error`, `/not-found`
+- **Skips dynamic routes** — `/users/:id`, `/billing/:uuid` (can't navigate without a real ID)
+- **Derives labels** from the path — `/billing/overview` → "Overview"
+- **Derives groups** from the first segment — `/billing/overview` → group "Billing"
+
+### Scanner options
+
+```tsx
+const commands = scanRoutes(routeConfig, {
+  exclude: ['/admin/*', /^\/debug\//, '/internal'],  // string, glob, or regex
+  noDefaultExclude: false,   // set true to skip default auth/error exclusion
+  includeDynamic: false,     // set true to include :id routes
+})
+```
+
+### Route metadata
+
 Enrich routes with metadata using the `handle` convention:
 
 ```tsx
-// In your route definition
 {
   path: '/billing/overview',
   handle: {
@@ -188,12 +207,15 @@ Enrich routes with metadata using the `handle` convention:
       label: 'Billing Dashboard',
       keywords: ['money', 'payment'],
       group: 'Billing',
+      icon: <CreditCard size={16} />,
       priority: 10,
     }
   },
   element: <BillingOverview />,
 }
 ```
+
+Routes with `handle.command` are always included, even if they have dynamic segments. The scanner also falls back to `route.title` and `route.icon` if `handle.command` doesn't define them.
 
 ---
 
@@ -218,19 +240,28 @@ Commands with `permissions: ['admin.view']` will only show for users who have th
 
 ## Frecency Ranking
 
-Commands you use frequently and recently appear higher in results. No configuration needed — it uses localStorage by default.
-
-```tsx
-const { recordUsage } = useCommandPalette()
-
-// Record when user selects a command
-recordUsage('billing-overview')
-```
+Commands you use frequently and recently appear higher in results. No configuration needed — it uses localStorage by default. When you use `select()`, frecency is recorded automatically.
 
 The algorithm uses exponential decay with a configurable half-life:
 
 ```
 score = count * 2^(-timeSinceLastUse / halfLife)
+```
+
+### Recent commands
+
+Show a "Recent" group at the top of the palette when the search is empty:
+
+```tsx
+<CommandEngineProvider
+  config={{
+    frecency: {
+      showRecent: true,     // inject "Recent" group when search is empty
+      recentCount: 5,       // number of recent items (default: 5)
+      recentLabel: 'Recent', // group label (default: "Recent")
+    },
+  }}
+>
 ```
 
 ---
@@ -360,6 +391,23 @@ import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
 ```
 
+### Key hook return values
+
+```ts
+const {
+  search,          // Current query
+  setSearch,       // Update query
+  results,         // ScoredItem[] (flat)
+  flatResults,     // Same as results
+  groupedResults,  // GroupedResult[] — results grouped by group
+  groups,          // CommandGroup[] — active groups
+  isOpen,          // Palette visibility
+  open, close, toggle,
+  select,          // Select a command (records frecency + runs handler + closes)
+  recordUsage,     // Record frecency manually
+} = useCommandPalette()
+```
+
 ---
 
 ## Type Safety
@@ -372,8 +420,11 @@ import type {
   CommandRegistry,
   SearchEngine,
   ScoredItem,
+  GroupedResult,
+  GroupedResults,
   AccessControlProvider,
   FrecencyOptions,
+  RecentCommandsConfig,
   CommandGroup,
   SynonymMap,
   RouteCommandMeta,

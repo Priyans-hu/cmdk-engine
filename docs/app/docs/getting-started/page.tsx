@@ -39,6 +39,11 @@ function App() {
       synonyms: {
         billing: ['money', 'payment', 'credits'],
       },
+      onSelect: (item) => {
+        if (item.href) navigate(item.href)
+        if (item.action) item.action(item)
+      },
+      frecency: { showRecent: true },
     }}>
       <YourApp />
     </CommandEngineProvider>
@@ -55,6 +60,7 @@ function App() {
         language="tsx"
         filename="BillingPage.tsx"
         code={`import { useCommandRegister } from 'cmdk-engine/react'
+import { CreditCard } from 'lucide-react'
 
 function BillingPage() {
   useCommandRegister([{
@@ -63,6 +69,7 @@ function BillingPage() {
     href: '/billing/overview',
     keywords: ['balance', 'credits'],
     group: 'Billing',
+    icon: <CreditCard size={16} />,
   }])
 
   return <div>...</div>
