@@ -43,6 +43,8 @@ export interface ScanRoutesOptions {
   exclude?: string[]
   /** Set to true to skip the default exclude list */
   noDefaultExclude?: boolean
+  /** Include routes with dynamic segments like :id or [id] (default: false) */
+  includeDynamic?: boolean
 }
 
 /**
@@ -83,9 +85,16 @@ function scanRoutesInternal(
 
     // Only create commands for routes with paths (skip layout routes)
     if (route.path !== undefined && route.path !== '') {
+      // Skip dynamic routes (:id, [id]) unless explicitly included or has handle.command
+      const hasDynamic = /[:[\*]/.test(fullPath)
+      const hasCommandMeta = !!route.handle?.command
+
       // Skip excluded paths and catch-all/wildcard routes
       if (excludeSet?.has(fullPath) || excludeSet?.has(route.path ?? '')) {
         // Still recurse into children — only this path is excluded
+      } else if (hasDynamic && !options.includeDynamic && !hasCommandMeta) {
+        // Skip dynamic routes — can't navigate to /billing/:uuid without a real ID
+        // Unless the route explicitly declares handle.command (user opted in)
       } else {
         const meta = route.handle?.command
 
