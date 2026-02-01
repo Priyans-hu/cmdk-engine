@@ -16,19 +16,15 @@ export interface RouteObject {
   [key: string]: unknown
 }
 
+/** An exclude pattern — exact string, glob with *, or RegExp */
+type ExcludePattern = string | RegExp
+
 /** Paths that are almost never useful as commands */
-const DEFAULT_EXCLUDE = [
-  '/login',
-  '/logout',
-  '/signin',
-  '/signout',
-  '/signup',
-  '/register',
-  '/forgot-password',
-  '/reset-password',
-  '/verify-email',
-  '/oauth/callback',
-  '/auth/callback',
+const DEFAULT_EXCLUDE: ExcludePattern[] = [
+  /^\/(login|logout|signin|signout|signup|register)(\/|$)/,
+  /^\/(forgot|reset)-password(\/|$)/,
+  /^\/verify-email(\/|$)/,
+  /^\/(oauth|auth)\/callback(\/|$)/,
   '/callback',
   '/404',
   '/500',
@@ -39,12 +35,29 @@ const DEFAULT_EXCLUDE = [
 
 /** Options for scanRoutes */
 export interface ScanRoutesOptions {
-  /** Route paths to exclude from command discovery (merged with defaults) */
-  exclude?: string[]
+  /**
+   * Patterns to exclude from command discovery (merged with defaults).
+   * Supports exact strings, globs with * (e.g. '/admin/*'), and RegExp.
+   */
+  exclude?: ExcludePattern[]
   /** Set to true to skip the default exclude list */
   noDefaultExclude?: boolean
   /** Include routes with dynamic segments like :id or [id] (default: false) */
   includeDynamic?: boolean
+}
+
+/** Check if a path matches an exclude pattern */
+function matchesExclude(path: string, pattern: ExcludePattern): boolean {
+  if (pattern instanceof RegExp) {
+    return pattern.test(path)
+  }
+  // Glob: '/admin/*' matches '/admin/anything' and '/admin/deep/nested'
+  if (pattern.includes('*')) {
+    const prefix = pattern.replace(/\/?\*.*$/, '')
+    return path === prefix || path.startsWith(prefix + '/')
+  }
+  // Exact match
+  return path === pattern
 }
 
 /**
@@ -75,10 +88,9 @@ function scanRoutesInternal(
   options: ScanRoutesOptions,
 ): CommandItem[] {
   const commands: CommandItem[] = []
-  const excludeList = options.noDefaultExclude
+  const excludePatterns: ExcludePattern[] = options.noDefaultExclude
     ? (options.exclude ?? [])
     : [...DEFAULT_EXCLUDE, ...(options.exclude ?? [])]
-  const excludeSet = excludeList.length > 0 ? new Set(excludeList) : null
 
   for (const route of routes) {
     const fullPath = buildPath(parentPath, route.path)
@@ -89,8 +101,12 @@ function scanRoutesInternal(
       const hasDynamic = /[:[\*]/.test(fullPath)
       const hasCommandMeta = !!route.handle?.command
 
-      // Skip excluded paths and catch-all/wildcard routes
-      if (excludeSet?.has(fullPath) || excludeSet?.has(route.path ?? '')) {
+      // Check if path matches any exclude pattern
+      const isExcluded = excludePatterns.some(
+        (p) => matchesExclude(fullPath, p) || matchesExclude(route.path ?? '', p),
+      )
+
+      if (isExcluded) {
         // Still recurse into children — only this path is excluded
       } else if (hasDynamic && !options.includeDynamic && !hasCommandMeta) {
         // Skip dynamic routes — can't navigate to /billing/:uuid without a real ID
