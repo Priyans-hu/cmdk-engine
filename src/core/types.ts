@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 // ============================================================
 // Command Definition
 // ============================================================
@@ -10,8 +12,8 @@ export interface CommandItem {
   label: string
   /** Optional description text */
   description?: string
-  /** Icon identifier string or component reference */
-  icon?: string
+  /** Icon — string, emoji, or React element (e.g. `<Settings size={16} />`) */
+  icon?: ReactNode
   /** Additional search terms for fuzzy matching */
   keywords?: string[]
   /** Group this command belongs to */
@@ -148,7 +150,7 @@ export interface CommandGroup {
   /** Rendering priority (higher = rendered first) */
   priority?: number
   /** Optional icon for the group */
-  icon?: string
+  icon?: ReactNode
 }
 
 // ============================================================
@@ -174,8 +176,8 @@ export interface RouteCommandMeta {
   keywords?: string[]
   /** Group ID */
   group?: string
-  /** Icon identifier */
-  icon?: string
+  /** Icon — string, emoji, or React element */
+  icon?: ReactNode
   /** Required permissions */
   permissions?: string[]
   /** Ordering priority */
