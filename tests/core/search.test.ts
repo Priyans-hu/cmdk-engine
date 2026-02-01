@@ -104,4 +104,55 @@ describe('createFuzzySearch', () => {
     const results = search.search('DID', items)
     expect(results[0].item.id).toBe('phone')
   })
+
+  it('ranks original keyword match above synonym keyword match', () => {
+    const testItems = [
+      cmd({
+        id: 'synonym-match',
+        label: 'Credits Page',
+        keywords: ['credits'],
+        meta: { _synonymKeywords: ['billing'] },
+      }),
+      cmd({
+        id: 'direct-match',
+        label: 'Payment History',
+        keywords: ['billing'],
+      }),
+    ]
+    const results = search.search('billing', testItems)
+    expect(results[0].item.id).toBe('direct-match')
+    expect(results[0].score).toBeGreaterThan(results[1].score)
+  })
+
+  it('ranks label match above synonym keyword match', () => {
+    const testItems = [
+      cmd({
+        id: 'synonym-match',
+        label: 'Team Settings',
+        meta: { _synonymKeywords: ['deploy'] },
+      }),
+      cmd({
+        id: 'label-match',
+        label: 'Deploy',
+      }),
+    ]
+    const results = search.search('deploy', testItems)
+    expect(results[0].item.id).toBe('label-match')
+    expect(results[0].score).toBeGreaterThan(results[1].score)
+  })
+
+  it('still finds items via synonym keywords', () => {
+    const testItems = [
+      cmd({
+        id: 'item',
+        label: 'Billing Overview',
+        keywords: ['invoice'],
+        meta: { _synonymKeywords: ['payment', 'money'] },
+      }),
+    ]
+    const results = search.search('money', testItems)
+    expect(results).toHaveLength(1)
+    expect(results[0].item.id).toBe('item')
+    expect(results[0].score).toBeGreaterThan(0)
+  })
 })

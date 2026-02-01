@@ -44,7 +44,7 @@ describe('createKeywordEngine', () => {
   })
 
   describe('enrichItem', () => {
-    it('adds synonym values to item keywords', () => {
+    it('keeps original keywords separate from synonym expansions', () => {
       const engine = createKeywordEngine(synonyms)
       const item: CommandItem = {
         id: 'billing-page',
@@ -53,12 +53,14 @@ describe('createKeywordEngine', () => {
       }
 
       const enriched = engine.enrichItem(item)
-      expect(enriched.keywords).toContain('charges') // original
-      expect(enriched.keywords).toContain('money') // from synonym
-      expect(enriched.keywords).toContain('payment') // from synonym
+      const synKws = enriched.meta?._synonymKeywords as string[]
+      expect(enriched.keywords).toContain('charges') // original preserved
+      expect(enriched.keywords).not.toContain('money') // synonym NOT in keywords
+      expect(synKws).toContain('money') // synonym in meta
+      expect(synKws).toContain('payment')
     })
 
-    it('adds synonyms based on label match', () => {
+    it('puts label-derived synonyms in _synonymKeywords', () => {
       const engine = createKeywordEngine(synonyms)
       const item: CommandItem = {
         id: 'settings-page',
@@ -66,11 +68,12 @@ describe('createKeywordEngine', () => {
       }
 
       const enriched = engine.enrichItem(item)
-      expect(enriched.keywords).toContain('preferences')
-      expect(enriched.keywords).toContain('config')
+      const synKws = enriched.meta?._synonymKeywords as string[]
+      expect(synKws).toContain('preferences')
+      expect(synKws).toContain('config')
     })
 
-    it('adds user aliases', () => {
+    it('adds user aliases as original keywords (not synonyms)', () => {
       const aliases = new Map([['cmd-1', ['shortcut', 'quick']]])
       const engine = createKeywordEngine({}, aliases)
       const item: CommandItem = { id: 'cmd-1', label: 'My Command' }
@@ -80,22 +83,37 @@ describe('createKeywordEngine', () => {
       expect(enriched.keywords).toContain('quick')
     })
 
-    it('deduplicates keywords', () => {
+    it('does not duplicate original keywords into synonym list', () => {
       const engine = createKeywordEngine(synonyms)
       const item: CommandItem = {
         id: 'test',
         label: 'Billing',
-        keywords: ['money'], // already a synonym
+        keywords: ['money'], // already a synonym value
       }
 
       const enriched = engine.enrichItem(item)
-      const moneyCount = enriched.keywords!.filter((k) => k === 'money').length
-      expect(moneyCount).toBe(1)
+      const synKws = (enriched.meta?._synonymKeywords as string[] | undefined) ?? []
+      expect(enriched.keywords).toContain('money')
+      expect(enriched.keywords!.filter((k) => k === 'money')).toHaveLength(1)
+      // 'money' should NOT appear in synonyms since it's already original
+      expect(synKws).not.toContain('money')
+    })
+
+    it('does not set _synonymKeywords when there are no expansions', () => {
+      const engine = createKeywordEngine({})
+      const item: CommandItem = {
+        id: 'plain',
+        label: 'Dashboard',
+        keywords: ['home'],
+      }
+
+      const enriched = engine.enrichItem(item)
+      expect(enriched.meta?._synonymKeywords).toBeUndefined()
     })
   })
 
   describe('enrichAll', () => {
-    it('enriches all items', () => {
+    it('enriches all items with synonym keywords in meta', () => {
       const engine = createKeywordEngine(synonyms)
       const items: CommandItem[] = [
         { id: 'a', label: 'Billing' },
@@ -103,8 +121,8 @@ describe('createKeywordEngine', () => {
       ]
 
       const enriched = engine.enrichAll(items)
-      expect(enriched[0].keywords).toContain('money')
-      expect(enriched[1].keywords).toContain('config')
+      expect((enriched[0].meta?._synonymKeywords as string[])).toContain('money')
+      expect((enriched[1].meta?._synonymKeywords as string[])).toContain('config')
     })
   })
 
