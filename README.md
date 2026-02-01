@@ -4,7 +4,6 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/cmdk-engine)](https://bundlephobia.com/package/cmdk-engine)
 [![license](https://img.shields.io/npm/l/cmdk-engine.svg)](https://github.com/Priyans-hu/cmdk-engine/blob/main/LICENSE)
 
 ---
