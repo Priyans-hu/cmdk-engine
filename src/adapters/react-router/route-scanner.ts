@@ -16,10 +16,33 @@ export interface RouteObject {
   [key: string]: unknown
 }
 
+/** Paths that are almost never useful as commands */
+const DEFAULT_EXCLUDE = [
+  '/login',
+  '/logout',
+  '/signin',
+  '/signout',
+  '/signup',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/oauth/callback',
+  '/auth/callback',
+  '/callback',
+  '/404',
+  '/500',
+  '/error',
+  '/not-found',
+  '*',
+]
+
 /** Options for scanRoutes */
 export interface ScanRoutesOptions {
-  /** Route paths to exclude from command discovery */
+  /** Route paths to exclude from command discovery (merged with defaults) */
   exclude?: string[]
+  /** Set to true to skip the default exclude list */
+  noDefaultExclude?: boolean
 }
 
 /**
@@ -50,15 +73,18 @@ function scanRoutesInternal(
   options: ScanRoutesOptions,
 ): CommandItem[] {
   const commands: CommandItem[] = []
-  const excludeSet = options.exclude ? new Set(options.exclude) : null
+  const excludeList = options.noDefaultExclude
+    ? (options.exclude ?? [])
+    : [...DEFAULT_EXCLUDE, ...(options.exclude ?? [])]
+  const excludeSet = excludeList.length > 0 ? new Set(excludeList) : null
 
   for (const route of routes) {
     const fullPath = buildPath(parentPath, route.path)
 
     // Only create commands for routes with paths (skip layout routes)
     if (route.path !== undefined && route.path !== '') {
-      // Skip excluded paths
-      if (excludeSet?.has(fullPath)) {
+      // Skip excluded paths and catch-all/wildcard routes
+      if (excludeSet?.has(fullPath) || excludeSet?.has(route.path ?? '')) {
         // Still recurse into children — only this path is excluded
       } else {
         const meta = route.handle?.command
