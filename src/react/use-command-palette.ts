@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
+import type { GroupedResult } from '../core/grouping'
 import { useEngineContext } from './context'
 
 export interface UseCommandPaletteReturn extends CommandPaletteState {
@@ -17,6 +18,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   select: (itemOrId: CommandItem | string) => void
   /** Flat list of all result items (ungrouped) */
   flatResults: ScoredItem[]
+  /** Results grouped by group, sorted by group priority */
+  groupedResults: GroupedResult[]
 }
 
 /**
@@ -91,10 +94,15 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return results.slice(0, max)
   }, [results, config.maxResults])
 
+  // Group results by group field (for consumers building custom UIs)
+  const groupedResults = useMemo<GroupedResult[]>(() => {
+    return groupManager.groupResults(limitedResults)
+  }, [limitedResults, groupManager])
+
   // Extract active groups
   const groups = useMemo<CommandGroup[]>(() => {
-    return groupManager.extractGroups(limitedResults.map((r) => r.item))
-  }, [limitedResults, groupManager])
+    return groupedResults.map((g) => g.group)
+  }, [groupedResults])
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => {
@@ -143,6 +151,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     setSearch: setSearchQuery,
     results: limitedResults,
     flatResults: limitedResults,
+    groupedResults,
     groups,
     isOpen,
     isLoading: false,
