@@ -80,7 +80,7 @@ export function pathToId(path: string): string {
   return path
     .replace(/^\//, '')
     .replace(/\/$/, '')
-    .replace(/\//g, '-')
+    .replace(/\//g, '--')
     .replace(/[^a-zA-Z0-9-]/g, '')
     .toLowerCase() || 'home'
 }

@@ -19,7 +19,12 @@ export function useFrecency() {
     [frecency],
   )
 
+  const getRecent = useCallback(
+    (count?: number) => frecency.getRecent(count),
+    [frecency],
+  )
+
   const clear = useCallback(() => frecency.clear(), [frecency])
 
-  return { recordUsage, getScore, clear }
+  return { recordUsage, getScore, getRecent, clear }
 }

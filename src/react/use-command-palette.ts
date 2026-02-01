@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
-import type { CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
+import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import { useEngineContext } from './context'
 
 export interface UseCommandPaletteReturn extends CommandPaletteState {
@@ -13,6 +13,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   toggle: () => void
   /** Record that a command was selected (for frecency) */
   recordUsage: (commandId: string) => void
+  /** Select a command — records frecency, runs onSelect/action/href, closes palette */
+  select: (itemOrId: CommandItem | string) => void
   /** Flat list of all result items (ungrouped) */
   flatResults: ScoredItem[]
 }
@@ -49,8 +51,39 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       return frecency.rank(searched, 0.3)
     }
 
+    // 5. Inject "Recent" group when search is empty
+    const frecencyConfig = config.frecency
+    if (!searchQuery.trim() && frecencyConfig?.showRecent) {
+      const recentCount = frecencyConfig.recentCount ?? 5
+      const recentLabel = frecencyConfig.recentLabel ?? 'Recent'
+      const recentIds = frecency.getRecent(recentCount)
+
+      if (recentIds.length > 0) {
+        const recentItems: ScoredItem[] = []
+        const restItems: ScoredItem[] = []
+
+        for (const s of searched) {
+          if (recentIds.includes(s.item.id)) {
+            recentItems.push({
+              item: { ...s.item, group: recentLabel },
+              score: s.score,
+            })
+          } else {
+            restItems.push(s)
+          }
+        }
+
+        // Sort recent items by recency order
+        recentItems.sort(
+          (a, b) => recentIds.indexOf(a.item.id) - recentIds.indexOf(b.item.id),
+        )
+
+        return [...recentItems, ...restItems]
+      }
+    }
+
     return searched
-  }, [commands, searchQuery, search, keywords, accessFilter, frecency])
+  }, [commands, searchQuery, search, keywords, accessFilter, frecency, config.frecency])
 
   // Limit results
   const limitedResults = useMemo(() => {
@@ -82,6 +115,29 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     [frecency],
   )
 
+  const select = useCallback(
+    (itemOrId: CommandItem | string) => {
+      const item =
+        typeof itemOrId === 'string'
+          ? limitedResults.find((r) => r.item.id === itemOrId)?.item
+          : itemOrId
+      if (!item) return
+
+      frecency.recordUsage(item.id)
+
+      if (config.onSelect) {
+        config.onSelect(item)
+      } else if (item.action) {
+        item.action(item)
+      } else if (item.href) {
+        window.location.href = item.href
+      }
+
+      close()
+    },
+    [limitedResults, frecency, config, close],
+  )
+
   return {
     search: searchQuery,
     setSearch: setSearchQuery,
@@ -94,5 +150,6 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     close,
     toggle,
     recordUsage,
+    select,
   }
 }

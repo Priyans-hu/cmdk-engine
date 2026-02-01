@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 // ============================================================
 // Command Definition
 // ============================================================
@@ -10,8 +12,8 @@ export interface CommandItem {
   label: string
   /** Optional description text */
   description?: string
-  /** Icon identifier string or component reference */
-  icon?: string
+  /** Icon — string, emoji, or React element (e.g. `<Settings size={16} />`) */
+  icon?: ReactNode
   /** Additional search terms for fuzzy matching */
   keywords?: string[]
   /** Group this command belongs to */
@@ -21,7 +23,7 @@ export interface CommandItem {
   /** Navigation target URL/path for route commands */
   href?: string
   /** Execution callback when command is selected */
-  action?: () => void | Promise<void>
+  action?: (item: CommandItem) => void | Promise<void>
   /** Whether this command is disabled */
   disabled?: boolean
   /** Hidden from results but still searchable */
@@ -148,7 +150,7 @@ export interface CommandGroup {
   /** Rendering priority (higher = rendered first) */
   priority?: number
   /** Optional icon for the group */
-  icon?: string
+  icon?: ReactNode
 }
 
 // ============================================================
@@ -174,8 +176,8 @@ export interface RouteCommandMeta {
   keywords?: string[]
   /** Group ID */
   group?: string
-  /** Icon identifier */
-  icon?: string
+  /** Icon — string, emoji, or React element */
+  icon?: ReactNode
   /** Required permissions */
   permissions?: string[]
   /** Ordering priority */
@@ -265,11 +267,23 @@ export interface CommandEngineConfig {
   /** Synonym dictionary for keyword expansion */
   synonyms?: SynonymMap
   /** Frecency configuration */
-  frecency?: FrecencyOptions
+  frecency?: FrecencyOptions & RecentCommandsConfig
   /** Group definitions and ordering */
   groups?: CommandGroup[]
   /** Maximum results to return */
   maxResults?: number
+  /** Centralized handler when a command is selected. Auto-records frecency. */
+  onSelect?: (item: CommandItem) => void
+}
+
+/** Configuration for the "Recent" commands group */
+export interface RecentCommandsConfig {
+  /** Show a "Recent" group when search is empty (default: false) */
+  showRecent?: boolean
+  /** Number of recent items to show (default: 5) */
+  recentCount?: number
+  /** Label for the recent group (default: "Recent") */
+  recentLabel?: string
 }
 
 // ============================================================
