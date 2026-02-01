@@ -88,14 +88,16 @@ const expanded = keywords.expandQuery('money')
       <CodeBlock
         language="tsx"
         code={`const {
-  search,      // Current query string
-  setSearch,   // Update query
-  results,     // ScoredItem[] (filtered, ranked)
-  flatResults, // Same as results (flat list)
-  groups,      // Active CommandGroup[]
-  isOpen,      // Palette visibility
+  search,          // Current query string
+  setSearch,       // Update query
+  results,         // ScoredItem[] (filtered, ranked)
+  flatResults,     // Same as results (flat list)
+  groupedResults,  // GroupedResult[] — results grouped by group
+  groups,          // Active CommandGroup[]
+  isOpen,          // Palette visibility
   open, close, toggle,
-  recordUsage, // Record command selection
+  select,          // Select command (frecency + handler + close)
+  recordUsage,     // Record command selection manually
 } = useCommandPalette()`}
       />
 
@@ -103,15 +105,51 @@ const expanded = keywords.expandQuery('money')
       <p>Register commands from a component. Auto-cleans up on unmount. Pass a dependency array to re-register when data changes.</p>
 
       <h3><code>useFrecency()</code></h3>
-      <p>Direct access to frecency engine: <code>recordUsage</code>, <code>getScore</code>, <code>clear</code>.</p>
+      <p>Direct access to frecency engine: <code>recordUsage</code>, <code>getScore</code>, <code>getRecent</code>, <code>clear</code>.</p>
 
       <h2>Adapters</h2>
 
       <h3><code>CommandPalette</code> (<code>cmdk-engine/adapters/cmdk</code>)</h3>
       <p>Pre-wired cmdk component. Sets <code>shouldFilter={'{false}'}</code> automatically so cmdk-engine owns all filtering and ranking.</p>
 
-      <h3><code>scanRoutes(routes)</code> (<code>cmdk-engine/adapters/react-router</code>)</h3>
+      <h3><code>scanRoutes(routes, options?)</code> (<code>cmdk-engine/adapters/react-router</code>)</h3>
       <p>Scan a React Router route tree and extract CommandItem objects. Reads <code>handle.command</code> metadata from route definitions.</p>
+      <CodeBlock
+        language="tsx"
+        code={`const commands = scanRoutes(routeConfig, {
+  exclude: ['/admin/*', /^\\/debug\\//, '/internal'],
+  noDefaultExclude: false,  // skip default auth/error exclusion
+  includeDynamic: false,    // include :id routes
+})`}
+      />
+      <p>By default, the scanner excludes auth routes (<code>/login</code>, <code>/signup</code>, etc.), error pages (<code>/404</code>, <code>/500</code>), and dynamic routes (<code>:id</code> segments). Exclude patterns support exact strings, globs (<code>/admin/*</code>), and RegExp.</p>
+
+      <h2>Provider Config</h2>
+
+      <h3><code>onSelect</code></h3>
+      <p>Centralized handler called when any command is selected. Replaces per-component <code>onSelect</code> props.</p>
+      <CodeBlock
+        language="tsx"
+        code={`<CommandEngineProvider config={{
+  onSelect: (item) => {
+    if (item.href) navigate(item.href)
+    if (item.action) item.action(item)
+  },
+}}>`}
+      />
+
+      <h3><code>frecency.showRecent</code></h3>
+      <p>Show a &quot;Recent&quot; group at the top when search is empty.</p>
+      <CodeBlock
+        language="tsx"
+        code={`<CommandEngineProvider config={{
+  frecency: {
+    showRecent: true,
+    recentCount: 5,
+    recentLabel: 'Recent',
+  },
+}}>`}
+      />
     </>
   )
 }

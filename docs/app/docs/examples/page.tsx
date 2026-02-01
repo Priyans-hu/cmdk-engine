@@ -40,11 +40,19 @@ const routes = [
 ]
 
 const router = createBrowserRouter(routes)
-const commands = scanRoutes(routes)
+// Scan with options — exclude paths, skip dynamic routes by default
+const commands = scanRoutes(routes, {
+  exclude: ['/admin/*'],  // string, glob, or regex
+})
 
 function App() {
   return (
-    <CommandEngineProvider>
+    <CommandEngineProvider config={{
+      onSelect: (item) => {
+        if (item.href) navigate(item.href)
+      },
+      frecency: { showRecent: true },
+    }}>
       <RegisterRoutes />
       <CommandPalette dialog />
       <RouterProvider router={router} />
@@ -89,13 +97,13 @@ useCommandRegister([{
       />
 
       <h2>Custom UI (without cmdk)</h2>
-      <p>Build a fully custom command palette UI using only the headless hooks.</p>
+      <p>Build a fully custom command palette UI using only the headless hooks. Use <code>groupedResults</code> for pre-grouped items and <code>select()</code> as a one-call handler.</p>
       <CodeBlock
         language="tsx"
         code={`import { useCommandPalette } from 'cmdk-engine/react'
 
 function CustomPalette() {
-  const { search, setSearch, results, isOpen, toggle, recordUsage } =
+  const { search, setSearch, groupedResults, isOpen, toggle, select } =
     useCommandPalette()
 
   if (!isOpen) return null
@@ -109,24 +117,23 @@ function CustomPalette() {
           placeholder="Search..."
           autoFocus
         />
-        <ul>
-          {results.map(({ item, score }) => (
-            <li
-              key={item.id}
-              onClick={() => {
-                recordUsage(item.id)
-                item.action?.()
-                toggle()
-              }}
-            >
-              <span>{item.label}</span>
-              {item.description && (
-                <span className="desc">{item.description}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-        {results.length === 0 && (
+        {groupedResults.map(({ group, items }) => (
+          <div key={group.id}>
+            <h3>{group.label}</h3>
+            <ul>
+              {items.map(({ item }) => (
+                <li key={item.id} onClick={() => select(item)}>
+                  {item.icon && <span>{item.icon}</span>}
+                  <span>{item.label}</span>
+                  {item.description && (
+                    <span className="desc">{item.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {groupedResults.length === 0 && (
           <p className="empty">No results</p>
         )}
       </div>
