@@ -75,10 +75,6 @@ describe('Nested / Hierarchical Commands', () => {
 
     it('does not search parent items when in nested scope', () => {
       // Simulate: we're inside "Settings", searching only its children
-      const parentItems = [
-        cmd({ id: 'dashboard', label: 'Dashboard' }),
-        cmd({ id: 'settings', label: 'Settings' }),
-      ]
       const childItems = [
         cmd({ id: 'general', label: 'General' }),
         cmd({ id: 'security', label: 'Security' }),
@@ -175,10 +171,6 @@ describe('Nested / Hierarchical Commands', () => {
     })
 
     it('resetPath clears entire activePath', () => {
-      const activePath = [
-        cmd({ id: 'settings', label: 'Settings' }),
-        cmd({ id: 'security', label: 'Security' }),
-      ]
       const afterReset: CommandItem[] = []
 
       expect(afterReset).toHaveLength(0)

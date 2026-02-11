@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import React from 'react'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 // cmdk uses ResizeObserver internally — mock it for jsdom
 beforeAll(() => {
@@ -11,6 +11,7 @@ beforeAll(() => {
   } as unknown as typeof ResizeObserver
 })
 
+import type { CommandItem } from '../../src/core/types'
 import { CommandEngineProvider } from '../../src/react/context'
 import { CommandPalette } from '../../src/adapters/cmdk/command-palette'
 import { useEngineContext } from '../../src/react/context'
@@ -69,9 +70,9 @@ describe('CommandPalette — Nested Commands (cmdk adapter)', () => {
   })
 
   it('supports custom renderBreadcrumbs prop', () => {
-    const customBreadcrumbs = (crumbs: any[], onBack: () => void) => (
+    const customBreadcrumbs = (crumbs: CommandItem[], onBack: () => void) => (
       <div data-testid="custom-breadcrumbs">
-        {crumbs.map((c: any) => <span key={c.id}>{c.label}</span>)}
+        {crumbs.map((c) => <span key={c.id}>{c.label}</span>)}
         <button onClick={onBack}>Back</button>
       </div>
     )
