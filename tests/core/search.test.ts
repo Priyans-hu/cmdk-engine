@@ -155,4 +155,69 @@ describe('createFuzzySearch', () => {
     expect(results[0].item.id).toBe('item')
     expect(results[0].score).toBeGreaterThan(0)
   })
+
+  describe('fuzzy scoring strictness', () => {
+    it('rejects scattered character matches like "plans" in "applications"', () => {
+      const testItems = [
+        cmd({ id: 'app', label: 'XML Applications' }),
+        cmd({ id: 'plans', label: 'Plans & Pricing' }),
+      ]
+      const results = search.search('plans', testItems)
+      // "Plans & Pricing" must be the top result
+      expect(results[0].item.id).toBe('plans')
+      expect(results[0].score).toBeGreaterThan(0.9)
+      // "XML Applications" should either not match or score very low
+      const appResult = results.find((r) => r.item.id === 'app')
+      if (appResult) {
+        expect(appResult.score).toBeLessThan(0.15)
+      }
+    })
+
+    it('does not match "internal" against "external tools"', () => {
+      const testItems = [
+        cmd({ id: 'ext', label: 'External Tools' }),
+        cmd({ id: 'int', label: 'Internal Contacts' }),
+      ]
+      const results = search.search('internal', testItems)
+      expect(results[0].item.id).toBe('int')
+      const extResult = results.find((r) => r.item.id === 'ext')
+      if (extResult) {
+        expect(extResult.score).toBeLessThan(0.15)
+      }
+    })
+
+    it('prefix matches score high: "bill" → "Billing"', () => {
+      const testItems = [cmd({ id: 'billing', label: 'Billing Overview' })]
+      const results = search.search('bill', testItems)
+      expect(results).toHaveLength(1)
+      expect(results[0].score).toBeGreaterThan(0.8)
+    })
+
+    it('initials match scores decent: "bs" → "Billing Settings"', () => {
+      const testItems = [cmd({ id: 'bs', label: 'Billing Settings' })]
+      const results = search.search('bs', testItems)
+      expect(results).toHaveLength(1)
+      expect(results[0].score).toBeGreaterThanOrEqual(0.7)
+    })
+
+    it('prefix match for "int" → "Internal Contacts"', () => {
+      const testItems = [cmd({ id: 'ic', label: 'Internal Contacts' })]
+      const results = search.search('int', testItems)
+      expect(results).toHaveLength(1)
+      expect(results[0].score).toBeGreaterThan(0.8)
+    })
+
+    it('consecutive fuzzy matches score higher than scattered', () => {
+      const testItems = [
+        cmd({ id: 'consecutive', label: 'billing' }), // "blling" → b-l-l-i-n-g mostly consecutive
+        cmd({ id: 'scattered', label: 'big long listing name' }), // scattered match
+      ]
+      const results = search.search('blling', testItems)
+      const consecutive = results.find((r) => r.item.id === 'consecutive')
+      const scattered = results.find((r) => r.item.id === 'scattered')
+      if (consecutive && scattered) {
+        expect(consecutive.score).toBeGreaterThan(scattered.score)
+      }
+    })
+  })
 })
