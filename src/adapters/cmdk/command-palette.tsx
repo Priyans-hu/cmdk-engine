@@ -18,13 +18,15 @@ export interface CommandPaletteProps {
   renderLoading?: () => React.ReactNode
   /** Render function for group heading */
   renderGroupHeading?: (group: CommandGroup) => React.ReactNode
+  /** Render function for breadcrumbs (nested commands) */
+  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => React.ReactNode
   /** Callback when a command is selected */
   onSelect?: (item: CommandItem) => void
   /** Enable keyboard loop navigation */
   loop?: boolean
   /** Accessible label for the command menu */
   label?: string
-  /** Placeholder text for the search input */
+  /** Placeholder text for the search input (defaults to i18n value) */
   placeholder?: string
   /** Additional className for the root Command element */
   className?: string
@@ -59,6 +61,7 @@ export interface CommandPaletteProps {
 // ============================================================
 
 function DefaultItem({ item }: { item: CommandItem }) {
+  const hasChildren = item.children && item.children.length > 0
   return (
     <div data-cmdk-engine-item="">
       {item.icon && <span data-cmdk-engine-icon="">{item.icon}</span>}
@@ -75,12 +78,29 @@ function DefaultItem({ item }: { item: CommandItem }) {
           ))}
         </span>
       )}
+      {hasChildren && (
+        <span data-cmdk-engine-item-chevron="" aria-hidden="true">
+          ›
+        </span>
+      )}
     </div>
   )
 }
 
-function DefaultEmpty() {
-  return <div data-cmdk-engine-empty="">No results found.</div>
+function DefaultBreadcrumbs({ crumbs, onBack }: { crumbs: CommandItem[]; onBack: () => void }) {
+  return (
+    <div data-cmdk-engine-breadcrumbs="">
+      <button data-cmdk-engine-breadcrumb-back="" onClick={onBack} type="button">
+        ‹
+      </button>
+      {crumbs.map((crumb, i) => (
+        <span key={crumb.id} data-cmdk-engine-breadcrumb="">
+          {i > 0 && <span data-cmdk-engine-breadcrumb-separator="">/</span>}
+          {crumb.label}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 // ============================================================
@@ -97,13 +117,14 @@ function DefaultEmpty() {
  */
 export function CommandPalette({
   renderItem,
-  renderEmpty = DefaultEmpty,
+  renderEmpty,
   renderLoading,
   renderGroupHeading,
+  renderBreadcrumbs,
   onSelect,
   loop = true,
   label = 'Command palette',
-  placeholder = 'Type a command or search...',
+  placeholder,
   className,
   inputClassName,
   listClassName,
@@ -118,16 +139,31 @@ export function CommandPalette({
   vimBindings = true,
   footer,
 }: CommandPaletteProps) {
-  const { search, setSearch, results, isOpen, close, recordUsage, isLoading } =
-    useCommandPalette()
-  const { groupManager } = useEngineContext()
+  const {
+    search, setSearch, results, isOpen, close, recordUsage, isLoading,
+    breadcrumbs, depth, drillUp, select,
+  } = useCommandPalette()
+  const { groupManager, t } = useEngineContext()
 
   const { onSelect: configOnSelect } = useEngineContext().config
 
+  // Use i18n for defaults
+  const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
+  const resolvedRenderEmpty = renderEmpty ?? (() => (
+    <div data-cmdk-engine-empty="">{t('palette.empty')}</div>
+  ))
+
   const handleSelect = useCallback(
     (value: string) => {
-      const item = results.find((r) => r.item.id === value)?.item
-      if (!item) return
+      const scored = results.find((r) => r.item.id === value)
+      if (!scored) return
+      const item = scored.item
+
+      // If item has children, drill down
+      if (item.children && item.children.length > 0) {
+        select(item) // select() handles drillDown internally
+        return
+      }
 
       recordUsage(item.id)
 
@@ -138,13 +174,23 @@ export function CommandPalette({
       } else if (item.action) {
         item.action(item)
       } else if (item.href) {
-        // Navigate if no custom onSelect or action
         window.location.href = item.href
       }
 
       close()
     },
-    [results, recordUsage, onSelect, configOnSelect, close],
+    [results, recordUsage, onSelect, configOnSelect, close, select],
+  )
+
+  // Handle backspace for nested navigation
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Backspace' && search === '' && depth > 0) {
+        e.preventDefault()
+        drillUp()
+      }
+    },
+    [search, depth, drillUp],
   )
 
   // Auto-select first item when results change (solves cmdk #280)
@@ -155,8 +201,8 @@ export function CommandPalette({
     valueRef.current = firstItemId
   }, [firstItemId])
 
-  // Group results for rendering
-  const groupedResults: GroupedResults = groupManager.groupResults(results)
+  // Group results for rendering — pass search query for relevance-based group ordering
+  const groupedResults: GroupedResults = groupManager.groupResults(results, search)
 
   const renderItems = (items: ScoredItem[]) =>
     items.map(({ item, score }) => (
@@ -174,18 +220,24 @@ export function CommandPalette({
 
   const content = (
     <>
+      {depth > 0 && (
+        renderBreadcrumbs
+          ? renderBreadcrumbs(breadcrumbs, drillUp)
+          : <DefaultBreadcrumbs crumbs={breadcrumbs} onBack={drillUp} />
+      )}
       <Cmdk.Input
         value={search}
         onValueChange={setSearch}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className={inputClassName}
+        onKeyDown={handleKeyDown}
       />
       <Cmdk.List className={listClassName}>
         {isLoading && renderLoading && (
           <Cmdk.Loading>{renderLoading()}</Cmdk.Loading>
         )}
         {results.length === 0 && !isLoading && (
-          <Cmdk.Empty className={emptyClassName}>{renderEmpty()}</Cmdk.Empty>
+          <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
         )}
         {groupedResults.map(({ group, items }) => (
           <Cmdk.Group

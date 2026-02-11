@@ -105,6 +105,70 @@ describe('createGroupManager', () => {
       const gm = createGroupManager()
       expect(gm.groupResults([])).toEqual([])
     })
+
+    it('orders groups by priority when no search query', () => {
+      const gm = createGroupManager([
+        { id: 'deploy', label: 'Deploy', priority: 10 },
+        { id: 'settings', label: 'Settings', priority: 5 },
+      ])
+
+      const items = [
+        scored({ id: 'a', group: 'settings' }, 0.95),
+        scored({ id: 'b', group: 'deploy' }, 0.3),
+      ]
+
+      const result = gm.groupResults(items)
+      expect(result[0].group.id).toBe('deploy') // higher priority first
+      expect(result[1].group.id).toBe('settings')
+    })
+
+    it('orders groups by best item score when search query is provided', () => {
+      const gm = createGroupManager([
+        { id: 'deploy', label: 'Deploy', priority: 10 },
+        { id: 'settings', label: 'Settings', priority: 5 },
+      ])
+
+      const items = [
+        scored({ id: 'internal-contacts', group: 'settings' }, 0.95),
+        scored({ id: 'external-tools', group: 'deploy' }, 0.3),
+      ]
+
+      // With search query: settings group should come first (higher score)
+      const result = gm.groupResults(items, 'internal')
+      expect(result[0].group.id).toBe('settings')
+      expect(result[1].group.id).toBe('deploy')
+    })
+
+    it('falls back to priority order with empty search query', () => {
+      const gm = createGroupManager([
+        { id: 'deploy', label: 'Deploy', priority: 10 },
+        { id: 'settings', label: 'Settings', priority: 5 },
+      ])
+
+      const items = [
+        scored({ id: 'a', group: 'settings' }, 0.95),
+        scored({ id: 'b', group: 'deploy' }, 0.3),
+      ]
+
+      const resultEmpty = gm.groupResults(items, '')
+      expect(resultEmpty[0].group.id).toBe('deploy') // priority order
+      const resultUndefined = gm.groupResults(items)
+      expect(resultUndefined[0].group.id).toBe('deploy') // priority order
+    })
+
+    it('keeps ungrouped items at the end even during search', () => {
+      const gm = createGroupManager([
+        { id: 'nav', label: 'Nav', priority: 10 },
+      ])
+
+      const items = [
+        scored({ id: 'a', group: 'nav' }, 0.3),
+        scored({ id: 'b' }, 0.95), // ungrouped but high score
+      ]
+
+      const result = gm.groupResults(items, 'test')
+      expect(result[result.length - 1].group.id).toBe('__ungrouped__')
+    })
   })
 
   describe('extractGroups', () => {

@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useRef, useMemo } from 'react'
-import type { CommandEngineConfig, CommandItem, CommandRegistry } from '../core/types'
+import type { CommandEngineConfig, CommandItem, CommandRegistry, TranslationFn } from '../core/types'
 import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
 import { createKeywordEngine } from '../core/keywords'
 import { createAccessFilter } from '../core/access-control'
 import { createFrecencyEngine } from '../core/frecency'
 import { createGroupManager } from '../core/grouping'
+import { createContextEngine } from '../core/context'
+import { createDefaultTranslation } from '../core/i18n'
+import { createInMemorySearchHistory } from '../core/search-history'
 import type { SearchEngine } from '../core/types'
 
 /** Internal engine context shape */
@@ -16,6 +19,9 @@ export interface EngineContextValue {
   accessFilter: ((items: CommandItem[]) => CommandItem[]) | null
   frecency: ReturnType<typeof createFrecencyEngine>
   groupManager: ReturnType<typeof createGroupManager>
+  contextEngine: ReturnType<typeof createContextEngine>
+  searchHistory: ReturnType<typeof createInMemorySearchHistory>
+  t: TranslationFn
   config: CommandEngineConfig
 }
 
@@ -44,6 +50,9 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       : null
     const frecency = createFrecencyEngine(config.frecency)
     const groupManager = createGroupManager(config.groups)
+    const contextEngine = createContextEngine(config.contextBoostWeight)
+    const t = config.t ?? createDefaultTranslation()
+    const searchHistory = createInMemorySearchHistory(config.searchHistory)
 
     return {
       registry: registryRef.current!,
@@ -52,6 +61,9 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       accessFilter,
       frecency,
       groupManager,
+      contextEngine,
+      searchHistory,
+      t,
       config,
     }
   }, [config])

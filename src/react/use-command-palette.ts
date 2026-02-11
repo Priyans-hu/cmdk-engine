@@ -18,8 +18,14 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   select: (itemOrId: CommandItem | string) => void
   /** Flat list of all result items (ungrouped) */
   flatResults: ScoredItem[]
-  /** Results grouped by group, sorted by group priority */
+  /** Results grouped by group, sorted by group priority (or relevance during search) */
   groupedResults: GroupedResult[]
+  /** Navigate into a command's children (nested commands) */
+  drillDown: (item: CommandItem) => void
+  /** Go back one level in nested navigation */
+  drillUp: () => void
+  /** Reset to root level */
+  resetPath: () => void
 }
 
 /**
@@ -29,19 +35,29 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
  * Subscribes to the registry via useSyncExternalStore for efficient updates.
  */
 export function useCommandPalette(): UseCommandPaletteReturn {
-  const { registry, search, keywords, accessFilter, frecency, groupManager, config } =
-    useEngineContext()
+  const {
+    registry, search, keywords, accessFilter, frecency,
+    groupManager, contextEngine, searchHistory, t, config,
+  } = useEngineContext()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const [activePath, setActivePath] = useState<CommandItem[]>([])
 
   // Subscribe to registry changes
   const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
 
-  // Pipeline: enrich → filter access → search → rank by frecency
+  // Determine which commands to search: root or nested children
+  const activeCommands = useMemo(() => {
+    if (activePath.length === 0) return commands
+    const parent = activePath[activePath.length - 1]
+    return parent.children ?? []
+  }, [commands, activePath])
+
+  // Pipeline: enrich → filter access → search → rank by frecency → context boost
   const results = useMemo<ScoredItem[]>(() => {
     // 1. Enrich with synonyms
-    const enriched = keywords.enrichAll(commands)
+    const enriched = keywords.enrichAll(activeCommands)
 
     // 2. Filter by access control
     const accessible = accessFilter ? accessFilter(enriched) : enriched
@@ -50,15 +66,25 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     const searched = search.search(searchQuery, accessible)
 
     // 4. Rank by frecency (only if there's a search query)
+    let ranked = searched
     if (searchQuery.trim()) {
-      return frecency.rank(searched, 0.3)
+      ranked = frecency.rank(searched, 0.3)
+
+      // 4b. Context boost (only during search, not empty state)
+      if (config.context) {
+        ranked = contextEngine.boost(ranked, config.context)
+        // Re-sort after boosting
+        ranked.sort((a, b) => b.score - a.score)
+      }
+
+      return ranked
     }
 
     // 5. Inject "Recent" group when search is empty
     const frecencyConfig = config.frecency
     if (!searchQuery.trim() && frecencyConfig?.showRecent) {
       const recentCount = frecencyConfig.recentCount ?? 5
-      const recentLabel = frecencyConfig.recentLabel ?? 'Recent'
+      const recentLabel = frecencyConfig.recentLabel ?? t('group.recent')
       const recentIds = frecency.getRecent(recentCount)
 
       if (recentIds.length > 0) {
@@ -86,7 +112,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }
 
     return searched
-  }, [commands, searchQuery, search, keywords, accessFilter, frecency, config.frecency])
+  }, [activeCommands, searchQuery, search, keywords, accessFilter, frecency, contextEngine, t, config])
 
   // Limit results
   const limitedResults = useMemo(() => {
@@ -96,8 +122,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
   // Group results by group field (for consumers building custom UIs)
   const groupedResults = useMemo<GroupedResult[]>(() => {
-    return groupManager.groupResults(limitedResults)
-  }, [limitedResults, groupManager])
+    return groupManager.groupResults(limitedResults, searchQuery)
+  }, [limitedResults, groupManager, searchQuery])
 
   // Extract active groups
   const groups = useMemo<CommandGroup[]>(() => {
@@ -108,12 +134,33 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   const close = useCallback(() => {
     setIsOpen(false)
     setSearchQuery('')
+    setActivePath([])
   }, [])
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
-      if (prev) setSearchQuery('')
+      if (prev) {
+        setSearchQuery('')
+        setActivePath([])
+      }
       return !prev
     })
+  }, [])
+
+  // Nested navigation
+  const drillDown = useCallback((item: CommandItem) => {
+    if (!item.children?.length) return
+    setActivePath((prev) => [...prev, item])
+    setSearchQuery('')
+  }, [])
+
+  const drillUp = useCallback(() => {
+    setActivePath((prev) => prev.slice(0, -1))
+    setSearchQuery('')
+  }, [])
+
+  const resetPath = useCallback(() => {
+    setActivePath([])
+    setSearchQuery('')
   }, [])
 
   const recordUsage = useCallback(
@@ -131,7 +178,18 @@ export function useCommandPalette(): UseCommandPaletteReturn {
           : itemOrId
       if (!item) return
 
+      // If item has children, drill down instead of executing
+      if (item.children && item.children.length > 0) {
+        drillDown(item)
+        return
+      }
+
       frecency.recordUsage(item.id)
+
+      // Record search history if enabled
+      if (config.searchHistory?.enabled && searchQuery.trim()) {
+        searchHistory.record(searchQuery, limitedResults.length)
+      }
 
       if (config.onSelect) {
         config.onSelect(item)
@@ -143,7 +201,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
       close()
     },
-    [limitedResults, frecency, config, close],
+    [limitedResults, frecency, searchHistory, config, searchQuery, close, drillDown],
   )
 
   return {
@@ -155,10 +213,15 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     groups,
     isOpen,
     isLoading: false,
+    breadcrumbs: activePath,
+    depth: activePath.length,
     open,
     close,
     toggle,
     recordUsage,
     select,
+    drillDown,
+    drillUp,
+    resetPath,
   }
 }

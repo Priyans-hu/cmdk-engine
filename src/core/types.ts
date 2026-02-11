@@ -34,6 +34,12 @@ export interface CommandItem {
   shortcut?: string[]
   /** Extensible metadata for consumer use */
   meta?: Record<string, unknown>
+  /** Scopes where this command is most relevant (e.g., ['/billing', '/billing/*']) */
+  scope?: string[]
+  /** Child commands for nested/hierarchical menus */
+  children?: CommandItem[]
+  /** Parent command ID (set automatically when flattening) */
+  parentId?: string
 }
 
 // ============================================================
@@ -235,6 +241,51 @@ export interface Sitemap {
 }
 
 // ============================================================
+// Context / Scope
+// ============================================================
+
+/** Current app context for scope-aware command boosting */
+export interface CommandContext {
+  /** Current path/URL (e.g., '/billing/overview') */
+  path?: string
+  /** Current page/section tags for matching */
+  tags?: string[]
+}
+
+// ============================================================
+// i18n
+// ============================================================
+
+/** Translation function — maps a key to a localized string */
+export type TranslationFn = (key: string, params?: Record<string, string | number>) => string
+
+// ============================================================
+// Search History
+// ============================================================
+
+/** A recorded search query */
+export interface SearchHistoryEntry {
+  /** The search query string */
+  query: string
+  /** Timestamp when the search was performed */
+  timestamp: number
+  /** Number of results returned */
+  resultCount: number
+}
+
+/** Configuration for search history tracking */
+export interface SearchHistoryConfig {
+  /** Enable search history tracking (default: false) */
+  enabled?: boolean
+  /** Maximum history entries to keep (default: 20) */
+  maxEntries?: number
+  /** localStorage key prefix (default: 'cmdk-search-history') */
+  storageKey?: string
+  /** Minimum query length to record (default: 2) */
+  minQueryLength?: number
+}
+
+// ============================================================
 // Palette State (used by React hooks)
 // ============================================================
 
@@ -250,6 +301,10 @@ export interface CommandPaletteState {
   isOpen: boolean
   /** Whether results are loading (async) */
   isLoading: boolean
+  /** Breadcrumb trail of parent commands (for nested navigation) */
+  breadcrumbs: CommandItem[]
+  /** Current nesting depth (0 = root) */
+  depth: number
 }
 
 // ============================================================
@@ -274,6 +329,16 @@ export interface CommandEngineConfig {
   maxResults?: number
   /** Centralized handler when a command is selected. Auto-records frecency. */
   onSelect?: (item: CommandItem) => void
+  /** Current context for scope-aware command boosting */
+  context?: CommandContext
+  /** Boost weight for in-scope commands (0-1, default: 0.2) */
+  contextBoostWeight?: number
+  /** Translation function for UI strings (defaults to English) */
+  t?: TranslationFn
+  /** Locale for collation-aware operations (default: 'en') */
+  locale?: string
+  /** Search history configuration */
+  searchHistory?: SearchHistoryConfig
 }
 
 /** Configuration for the "Recent" commands group */

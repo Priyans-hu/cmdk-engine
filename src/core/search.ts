@@ -82,12 +82,25 @@ function scoreItem(query: string, item: CommandItem): number {
     }
   }
 
-  return Math.min(bestScore, 1)
+  const finalScore = Math.min(bestScore, 1)
+
+  // Reject very low-confidence matches
+  if (finalScore < 0.15) return 0
+
+  return finalScore
 }
 
 /**
  * Fuzzy match a query against a target string.
  * Returns a score between 0 and 1.
+ *
+ * Scoring tiers:
+ * - Exact match: 1.0
+ * - Prefix match: 0.95
+ * - Substring match: 0.8
+ * - Word initials: 0.7
+ * - Fuzzy (consecutive chars): up to 0.6
+ * - Fuzzy (scattered chars): heavily penalized, often rejected
  */
 function fuzzyScore(query: string, target: string): number {
   if (query === target) return 1 // Exact match
@@ -101,34 +114,61 @@ function fuzzyScore(query: string, target: string): number {
 
   // Fuzzy character-by-character matching
   let queryIdx = 0
-  let consecutiveBonus = 0
+  let currentConsecutive = 0
+  let maxConsecutive = 0
   let totalBonus = 0
   let matchCount = 0
+  let totalGaps = 0
+  let lastMatchIdx = -1
 
   for (let i = 0; i < target.length && queryIdx < query.length; i++) {
     if (target[i] === query[queryIdx]) {
       matchCount++
       queryIdx++
 
-      // Bonus for consecutive matches
-      consecutiveBonus++
-      totalBonus += consecutiveBonus * 0.1
+      // Track gaps between matches
+      if (lastMatchIdx >= 0) {
+        totalGaps += i - lastMatchIdx - 1
+      }
+      lastMatchIdx = i
+
+      // Track consecutive matches
+      currentConsecutive++
+      if (currentConsecutive > maxConsecutive) {
+        maxConsecutive = currentConsecutive
+      }
+      totalBonus += currentConsecutive * 0.1
 
       // Bonus for word boundary match
       if (i === 0 || /[\s\-_]/.test(target[i - 1])) {
         totalBonus += 0.15
       }
     } else {
-      consecutiveBonus = 0
+      currentConsecutive = 0
     }
   }
 
   // All query characters must match
   if (queryIdx < query.length) return 0
 
+  // Contiguity ratio: how consecutive are the matches?
+  const contiguityRatio = matchCount > 0 ? maxConsecutive / matchCount : 0
+
+  // Aggressive penalty for scattered matches (contiguity < 50%)
+  // If most chars are scattered, the match is likely a false positive
+  const contiguityMultiplier =
+    contiguityRatio < 0.5
+      ? contiguityRatio * 0.5 // Very scattered: 0 to 0.25x
+      : 0.4 + 0.6 * contiguityRatio // Mostly consecutive: 0.7 to 1.0x
+
+  // Average gap penalty
+  const avgGap = matchCount > 1 ? totalGaps / (matchCount - 1) : 0
+  const gapPenalty = avgGap > 3 ? 0.15 : 0
+
   // Base score from match ratio + bonuses
   const matchRatio = matchCount / target.length
-  const score = 0.3 + matchRatio * 0.3 + Math.min(totalBonus, 0.4)
+  const rawScore = 0.2 + matchRatio * 0.3 + Math.min(totalBonus, 0.4)
+  const score = (rawScore - gapPenalty) * contiguityMultiplier
 
-  return Math.min(score, 0.75) // Cap fuzzy matches below substring matches
+  return Math.min(Math.max(score, 0), 0.6) // Cap fuzzy matches well below substring matches
 }

@@ -35,10 +35,11 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
 
     /**
      * Group scored items by their group field.
-     * Returns groups in priority order, with items sorted by score within each group.
+     * When query is empty: groups ordered by priority (higher first).
+     * When query is non-empty: groups ordered by best item score (relevance).
      * Items without a group go into an "Other" bucket at the end.
      */
-    groupResults(items: ScoredItem[]): GroupedResults {
+    groupResults(items: ScoredItem[], query?: string): GroupedResults {
       const grouped = new Map<string, ScoredItem[]>()
 
       for (const scored of items) {
@@ -54,15 +55,17 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
         items.sort((a, b) => b.score - a.score)
       }
 
-      // Build result: defined groups first (by priority), then ungrouped
-      const result: GroupedResults = []
+      const isSearching = query !== undefined && query.trim() !== ''
+
+      // Collect all group entries
+      const allEntries: GroupedResult[] = []
       const definedGroups = this.getAllGroups()
       const usedGroupIds = new Set<string>()
 
       for (const group of definedGroups) {
         const groupItems = grouped.get(group.id)
         if (groupItems && groupItems.length > 0) {
-          result.push({ group, items: groupItems })
+          allEntries.push({ group, items: groupItems })
           usedGroupIds.add(group.id)
         }
       }
@@ -70,22 +73,27 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
       // Add any groups that weren't pre-defined (auto-discovered from items)
       for (const [groupId, groupItems] of grouped) {
         if (groupId === '__ungrouped__' || usedGroupIds.has(groupId)) continue
-        result.push({
+        allEntries.push({
           group: { id: groupId, label: groupId },
           items: groupItems,
         })
       }
 
+      // When searching, sort groups by best item score (relevance-first)
+      if (isSearching) {
+        allEntries.sort((a, b) => b.items[0].score - a.items[0].score)
+      }
+
       // Add ungrouped items last
       const ungrouped = grouped.get('__ungrouped__')
       if (ungrouped && ungrouped.length > 0) {
-        result.push({
+        allEntries.push({
           group: { id: '__ungrouped__', label: 'Other' },
           items: ungrouped,
         })
       }
 
-      return result
+      return allEntries
     },
 
     /**
