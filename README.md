@@ -279,9 +279,23 @@ npx cmdk-engine init
 # Scan routes
 npx cmdk-engine scan
 
+# Scan without default auth/error exclusions
+npx cmdk-engine scan --no-default-exclude
+
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Smart defaults
+
+The CLI scanner shares the same default exclusion list as the runtime
+React Router adapter, so the generated sitemap automatically skips:
+- **Auth routes** — `/login`, `/logout`, `/signup`, `/signin`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
+- **OAuth callbacks** — `/oauth/callback`, `/auth/callback`, `/callback`
+- **Error pages** — `/404`, `/500`, `/error`, `/not-found`
+
+Pass `--no-default-exclude` to opt out (you'll have full control via
+the `exclude` config field instead).
 
 ### Config file
 
@@ -296,7 +310,7 @@ export default defineConfig({
   overrides: {
     '/billing': { keywords: ['money', 'payment'], group: 'Billing' },
   },
-  exclude: ['/404', '/500', '/_*'],
+  exclude: ['/_*', '/admin/*'], // user excludes (defaults handle /404, /500, /login, etc.)
   synonyms: {
     billing: ['money', 'payment', 'credits'],
   },

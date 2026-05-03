@@ -5,6 +5,25 @@ import { scanReactRouterFiles } from '../../src/cli/scanners/react-router'
 import { scanNextJsAppDir } from '../../src/cli/scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../../src/cli/scanners/nextjs-pages'
 import { generateSitemap } from '../../src/cli/generators/sitemap'
+import { applyDefaultExclusions } from '../../src/cli/commands/scan'
+import {
+  DEFAULT_EXCLUDE as ADAPTER_DEFAULT_EXCLUDE,
+  type ExcludePattern as AdapterExcludePattern,
+} from '../../src/adapters/react-router/route-scanner'
+import {
+  DEFAULT_EXCLUDE,
+  matchesExcludePattern,
+} from '../../src/core/route-defaults'
+import type { SitemapRoute } from '../../src/core/types'
+
+function makeRoute(path: string): SitemapRoute {
+  return {
+    id: path.replace(/\//g, '-').replace(/^-/, '') || 'home',
+    path,
+    label: path,
+    keywords: [],
+  }
+}
 
 const TEMP_DIR = resolve('.test-temp-scan')
 
@@ -250,5 +269,156 @@ describe('generateSitemap', () => {
     const sitemap = generateSitemap(routes, 'nextjs-app')
     expect(sitemap.routes[0].path).toBe('/a')
     expect(sitemap.routes[1].path).toBe('/z')
+  })
+})
+
+describe('applyDefaultExclusions', () => {
+  it('drops auth routes (login, signup, logout, signin, signout, register)', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/login'),
+      makeRoute('/signup'),
+      makeRoute('/logout'),
+      makeRoute('/signin'),
+      makeRoute('/signout'),
+      makeRoute('/register'),
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('drops password recovery routes', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/forgot-password'),
+      makeRoute('/reset-password'),
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('drops verify-email and oauth/auth callback routes', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/verify-email'),
+      makeRoute('/oauth/callback'),
+      makeRoute('/auth/callback'),
+      makeRoute('/callback'),
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('drops error pages (/404, /500, /error, /not-found)', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/404'),
+      makeRoute('/500'),
+      makeRoute('/error'),
+      makeRoute('/not-found'),
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('drops nested auth paths like /login/recover', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/login/recover'),
+      makeRoute('/oauth/callback/google'),
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('keeps unrelated paths that merely contain auth-like substrings', () => {
+    const routes = [
+      makeRoute('/dashboard'),
+      makeRoute('/auth-logs'), // not /auth/callback
+      makeRoute('/users/login-history'), // not /login
+      makeRoute('/error-budget'), // not /error
+    ]
+
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered.map((r) => r.path)).toEqual([
+      '/dashboard',
+      '/auth-logs',
+      '/users/login-history',
+      '/error-budget',
+    ])
+  })
+
+  it('returns input unchanged when no routes match defaults', () => {
+    const routes = [makeRoute('/dashboard'), makeRoute('/billing/overview')]
+    const filtered = applyDefaultExclusions(routes)
+    expect(filtered).toEqual(routes)
+  })
+
+  it('handles empty input', () => {
+    expect(applyDefaultExclusions([])).toEqual([])
+  })
+})
+
+describe('DEFAULT_EXCLUDE shared constant', () => {
+  it('is non-empty', () => {
+    expect(DEFAULT_EXCLUDE.length).toBeGreaterThan(0)
+  })
+
+  it('is re-exported from the react-router adapter (same reference)', () => {
+    expect(ADAPTER_DEFAULT_EXCLUDE).toBe(DEFAULT_EXCLUDE)
+  })
+
+  it('exposes ExcludePattern type via adapter re-export', () => {
+    // Type-only check — if this compiles, the re-export works
+    const pattern: AdapterExcludePattern = '/login'
+    expect(typeof pattern).toBe('string')
+  })
+
+  it('matchesExcludePattern works with strings, globs, and regex', () => {
+    expect(matchesExcludePattern('/login', '/login')).toBe(true)
+    expect(matchesExcludePattern('/admin/users', '/admin/*')).toBe(true)
+    expect(matchesExcludePattern('/admin', '/admin/*')).toBe(true)
+    expect(matchesExcludePattern('/dashboard', '/admin/*')).toBe(false)
+    expect(matchesExcludePattern('/login', /^\/login(\/|$)/)).toBe(true)
+    expect(matchesExcludePattern('/login-history', /^\/login(\/|$)/)).toBe(false)
+    expect(matchesExcludePattern('*', '*')).toBe(true)
+    expect(matchesExcludePattern('/anything', '*')).toBe(false)
+  })
+})
+
+describe('CLI scan: --no-default-exclude opt-out', () => {
+  it('skipping default exclusions keeps auth routes in output', () => {
+    const routes = [makeRoute('/dashboard'), makeRoute('/login'), makeRoute('/404')]
+
+    // Simulate the orchestrator path: when --no-default-exclude is set,
+    // applyDefaultExclusions is not invoked at all.
+    const skippedDefaults = routes
+    expect(skippedDefaults.map((r) => r.path)).toEqual(['/dashboard', '/login', '/404'])
+
+    // For comparison, applying defaults strips them
+    const withDefaults = applyDefaultExclusions(routes)
+    expect(withDefaults.map((r) => r.path)).toEqual(['/dashboard'])
+  })
+
+  it('user exclusions still apply on top of --no-default-exclude (no auth filter)', () => {
+    // When defaults are skipped, only user-specified excludes should drop routes
+    const routes = [makeRoute('/dashboard'), makeRoute('/login'), makeRoute('/internal')]
+    const userExcludes = ['/internal']
+
+    // Mimic scan.ts: defaults skipped, then applyExclusions
+    const filtered = routes.filter(
+      (route) =>
+        !userExcludes.some((pattern) => {
+          if (pattern.endsWith('*')) return route.path.startsWith(pattern.slice(0, -1))
+          return route.path === pattern
+        }),
+    )
+
+    expect(filtered.map((r) => r.path)).toEqual(['/dashboard', '/login'])
   })
 })

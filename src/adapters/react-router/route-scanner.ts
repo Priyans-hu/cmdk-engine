@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react'
 import type { CommandItem, RouteCommandMeta } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
+import {
+  DEFAULT_EXCLUDE,
+  matchesExcludePattern,
+  type ExcludePattern,
+} from '../../core/route-defaults'
+
+// Re-export so existing imports from this module keep working
+export { DEFAULT_EXCLUDE }
+export type { ExcludePattern }
 
 /**
  * A React Router route object shape (compatible with v6 and v7).
@@ -16,23 +25,6 @@ export interface RouteObject {
   [key: string]: unknown
 }
 
-/** An exclude pattern — exact string, glob with *, or RegExp */
-type ExcludePattern = string | RegExp
-
-/** Paths that are almost never useful as commands */
-const DEFAULT_EXCLUDE: ExcludePattern[] = [
-  /^\/(login|logout|signin|signout|signup|register)(\/|$)/,
-  /^\/(forgot|reset)-password(\/|$)/,
-  /^\/verify-email(\/|$)/,
-  /^\/(oauth|auth)\/callback(\/|$)/,
-  '/callback',
-  '/404',
-  '/500',
-  '/error',
-  '/not-found',
-  '*',
-]
-
 /** Options for scanRoutes */
 export interface ScanRoutesOptions {
   /**
@@ -44,24 +36,6 @@ export interface ScanRoutesOptions {
   noDefaultExclude?: boolean
   /** Include routes with dynamic segments like :id or [id] (default: false) */
   includeDynamic?: boolean
-}
-
-/** Check if a path matches an exclude pattern */
-function matchesExclude(path: string, pattern: ExcludePattern): boolean {
-  if (pattern instanceof RegExp) {
-    return pattern.test(path)
-  }
-  // Exact match for standalone '*' (React Router catch-all segment)
-  if (pattern === '*') {
-    return path === '*'
-  }
-  // Glob: '/admin/*' matches '/admin/anything' and '/admin/deep/nested'
-  if (pattern.includes('*')) {
-    const prefix = pattern.replace(/\/?\*.*$/, '')
-    return path === prefix || path.startsWith(prefix + '/')
-  }
-  // Exact match
-  return path === pattern
 }
 
 /**
@@ -107,7 +81,8 @@ function scanRoutesInternal(
 
       // Check if path matches any exclude pattern
       const isExcluded = excludePatterns.some(
-        (p) => matchesExclude(fullPath, p) || matchesExclude(route.path ?? '', p),
+        (p) =>
+          matchesExcludePattern(fullPath, p) || matchesExcludePattern(route.path ?? '', p),
       )
 
       if (isExcluded) {
