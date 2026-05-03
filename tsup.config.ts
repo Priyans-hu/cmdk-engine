@@ -42,6 +42,16 @@ export default defineConfig([
     sourcemap: true,
     external: ['react', 'react-dom', 'react-router', 'react-router-dom'],
   },
+  // Next.js (App Router) adapter
+  {
+    entry: { 'adapters/nextjs/index': 'src/adapters/nextjs/index.ts' },
+    format: ['esm', 'cjs'],
+    dts: true,
+    treeshake: true,
+    splitting: false,
+    sourcemap: true,
+    external: ['react', 'react-dom', 'next', 'next/navigation'],
+  },
   // match-sorter search backend
   {
     entry: { 'core/search-match-sorter': 'src/core/search-match-sorter.ts' },
