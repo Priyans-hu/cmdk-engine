@@ -65,10 +65,9 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // 3. Search
     const searched = search.search(searchQuery, accessible)
 
-    // 4. Rank by frecency (only if there's a search query)
-    let ranked = searched
+    // 4. Rank by frecency
     if (searchQuery.trim()) {
-      ranked = frecency.rank(searched, 0.3)
+      let ranked = frecency.rank(searched, 0.3)
 
       // 4b. Context boost (only during search, not empty state)
       if (config.context) {
@@ -82,7 +81,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
     // 5. Inject "Recent" group when search is empty
     const frecencyConfig = config.frecency
-    if (!searchQuery.trim() && frecencyConfig?.showRecent) {
+    if (frecencyConfig?.showRecent) {
       const recentCount = frecencyConfig.recentCount ?? 5
       const recentLabel = frecencyConfig.recentLabel ?? t('group.recent')
       const recentIds = frecency.getRecent(recentCount)
@@ -107,11 +106,15 @@ export function useCommandPalette(): UseCommandPaletteReturn {
           (a, b) => recentIds.indexOf(a.item.id) - recentIds.indexOf(b.item.id),
         )
 
-        return [...recentItems, ...restItems]
+        // Rank the remainder by frecency so previously-used items still surface
+        // above never-used items (preserving priority order within each tier).
+        return [...recentItems, ...frecency.rank(restItems, 0.3)]
       }
     }
 
-    return searched
+    // No "Recent" group: still apply frecency so frequently-used commands
+    // float to the top on empty query (README: frecency > priority > alpha).
+    return frecency.rank(searched, 0.3)
   }, [activeCommands, searchQuery, search, keywords, accessFilter, frecency, contextEngine, t, config])
 
   // Limit results
