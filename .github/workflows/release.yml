@@ -31,8 +31,6 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - run: bun run build
-
       - run: bun run test
 
       - name: Get version metadata
@@ -42,10 +40,14 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to npm
-        run: npm publish --access public
+      # Use the package.json `release` script so Changesets consumes any
+      # pending entries in .changeset/ and updates CHANGELOG.md. This keeps
+      # the tag-push flow consistent with `bun run release` locally.
+      - name: Publish to npm via Changesets
+        run: bun run release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # Build standalone binaries after npm publish
   binaries:
