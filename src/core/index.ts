@@ -22,6 +22,7 @@ export type {
   TranslationFn,
   SearchHistoryEntry,
   SearchHistoryConfig,
+  AsyncSource,
 } from './types'
 
 // Config helper
@@ -55,6 +56,15 @@ export { createDefaultTranslation, getTranslationKeys } from './i18n'
 
 // Search History
 export { createSearchHistory, createInMemorySearchHistory } from './search-history'
+
+// Async Sources
+export {
+  DEFAULT_ASYNC_DEBOUNCE_MS,
+  defaultTrigger,
+  shouldRunSource,
+  mergeAsyncCommands,
+  flattenAsyncItems,
+} from './async-sources'
 
 // Utils
 export { pathToLabel, pathToGroup, pathToId, pathSegmentToLabel } from './utils'
