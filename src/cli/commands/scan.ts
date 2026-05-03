@@ -7,6 +7,7 @@ import { scanNextJsAppDir } from '../scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../scanners/nextjs-pages'
 import { generateSitemap } from '../generators/sitemap'
 import type { CmdkEngineConfig, SitemapRoute } from '../../core/types'
+import { DEFAULT_EXCLUDE, matchesExcludePattern } from '../../core/route-defaults'
 
 export const scanCommand = new Command('scan')
   .description('Scan project routes and generate a command sitemap')
@@ -15,6 +16,10 @@ export const scanCommand = new Command('scan')
   .option('-f, --format <format>', 'Output format: json or ts', 'json')
   .option('--framework <framework>', 'Framework: react-router, nextjs-app, nextjs-pages')
   .option('--routes-dir <dir>', 'Directory to scan for routes')
+  .option(
+    '--no-default-exclude',
+    'Skip the default exclusion list (auth/error routes like /login, /signup, /404 are normally excluded)',
+  )
   .action(async (options) => {
     try {
       const config = await loadConfig(options.config)
@@ -46,7 +51,14 @@ export const scanCommand = new Command('scan')
         routes = applyOverrides(routes, config.overrides)
       }
 
-      // Apply exclusions
+      // Apply default exclusions (auth/error routes) — matches the runtime
+      // adapter behavior so the README's "smart defaults" claim holds for
+      // the CLI scanner too. Opt out via --no-default-exclude.
+      if (options.defaultExclude !== false) {
+        routes = applyDefaultExclusions(routes)
+      }
+
+      // Apply user exclusions
       if (config.exclude) {
         routes = applyExclusions(routes, config.exclude)
       }
@@ -132,4 +144,16 @@ function applyExclusions(routes: SitemapRoute[], exclude: string[]): SitemapRout
       return route.path === pattern
     })
   })
+}
+
+/**
+ * Filter out routes that match the default exclusion list (auth/error pages).
+ * Mirrors the runtime React Router adapter so CLI output matches.
+ *
+ * Exported for direct testing — also imported by the scan command above.
+ */
+export function applyDefaultExclusions(routes: SitemapRoute[]): SitemapRoute[] {
+  return routes.filter(
+    (route) => !DEFAULT_EXCLUDE.some((pattern) => matchesExcludePattern(route.path, pattern)),
+  )
 }
