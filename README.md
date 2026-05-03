@@ -19,6 +19,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | RBAC / permission filtering | No | Yes — any/all modes |
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
+| Async / dynamic command sources | No | Yes — debounce + abort, error isolation |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
 | Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > alphabetical |
 | First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
@@ -266,6 +267,51 @@ Show a "Recent" group at the top of the palette when the search is empty:
 
 ---
 
+## Async / Dynamic Command Sources
+
+Load commands from a remote API (Linear issues, GitHub repos, internal search) and merge them into the palette in real time. Each source is debounced and cancelled on every new query via `AbortSignal` — you never have to wire up your own debounce or stale-response handling.
+
+```tsx
+import type { AsyncSource } from 'cmdk-engine'
+
+const searchLinearIssues: AsyncSource = {
+  id: 'linear-issues',
+  // Optional: only run for queries starting with `#` (default: any non-empty query)
+  trigger: (query) => query.startsWith('#'),
+  // Optional: per-source debounce (default: 200 ms)
+  debounceMs: 250,
+  load: async (query, signal) => {
+    const res = await fetch(`/api/linear/search?q=${encodeURIComponent(query.slice(1))}`, {
+      signal,
+    })
+    const issues = await res.json()
+    return issues.map((issue) => ({
+      id: `linear-${issue.id}`,
+      label: issue.title,
+      description: issue.identifier,
+      group: 'Linear',
+      href: issue.url,
+    }))
+  },
+}
+
+<CommandEngineProvider config={{ asyncSources: [searchLinearIssues] }}>
+  <YourApp />
+</CommandEngineProvider>
+```
+
+Then in your UI, wire up `isLoading` and (optionally) `asyncErrors`:
+
+```tsx
+const { isLoading, asyncErrors, flatResults } = useCommandPalette()
+```
+
+- **isLoading** is `true` while ANY source is in flight.
+- **asyncErrors** is `Record<sourceId, Error>` — one failing source does not break the palette; its error is captured here while every other source continues to deliver results.
+- Async items are merged with statically registered commands by `id`. If both lists contain the same `id`, the async version wins (handy for refining a stub command with live data).
+
+---
+
 ## CLI Tool
 
 Auto-discover routes and generate sitemaps for your command palette.
@@ -402,6 +448,8 @@ const {
   groupedResults,  // GroupedResult[] — results grouped by group
   groups,          // CommandGroup[] — active groups
   isOpen,          // Palette visibility
+  isLoading,       // True while any async source is in flight
+  asyncErrors,     // Record<sourceId, Error> — per-source async errors
   open, close, toggle,
   select,          // Select a command (records frecency + runs handler + closes)
   recordUsage,     // Record frecency manually
@@ -423,6 +471,7 @@ import type {
   GroupedResult,
   GroupedResults,
   AccessControlProvider,
+  AsyncSource,
   FrecencyOptions,
   RecentCommandsConfig,
   CommandGroup,
