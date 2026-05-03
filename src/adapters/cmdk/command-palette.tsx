@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Command as Cmdk } from 'cmdk'
 import { useCommandPalette } from '../../react/use-command-palette'
 import { useEngineContext } from '../../react/context'
@@ -194,11 +194,14 @@ export function CommandPalette({
   )
 
   // Auto-select first item when results change (solves cmdk #280)
+  // Controlled value: snap to firstItemId when results change, but allow
+  // arrow-key / pointer navigation to update it.
   const firstItemId = results[0]?.item.id
-  const valueRef = useRef(firstItemId)
+  const [activeValue, setActiveValue] = useState<string | undefined>(firstItemId)
 
   useEffect(() => {
-    valueRef.current = firstItemId
+    // Reset to first item whenever the result set changes.
+    setActiveValue(firstItemId)
   }, [firstItemId])
 
   // Group results for rendering — pass search query for relevance-based group ordering
@@ -259,7 +262,9 @@ export function CommandPalette({
     return (
       <Cmdk.Dialog
         open={isOpen}
-        onOpenChange={(open) => (open ? open : close())}
+        onOpenChange={(open) => {
+          if (!open) close()
+        }}
         shouldFilter={false}
         loop={loop}
         label={label}
@@ -269,8 +274,8 @@ export function CommandPalette({
         overlayClassName={overlayClassName}
         contentClassName={contentClassName}
         container={container}
-        value={firstItemId}
-        onValueChange={() => {}}
+        value={activeValue}
+        onValueChange={setActiveValue}
       >
         {content}
       </Cmdk.Dialog>
@@ -285,8 +290,8 @@ export function CommandPalette({
       className={className}
       disablePointerSelection={disablePointerSelection}
       vimBindings={vimBindings}
-      value={firstItemId}
-      onValueChange={() => {}}
+      value={activeValue}
+      onValueChange={setActiveValue}
     >
       {content}
     </Cmdk>
