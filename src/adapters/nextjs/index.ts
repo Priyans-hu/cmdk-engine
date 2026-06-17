@@ -1,19 +1,32 @@
 /**
- * Next.js adapter for cmdk-engine.
+ * Next.js (App Router) adapter for cmdk-engine.
  *
- * Phase 2: Will provide:
- * - App Router route scanning (app/ directory convention)
- * - Pages Router route scanning (pages/ directory convention)
- * - useRouter integration for navigation
- * - Server component support for static route extraction
+ * Wires `next/navigation`'s `useRouter` into the command engine
+ * so routes scanned by the CLI (`cmdk-engine scan`) become
+ * navigable command items with optional hover prefetch.
  *
- * For now, use the core engine + React hooks directly with Next.js.
- * Route scanning is available via the CLI: `npx cmdk-engine scan`
+ * Usage:
+ * ```tsx
+ * 'use client'
+ * import { useNextCommandRoutes } from 'cmdk-engine/nextjs'
+ * import sitemap from '@/generated/command-routes.json'
+ *
+ * export function CommandRoutes() {
+ *   useNextCommandRoutes(sitemap)
+ *   return null
+ * }
+ * ```
  */
 
-export function createNextJsAdapter() {
-  throw new Error(
-    'Next.js adapter is not yet implemented. Use the CLI scanner (`npx cmdk-engine scan`) ' +
-      'or manually register routes via the core registry.',
-  )
-}
+export { useNextNavigate, useNextPrefetch } from './use-next-navigate'
+export { useNextCommandRoutes } from './use-next-command-routes'
+export { usePrefetchOnHover } from './use-prefetch-on-hover'
+export { NextCommandRoutes } from './next-command-routes'
+export type { NextCommandRoutesProps } from './next-command-routes'
+export type {
+  NextRouteLike,
+  NextRoutesInput,
+  NextNavigateFn,
+  NextPrefetchFn,
+  UseNextCommandRoutesOptions,
+} from './types'

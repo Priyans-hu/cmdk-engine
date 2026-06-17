@@ -219,6 +219,72 @@ Routes with `handle.command` are always included, even if they have dynamic segm
 
 ---
 
+## Next.js (App Router) Integration
+
+Auto-discover routes from your Next.js `app/` directory and wire them up to `next/navigation`'s router:
+
+```tsx
+'use client'
+import { useNextCommandRoutes } from 'cmdk-engine/nextjs'
+import sitemap from '@/generated/command-routes.json'
+
+export function CommandRoutes() {
+  useNextCommandRoutes(sitemap)
+  return null
+}
+```
+
+Then mount it inside your provider:
+
+```tsx
+'use client'
+import { CommandEngineProvider } from 'cmdk-engine/react'
+import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
+import { CommandRoutes } from './command-routes'
+
+export function CommandShell({ children }: { children: React.ReactNode }) {
+  return (
+    <CommandEngineProvider>
+      <CommandRoutes />
+      <CommandPalette dialog />
+      {children}
+    </CommandEngineProvider>
+  )
+}
+```
+
+### Generate the sitemap
+
+```bash
+npx cmdk-engine scan --framework nextjs-app
+# → writes src/generated/command-routes.json
+```
+
+The CLI walks `app/` and emits a JSON sitemap that respects route groups `(auth)`, dynamic segments `[id]`, parallel routes `@modal`, and private folders `_lib`. See `cmdk-engine init` for the config helper.
+
+### What you get
+
+- **`useNextCommandRoutes(routes, options?)`** — registers each route as a command whose `action` calls `router.push(href)`. Accepts the sitemap object, an array of routes, or hand-authored entries.
+- **`<NextCommandRoutes routes={routes} />`** — composition wrapper around the hook for consumers who prefer JSX.
+- **`useNextNavigate()`** — returns a memoized navigate function for use inside command callbacks.
+- **`useNextPrefetch()` / `usePrefetchOnHover()`** — hover prefetch helpers (`router.prefetch(href)`).
+
+### Options
+
+```tsx
+useNextCommandRoutes(sitemap, {
+  prefetchOnMount: true,        // prefetch every route on mount
+  defaultGroup: 'Pages',        // fallback group when none derived
+  transform: (route) => ({      // attach icons, descriptions, etc.
+    icon: getIconFor(route.path),
+  }),
+})
+```
+
+`next` and `next/navigation` are declared as **optional peer dependencies** — you only need them when you actually import from `cmdk-engine/nextjs`.
+
+---
+
 ## RBAC / Access Control
 
 Filter commands based on user permissions:
@@ -364,6 +430,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | `cmdk-engine/react` | ~2KB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | ~1KB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | ~1KB | React Router v6/v7 route scanner |
+| `cmdk-engine/nextjs` (alias `cmdk-engine/adapters/nextjs`) | ~2KB | Next.js App Router adapter (hooks + HOC) |
 | `cmdk-engine/search/match-sorter` | ~1KB | Optional match-sorter search backend |
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
@@ -403,6 +470,11 @@ import {
 ```ts
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
+import {
+  useNextCommandRoutes,
+  useNextNavigate,
+  NextCommandRoutes,
+} from 'cmdk-engine/nextjs'
 ```
 
 ### Key hook return values

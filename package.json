@@ -63,6 +63,16 @@
       "import": "./dist/adapters/react-router/index.js",
       "require": "./dist/adapters/react-router/index.cjs"
     },
+    "./adapters/nextjs": {
+      "types": "./dist/adapters/nextjs/index.d.ts",
+      "import": "./dist/adapters/nextjs/index.js",
+      "require": "./dist/adapters/nextjs/index.cjs"
+    },
+    "./nextjs": {
+      "types": "./dist/adapters/nextjs/index.d.ts",
+      "import": "./dist/adapters/nextjs/index.js",
+      "require": "./dist/adapters/nextjs/index.cjs"
+    },
     "./search/match-sorter": {
       "types": "./dist/core/search-match-sorter.d.ts",
       "import": "./dist/core/search-match-sorter.js",
@@ -95,10 +105,14 @@
     "size": "size-limit"
   },
   "peerDependencies": {
+    "next": "^14.0.0 || ^15.0.0 || ^16.0.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -120,6 +134,11 @@
       "path": "dist/adapters/cmdk/index.js",
       "limit": "3 KB",
       "ignore": ["cmdk", "react", "react-dom"]
+    },
+    {
+      "path": "dist/adapters/nextjs/index.js",
+      "limit": "2 KB",
+      "ignore": ["next", "next/navigation", "react", "react-dom"]
     }
   ],
   "engines": {
@@ -141,6 +160,7 @@
     "eslint": "^10.0",
     "jsdom": "^29.1",
     "match-sorter": "^8.0",
+    "next": "^16.2.4",
     "prettier": "^3.5",
     "react-router": "^7.0",
     "react-router-dom": "^7.0",
