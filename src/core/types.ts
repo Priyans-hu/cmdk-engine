@@ -305,6 +305,12 @@ export interface CommandPaletteState {
   breadcrumbs: CommandItem[]
   /** Current nesting depth (0 = root) */
   depth: number
+  /**
+   * Errors thrown by async sources, keyed by source `id`. A failing source
+   * does not break the palette — its error is captured here while other
+   * sources continue to deliver results. Empty object when no errors.
+   */
+  asyncErrors?: Record<string, Error>
 }
 
 // ============================================================
@@ -339,6 +345,11 @@ export interface CommandEngineConfig {
   locale?: string
   /** Search history configuration */
   searchHistory?: SearchHistoryConfig
+  /**
+   * Dynamic command sources loaded asynchronously on each query.
+   * Each source is debounced and cancelled on new queries via `AbortSignal`.
+   */
+  asyncSources?: AsyncSource[]
 }
 
 /** Configuration for the "Recent" commands group */
@@ -349,6 +360,34 @@ export interface RecentCommandsConfig {
   recentCount?: number
   /** Label for the recent group (default: "Recent") */
   recentLabel?: string
+}
+
+// ============================================================
+// Async / Dynamic Command Sources
+// ============================================================
+
+/**
+ * A dynamic command source that loads items asynchronously.
+ *
+ * Useful for fetching results from a remote API (e.g., Linear issues, GitHub
+ * repos, internal search) and merging them into the palette in real time.
+ */
+export interface AsyncSource {
+  /** Unique identifier for this source (used to scope errors and dedupe state) */
+  id: string
+  /**
+   * Predicate to decide whether `load` should fire for the given query.
+   * Defaults to `query.trim() !== ''` when not provided.
+   */
+  trigger?: (query: string) => boolean
+  /**
+   * Loader called with the current query and an `AbortSignal`. The signal is
+   * aborted automatically on the next query change so the loader can cancel
+   * its in-flight request.
+   */
+  load: (query: string, signal: AbortSignal) => Promise<CommandItem[]>
+  /** Debounce delay in milliseconds before invoking `load` (default: 200) */
+  debounceMs?: number
 }
 
 // ============================================================

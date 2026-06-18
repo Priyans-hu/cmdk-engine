@@ -1,6 +1,12 @@
-import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
+import {
+  DEFAULT_ASYNC_DEBOUNCE_MS,
+  flattenAsyncItems,
+  mergeAsyncCommands,
+  shouldRunSource,
+} from '../core/async-sources'
 import { useEngineContext } from './context'
 
 export interface UseCommandPaletteReturn extends CommandPaletteState {
@@ -44,15 +50,113 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   const [isOpen, setIsOpen] = useState(false)
   const [activePath, setActivePath] = useState<CommandItem[]>([])
 
+  // Async source state: per-source items, errors, and in-flight set
+  const [asyncItemsBySource, setAsyncItemsBySource] = useState<Record<string, CommandItem[]>>({})
+  const [asyncErrors, setAsyncErrors] = useState<Record<string, Error>>({})
+  const [loadingSourceIds, setLoadingSourceIds] = useState<Set<string>>(() => new Set())
+
+  // Per-source AbortController so we can cancel in-flight requests on new queries
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
+
   // Subscribe to registry changes
   const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
 
   // Determine which commands to search: root or nested children
+  // At root depth we also inject async results from `config.asyncSources`.
   const activeCommands = useMemo(() => {
-    if (activePath.length === 0) return commands
-    const parent = activePath[activePath.length - 1]
-    return parent.children ?? []
-  }, [commands, activePath])
+    if (activePath.length > 0) {
+      const parent = activePath[activePath.length - 1]
+      return parent.children ?? []
+    }
+    const asyncItems = flattenAsyncItems(asyncItemsBySource)
+    return asyncItems.length === 0 ? commands : mergeAsyncCommands(commands, asyncItems)
+  }, [commands, activePath, asyncItemsBySource])
+
+  // Drive async sources: debounce per source, cancel on query change.
+  // Only fires at root depth — nested menus already have their commands inline.
+  useEffect(() => {
+    const sources = config.asyncSources
+    if (!sources || sources.length === 0) return
+    if (activePath.length > 0) return
+
+    // Abort any previously running loaders before scheduling new ones.
+    for (const controller of abortControllersRef.current.values()) {
+      controller.abort()
+    }
+    abortControllersRef.current.clear()
+
+    const timers: Array<ReturnType<typeof setTimeout>> = []
+
+    for (const source of sources) {
+      // If the trigger predicate rejects this query, clear any prior results
+      // for this source and skip scheduling.
+      if (!shouldRunSource(source, searchQuery)) {
+        setAsyncItemsBySource((prev) => {
+          if (!(source.id in prev)) return prev
+          const next = { ...prev }
+          delete next[source.id]
+          return next
+        })
+        continue
+      }
+
+      const delay = source.debounceMs ?? DEFAULT_ASYNC_DEBOUNCE_MS
+      const timer = setTimeout(() => {
+        const controller = new AbortController()
+        abortControllersRef.current.set(source.id, controller)
+        setLoadingSourceIds((prev) => {
+          if (prev.has(source.id)) return prev
+          const next = new Set(prev)
+          next.add(source.id)
+          return next
+        })
+
+        Promise.resolve()
+          .then(() => source.load(searchQuery, controller.signal))
+          .then((items) => {
+            if (controller.signal.aborted) return
+            setAsyncItemsBySource((prev) => ({ ...prev, [source.id]: items }))
+            setAsyncErrors((prev) => {
+              if (!(source.id in prev)) return prev
+              const next = { ...prev }
+              delete next[source.id]
+              return next
+            })
+          })
+          .catch((err) => {
+            if (controller.signal.aborted) return
+            const error = err instanceof Error ? err : new Error(String(err))
+            console.error(`[cmdk-engine] async source "${source.id}" failed:`, error)
+            setAsyncErrors((prev) => ({ ...prev, [source.id]: error }))
+          })
+          .finally(() => {
+            if (controller.signal.aborted) return
+            abortControllersRef.current.delete(source.id)
+            setLoadingSourceIds((prev) => {
+              if (!prev.has(source.id)) return prev
+              const next = new Set(prev)
+              next.delete(source.id)
+              return next
+            })
+          })
+      }, delay)
+      timers.push(timer)
+    }
+
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+    }
+  }, [searchQuery, activePath, config.asyncSources])
+
+  // Cleanup: abort any in-flight loaders when the hook unmounts.
+  useEffect(() => {
+    return () => {
+      for (const controller of abortControllersRef.current.values()) {
+        controller.abort()
+      }
+      abortControllersRef.current.clear()
+    }
+  }, [])
 
   // Pipeline: enrich → filter access → search → rank by frecency → context boost
   const results = useMemo<ScoredItem[]>(() => {
@@ -215,7 +319,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     groupedResults,
     groups,
     isOpen,
-    isLoading: false,
+    isLoading: loadingSourceIds.size > 0,
+    asyncErrors,
     breadcrumbs: activePath,
     depth: activePath.length,
     open,
