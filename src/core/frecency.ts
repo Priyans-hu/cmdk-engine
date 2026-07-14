@@ -70,12 +70,20 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
     // Keep the blended score within the documented [0,1] contract.
     const weight = Math.min(Math.max(frecencyWeight, 0), 1)
 
+    // Read the whole store once. A localStorage-backed get() re-parses the
+    // entire blob on every call, and rank() runs on every keystroke — so
+    // per-item get() was O(results) full-JSON parses per keystroke.
+    const entriesById = new Map<string, FrecencyEntry>()
+    for (const entry of storage.getAll()) {
+      entriesById.set(entry.id, entry)
+    }
+
     // Get max frecency score for normalization
     let maxFrecency = 0
     const frecencyScores = new Map<string, number>()
 
     for (const { item } of items) {
-      const entry = storage.get(item.id)
+      const entry = entriesById.get(item.id)
       if (entry) {
         const score = calculateScore(entry, now)
         frecencyScores.set(item.id, score)

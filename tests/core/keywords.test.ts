@@ -126,6 +126,33 @@ describe('createKeywordEngine', () => {
     })
   })
 
+  describe('setSynonyms + case-insensitivity', () => {
+    it('rebuilds the index so expandQuery reflects the new dictionary', () => {
+      const engine = createKeywordEngine({ billing: ['money'] })
+      expect(engine.expandQuery('billing')).toContain('money')
+      engine.setSynonyms({ settings: ['config'] })
+      expect(engine.expandQuery('billing')).not.toContain('money')
+      expect(engine.expandQuery('settings')).toContain('config')
+    })
+
+    it('matches a capitalized synonym KEY case-insensitively', () => {
+      const engine = createKeywordEngine({ Billing: ['money'] })
+      const enriched = engine.enrichItem({ id: 'b', label: 'Billing' })
+      expect(enriched.meta?._synonymKeywords as string[]).toContain('money')
+      expect(engine.expandQuery('billing')).toContain('money')
+    })
+
+    it('clears stale _synonymKeywords when re-enriched under a new dictionary', () => {
+      const engine = createKeywordEngine({ billing: ['money'] })
+      const once = engine.enrichItem({ id: 'b', label: 'Billing' })
+      expect(once.meta?._synonymKeywords as string[]).toContain('money')
+
+      engine.setSynonyms({}) // no synonyms now
+      const twice = engine.enrichItem(once) // re-enrich the already-enriched item
+      expect(twice.meta?._synonymKeywords).toBeUndefined()
+    })
+  })
+
   describe('user aliases', () => {
     it('adds and retrieves aliases', () => {
       const engine = createKeywordEngine()

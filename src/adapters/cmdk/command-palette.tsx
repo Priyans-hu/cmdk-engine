@@ -3,7 +3,6 @@ import { Command as Cmdk } from 'cmdk'
 import { useCommandPalette } from '../../react/use-command-palette'
 import { useEngineContext } from '../../react/context'
 import type { CommandItem, ScoredItem, CommandGroup } from '../../core/types'
-import type { GroupedResults } from '../../core/grouping'
 
 // ============================================================
 // Types
@@ -141,9 +140,9 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const {
     search, setSearch, results, isOpen, close, isLoading,
-    breadcrumbs, depth, drillUp, select,
+    breadcrumbs, depth, drillUp, select, groupedResults,
   } = useCommandPalette()
-  const { groupManager, t } = useEngineContext()
+  const { t } = useEngineContext()
 
   // Use i18n for defaults
   const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
@@ -185,8 +184,8 @@ export function CommandPalette({
     setActiveValue(firstItemId)
   }, [firstItemId])
 
-  // Group results for rendering — pass search query for relevance-based group ordering
-  const groupedResults: GroupedResults = groupManager.groupResults(results, search)
+  // groupedResults comes memoized from the hook (was recomputed here on every
+  // keystroke / arrow-key render).
 
   const renderItems = (items: ScoredItem[]) =>
     items.map(({ item, score }) => (

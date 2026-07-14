@@ -68,25 +68,31 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return parent.children ?? []
   }, [commands, activePath])
 
-  // Pipeline: visibility → enrich → filter access → search → rank by frecency → context boost
+  // Enrichment is query-independent and the most expensive stage, so memoize
+  // it on its own — it only re-runs when the command set or synonyms change,
+  // not on every keystroke.
+  const enrichedCommands = useMemo(
+    () => keywords.enrichAll(activeCommands),
+    [activeCommands, keywords],
+  )
+
+  // Pipeline: visibility → access → search → rank by frecency → context boost.
+  // (Visibility + access stay here so they see live `when`/permission state.)
   const results = useMemo<ScoredItem[]>(() => {
     // 1. Apply dynamic visibility gates (`when`) — feature flags, plan/org gating
-    const visible = filterVisible(activeCommands)
+    const visible = filterVisible(enrichedCommands)
 
-    // 2. Enrich with synonyms
-    const enriched = keywords.enrichAll(visible)
+    // 2. Filter by access control
+    const accessible = accessFilter ? accessFilter(visible) : visible
 
-    // 4. Filter by access control
-    const accessible = accessFilter ? accessFilter(enriched) : enriched
-
-    // 5. Search
+    // 3. Search
     const searched = search.search(searchQuery, accessible)
 
-    // 6. Rank by frecency
+    // 4. Rank by frecency
     if (searchQuery.trim()) {
       let ranked = frecency.rank(searched, 0.3)
 
-      // 6b. Context boost (only during search, not empty state)
+      // 4b. Context boost (only during search, not empty state)
       if (config.context) {
         ranked = contextEngine.boost(ranked, config.context)
         // Re-sort after boosting
@@ -96,7 +102,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       return ranked
     }
 
-    // 7. Inject "Recent" group when search is empty
+    // 5. Inject "Recent" group when search is empty
     const frecencyConfig = config.frecency
     if (frecencyConfig?.showRecent) {
       const recentCount = frecencyConfig.recentCount ?? 5
@@ -132,7 +138,10 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // No "Recent" group: still apply frecency so frequently-used commands
     // float to the top on empty query (README: frecency > priority > alpha).
     return frecency.rank(searched, 0.3)
-  }, [activeCommands, searchQuery, search, keywords, accessFilter, frecency, contextEngine, t, config])
+  }, [
+    enrichedCommands, searchQuery, search, accessFilter, frecency,
+    contextEngine, t, config.context, config.frecency,
+  ])
 
   // Limit results
   const limitedResults = useMemo(() => {

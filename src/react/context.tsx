@@ -68,31 +68,33 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
     [isOpen, search, activePath],
   )
 
-  const value = useMemo<EngineContextValue>(() => {
-    const search = config.searchEngine ?? createFuzzySearch()
-    const keywords = createKeywordEngine(config.synonyms ?? {})
-    const accessFilter = config.accessControl
-      ? createAccessFilter(config.accessControl, config.accessCheckMode)
-      : null
-    const frecency = createFrecencyEngine(config.frecency)
-    const groupManager = createGroupManager(config.groups)
-    const contextEngine = createContextEngine(config.contextBoostWeight)
-    const t = config.t ?? createDefaultTranslation()
-    const searchHistory = createInMemorySearchHistory(config.searchHistory)
+  // Build the engine singletons from the specific config fields they depend on
+  // (not the whole `config` object) so an inline config that only changes an
+  // unrelated field — e.g. `context` on every route change — doesn't rebuild
+  // the search/keyword/frecency engines on every render.
+  const engines = useMemo(
+    () => ({
+      search: config.searchEngine ?? createFuzzySearch(),
+      keywords: createKeywordEngine(config.synonyms ?? {}),
+      accessFilter: config.accessControl
+        ? createAccessFilter(config.accessControl, config.accessCheckMode)
+        : null,
+      frecency: createFrecencyEngine(config.frecency),
+      groupManager: createGroupManager(config.groups),
+      contextEngine: createContextEngine(config.contextBoostWeight),
+      t: config.t ?? createDefaultTranslation(),
+      searchHistory: createInMemorySearchHistory(config.searchHistory),
+    }),
+    [
+      config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
+      config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
+    ],
+  )
 
-    return {
-      registry: registryRef.current!,
-      search,
-      keywords,
-      accessFilter,
-      frecency,
-      groupManager,
-      contextEngine,
-      searchHistory,
-      t,
-      config,
-    }
-  }, [config])
+  const value = useMemo<EngineContextValue>(
+    () => ({ registry: registryRef.current!, ...engines, config }),
+    [engines, config],
+  )
 
   return (
     <EngineContext.Provider value={value}>

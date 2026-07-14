@@ -5,106 +5,110 @@ import type { CommandItem, SynonymMap } from './types'
  *
  * The engine enriches command items with additional searchable keywords
  * based on a synonym dictionary and optional user-defined aliases.
+ *
+ * A normalized, lowercased bidirectional index is built once (and rebuilt on
+ * `setSynonyms`) so enrichment is O(keywords) with map lookups rather than
+ * O(keywords × synonym-entries) with per-iteration array allocation — this
+ * runs on every keystroke via the results pipeline.
  */
 export function createKeywordEngine(
   synonyms: SynonymMap = {},
   userAliases: Map<string, string[]> = new Map(),
 ) {
+  let keyToValues = new Map<string, string[]>()
+  let valueToKeys = new Map<string, Set<string>>()
+
+  function rebuildIndex(dict: SynonymMap): void {
+    keyToValues = new Map()
+    valueToKeys = new Map()
+    for (const [key, values] of Object.entries(dict)) {
+      const k = key.toLowerCase()
+      const lowerValues = values.map((v) => v.toLowerCase())
+      keyToValues.set(k, [...new Set([...(keyToValues.get(k) ?? []), ...lowerValues])])
+      for (const v of lowerValues) {
+        let keys = valueToKeys.get(v)
+        if (!keys) {
+          keys = new Set()
+          valueToKeys.set(v, keys)
+        }
+        keys.add(k)
+      }
+    }
+  }
+
+  rebuildIndex(synonyms)
+
+  /**
+   * Expand a search query using the synonym dictionary.
+   * Returns the original query plus any synonym matches.
+   *
+   * e.g., query "money" with synonyms { billing: ["money", "payment"] }
+   * returns ["money", "billing"]
+   */
+  function expandQuery(query: string): string[] {
+    const q = query.toLowerCase().trim()
+    if (!q) return []
+
+    const expanded = new Set<string>([q])
+    // Query matches a synonym value → add its key(s).
+    for (const key of valueToKeys.get(q) ?? []) expanded.add(key)
+    // Query matches a key → add all its values.
+    for (const value of keyToValues.get(q) ?? []) expanded.add(value)
+
+    return Array.from(expanded)
+  }
+
+  /**
+   * Enrich a command item's keywords with synonyms and user aliases.
+   * Returns a new CommandItem with original keywords preserved and
+   * synonym-expanded keywords stored separately in meta._synonymKeywords.
+   * This lets the search engine score original keywords higher.
+   */
+  function enrichItem(item: CommandItem): CommandItem {
+    const originalKeywords = new Set<string>(item.keywords ?? [])
+    const synonymKeywords = new Set<string>()
+
+    const addSynonymsFor = (term: string): void => {
+      const t = term.toLowerCase()
+      for (const value of keyToValues.get(t) ?? []) {
+        if (!originalKeywords.has(value)) synonymKeywords.add(value)
+      }
+      for (const key of valueToKeys.get(t) ?? []) {
+        if (!originalKeywords.has(key)) synonymKeywords.add(key)
+      }
+    }
+
+    for (const kw of item.keywords ?? []) addSynonymsFor(kw)
+    addSynonymsFor(item.label)
+
+    // User aliases become original keywords (user explicitly added these).
+    for (const alias of userAliases.get(item.id) ?? []) originalKeywords.add(alias)
+
+    // Rebuild meta, clearing any stale _synonymKeywords from a previous pass.
+    const meta: Record<string, unknown> = { ...item.meta }
+    delete meta._synonymKeywords
+    if (synonymKeywords.size > 0) {
+      meta._synonymKeywords = Array.from(synonymKeywords)
+    }
+
+    return {
+      ...item,
+      keywords: Array.from(originalKeywords),
+      meta,
+    }
+  }
+
+  /**
+   * Enrich all items in a list.
+   */
+  function enrichAll(items: CommandItem[]): CommandItem[] {
+    return items.map(enrichItem)
+  }
+
   return {
-    /**
-     * Expand a search query using the synonym dictionary.
-     * Returns the original query plus any synonym matches.
-     *
-     * e.g., query "money" with synonyms { billing: ["money", "payment"] }
-     * returns ["money", "billing"]
-     */
-    expandQuery(query: string): string[] {
-      const q = query.toLowerCase().trim()
-      if (!q) return []
-
-      const expanded = new Set<string>([q])
-
-      for (const [key, values] of Object.entries(synonyms)) {
-        const lowerValues = values.map((v) => v.toLowerCase())
-        // If query matches a synonym value, add the key
-        if (lowerValues.includes(q)) {
-          expanded.add(key.toLowerCase())
-        }
-        // If query matches a key, add all synonym values
-        if (key.toLowerCase() === q) {
-          for (const v of lowerValues) {
-            expanded.add(v)
-          }
-        }
-      }
-
-      return Array.from(expanded)
-    },
-
-    /**
-     * Enrich a command item's keywords with synonyms and user aliases.
-     * Returns a new CommandItem with original keywords preserved and
-     * synonym-expanded keywords stored separately in meta._synonymKeywords.
-     * This lets the search engine score original keywords higher.
-     */
-    enrichItem(item: CommandItem): CommandItem {
-      const originalKeywords = new Set<string>(item.keywords ?? [])
-      const synonymKeywords = new Set<string>()
-
-      // Add synonyms for existing keywords
-      for (const kw of item.keywords ?? []) {
-        const kwLower = kw.toLowerCase()
-        if (synonyms[kwLower]) {
-          for (const syn of synonyms[kwLower]) {
-            if (!originalKeywords.has(syn)) synonymKeywords.add(syn)
-          }
-        }
-        for (const [key, values] of Object.entries(synonyms)) {
-          if (values.map((v) => v.toLowerCase()).includes(kwLower)) {
-            if (!originalKeywords.has(key)) synonymKeywords.add(key)
-          }
-        }
-      }
-
-      // Add synonyms for the label
-      const labelLower = item.label.toLowerCase()
-      for (const [key, values] of Object.entries(synonyms)) {
-        if (key.toLowerCase() === labelLower) {
-          for (const v of values) {
-            if (!originalKeywords.has(v)) synonymKeywords.add(v)
-          }
-        }
-        if (values.map((v) => v.toLowerCase()).includes(labelLower)) {
-          if (!originalKeywords.has(key)) synonymKeywords.add(key)
-        }
-      }
-
-      // Add user aliases as original keywords (user explicitly added these)
-      const aliases = userAliases.get(item.id)
-      if (aliases) {
-        for (const alias of aliases) {
-          originalKeywords.add(alias)
-        }
-      }
-
-      return {
-        ...item,
-        keywords: Array.from(originalKeywords),
-        meta: {
-          ...item.meta,
-          ...(synonymKeywords.size > 0
-            ? { _synonymKeywords: Array.from(synonymKeywords) }
-            : {}),
-        },
-      }
-    },
-
-    /**
-     * Enrich all items in a list.
-     */
-    enrichAll(items: CommandItem[]): CommandItem[] {
-      return items.map((item) => this.enrichItem(item))
-    },
+    expandQuery,
+    enrichItem,
+    enrichAll,
 
     /**
      * Add a user alias for a command.
@@ -135,11 +139,12 @@ export function createKeywordEngine(
     },
 
     /**
-     * Set the synonym dictionary.
+     * Set the synonym dictionary (rebuilds the lookup index).
      */
     setSynonyms(newSynonyms: SynonymMap): void {
       Object.keys(synonyms).forEach((k) => delete synonyms[k])
       Object.assign(synonyms, newSynonyms)
+      rebuildIndex(synonyms)
     },
   }
 }
