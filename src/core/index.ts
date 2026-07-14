@@ -37,7 +37,12 @@ export { createFuzzySearch } from './search'
 export { createKeywordEngine } from './keywords'
 
 // Access Control
-export { createAccessFilter, createSimpleAccessProvider } from './access-control'
+export {
+  createAccessFilter,
+  createSimpleAccessProvider,
+  isCommandVisible,
+  filterVisible,
+} from './access-control'
 
 // Frecency
 export { createFrecencyEngine, createInMemoryStorage } from './frecency'

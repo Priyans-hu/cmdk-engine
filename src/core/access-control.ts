@@ -21,13 +21,34 @@ export function createAccessFilter(
         return true
       }
 
-      if (mode === 'all') {
+      // A per-command `accessMode` overrides the engine-wide default.
+      const itemMode = item.accessMode ?? mode
+
+      if (itemMode === 'all') {
         return provider.hasAllPermissions(item.permissions)
       }
 
       return provider.hasAnyPermission(item.permissions)
     })
   }
+}
+
+/**
+ * Resolve a command's dynamic visibility gate (`when`).
+ * Returns `true` when the command has no gate or the gate resolves truthy.
+ */
+export function isCommandVisible(item: CommandItem): boolean {
+  if (item.when === undefined) return true
+  return typeof item.when === 'function' ? item.when() : item.when
+}
+
+/**
+ * Remove commands whose `when` gate resolves to `false`. Unlike access
+ * control (which is permission-based), this filter always runs and is the
+ * hook for feature flags, plan/org gating, and other runtime conditions.
+ */
+export function filterVisible(items: CommandItem[]): CommandItem[] {
+  return items.filter(isCommandVisible)
 }
 
 /**

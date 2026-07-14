@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
+import { filterVisible } from '../core/access-control'
 import { useEngineContext } from './context'
 
 export interface UseCommandPaletteReturn extends CommandPaletteState {
@@ -54,22 +55,25 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return parent.children ?? []
   }, [commands, activePath])
 
-  // Pipeline: enrich → filter access → search → rank by frecency → context boost
+  // Pipeline: visibility → enrich → filter access → search → rank by frecency → context boost
   const results = useMemo<ScoredItem[]>(() => {
-    // 1. Enrich with synonyms
-    const enriched = keywords.enrichAll(activeCommands)
+    // 1. Apply dynamic visibility gates (`when`) — feature flags, plan/org gating
+    const visible = filterVisible(activeCommands)
 
-    // 2. Filter by access control
+    // 2. Enrich with synonyms
+    const enriched = keywords.enrichAll(visible)
+
+    // 4. Filter by access control
     const accessible = accessFilter ? accessFilter(enriched) : enriched
 
-    // 3. Search
+    // 5. Search
     const searched = search.search(searchQuery, accessible)
 
-    // 4. Rank by frecency
+    // 6. Rank by frecency
     if (searchQuery.trim()) {
       let ranked = frecency.rank(searched, 0.3)
 
-      // 4b. Context boost (only during search, not empty state)
+      // 6b. Context boost (only during search, not empty state)
       if (config.context) {
         ranked = contextEngine.boost(ranked, config.context)
         // Re-sort after boosting
@@ -79,7 +83,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       return ranked
     }
 
-    // 5. Inject "Recent" group when search is empty
+    // 7. Inject "Recent" group when search is empty
     const frecencyConfig = config.frecency
     if (frecencyConfig?.showRecent) {
       const recentCount = frecencyConfig.recentCount ?? 5

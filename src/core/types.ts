@@ -30,6 +30,18 @@ export interface CommandItem {
   hidden?: boolean
   /** Required permissions to see this command */
   permissions?: string[]
+  /**
+   * Per-command access check mode, overriding the engine-wide `accessCheckMode`.
+   * 'any' = user needs any listed permission, 'all' = needs all of them.
+   */
+  accessMode?: AccessCheckMode
+  /**
+   * Dynamic visibility gate. When it resolves to `false`, the command is
+   * removed entirely (not searchable, not browsable) — use for feature flags,
+   * plan/org gating, or any runtime condition beyond static `permissions`.
+   * A function is re-evaluated whenever results are recomputed.
+   */
+  when?: boolean | (() => boolean)
   /** Keyboard shortcut display (e.g., ["g", "h"]) */
   shortcut?: string[]
   /** Extensible metadata for consumer use */
