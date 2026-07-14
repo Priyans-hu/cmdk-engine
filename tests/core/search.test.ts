@@ -59,9 +59,22 @@ describe('createFuzzySearch', () => {
     expect(dash).toBeDefined()
   })
 
-  it('does not return hidden items', () => {
-    const results = search.search('secret', items)
+  it('excludes hidden items from the empty-query browse list', () => {
+    const results = search.search('', items)
     expect(results.find((r) => r.item.id === 'hidden')).toBeUndefined()
+  })
+
+  it('finds hidden items when a query matches their label (searchable but not browsable)', () => {
+    const results = search.search('secret', items)
+    const hidden = results.find((r) => r.item.id === 'hidden')
+    expect(hidden).toBeDefined()
+    expect(hidden!.score).toBeGreaterThan(0)
+  })
+
+  it('finds hidden items when a query matches their keywords', () => {
+    const testItems = [cmd({ id: 'hidden-kw', label: 'Internal Tool', hidden: true, keywords: ['admin-only'] })]
+    const results = search.search('admin-only', testItems)
+    expect(results.find((r) => r.item.id === 'hidden-kw')).toBeDefined()
   })
 
   it('returns empty for no match', () => {

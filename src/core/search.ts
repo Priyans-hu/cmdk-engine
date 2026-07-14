@@ -26,8 +26,8 @@ export function createFuzzySearch(): SearchEngine {
       const results: ScoredItem[] = []
 
       for (const item of items) {
-        if (item.hidden) continue
-
+        // `hidden` only excludes items from the empty-query browse list (handled above).
+        // With a non-empty query, hidden items are still searchable — just not browsable.
         const score = scoreItem(normalizedQuery, item)
         if (score > 0) {
           results.push({ item, score })
