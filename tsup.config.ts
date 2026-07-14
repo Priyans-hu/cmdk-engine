@@ -1,4 +1,19 @@
 import { defineConfig } from 'tsup'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+
+// esbuild strips module-level "use client" directives during bundling, so we
+// re-add them to the emitted client-only bundles after each build. Required for
+// Next.js App Router / RSC consumers importing the hooks/components directly.
+function prependUseClient(files: string[]) {
+  return async () => {
+    for (const file of files) {
+      if (!existsSync(file)) continue
+      const content = readFileSync(file, 'utf8')
+      if (/^(['"])use client\1/.test(content)) continue
+      writeFileSync(file, `'use client';\n${content}`)
+    }
+  }
+}
 
 export default defineConfig([
   // Core (framework-agnostic, zero deps)
@@ -12,7 +27,8 @@ export default defineConfig([
     sourcemap: true,
     external: ['react', 'react-dom'],
   },
-  // React hooks
+  // React hooks (client-only — needs the 'use client' directive so
+  // Next.js App Router / RSC consumers can import the hooks directly)
   {
     entry: { 'react/index': 'src/react/index.ts' },
     format: ['esm', 'cjs'],
@@ -20,9 +36,10 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
     sourcemap: true,
+    onSuccess: prependUseClient(['dist/react/index.js', 'dist/react/index.cjs']),
     external: ['react', 'react-dom'],
   },
-  // cmdk adapter
+  // cmdk adapter (client-only — renders React components + hooks)
   {
     entry: { 'adapters/cmdk/index': 'src/adapters/cmdk/index.ts' },
     format: ['esm', 'cjs'],
@@ -30,6 +47,7 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
     sourcemap: true,
+    onSuccess: prependUseClient(['dist/adapters/cmdk/index.js', 'dist/adapters/cmdk/index.cjs']),
     external: ['react', 'react-dom', 'cmdk'],
   },
   // React Router adapter
