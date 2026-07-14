@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useMemo } from 'react'
+import React, { createContext, useContext, useRef, useMemo, useState } from 'react'
 import type { CommandEngineConfig, CommandItem, CommandRegistry, TranslationFn } from '../core/types'
 import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
@@ -27,6 +27,22 @@ export interface EngineContextValue {
 
 const EngineContext = createContext<EngineContextValue | null>(null)
 
+/**
+ * Shared palette UI state. Lives on the provider (not per-hook-call) so that
+ * every `useCommandPalette()` consumer and `useCommandPaletteShortcut()` read
+ * and write the same open/search/navigation state.
+ */
+export interface PaletteStateValue {
+  isOpen: boolean
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  search: string
+  setSearch: React.Dispatch<React.SetStateAction<string>>
+  activePath: CommandItem[]
+  setActivePath: React.Dispatch<React.SetStateAction<CommandItem[]>>
+}
+
+const PaletteStateContext = createContext<PaletteStateValue | null>(null)
+
 export interface CommandEngineProviderProps {
   children: React.ReactNode
   config?: CommandEngineConfig
@@ -41,6 +57,16 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   if (!registryRef.current) {
     registryRef.current = createRegistry()
   }
+
+  // Palette UI state is shared across all consumers under this provider.
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [activePath, setActivePath] = useState<CommandItem[]>([])
+
+  const paletteState = useMemo<PaletteStateValue>(
+    () => ({ isOpen, setIsOpen, search, setSearch, activePath, setActivePath }),
+    [isOpen, search, activePath],
+  )
 
   const value = useMemo<EngineContextValue>(() => {
     const search = config.searchEngine ?? createFuzzySearch()
@@ -68,7 +94,13 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
     }
   }, [config])
 
-  return <EngineContext.Provider value={value}>{children}</EngineContext.Provider>
+  return (
+    <EngineContext.Provider value={value}>
+      <PaletteStateContext.Provider value={paletteState}>
+        {children}
+      </PaletteStateContext.Provider>
+    </EngineContext.Provider>
+  )
 }
 
 /**
@@ -78,6 +110,17 @@ export function useEngineContext(): EngineContextValue {
   const ctx = useContext(EngineContext)
   if (!ctx) {
     throw new Error('useEngineContext must be used within a <CommandEngineProvider>')
+  }
+  return ctx
+}
+
+/**
+ * Hook to access the shared palette UI state. Throws if used outside provider.
+ */
+export function usePaletteState(): PaletteStateValue {
+  const ctx = useContext(PaletteStateContext)
+  if (!ctx) {
+    throw new Error('usePaletteState must be used within a <CommandEngineProvider>')
   }
   return ctx
 }

@@ -2,16 +2,17 @@ import { describe, it, expect, vi, beforeAll } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 
-// cmdk uses ResizeObserver internally — mock it for jsdom
+// cmdk uses ResizeObserver + scrollIntoView internally — mock them for jsdom
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
     observe() {}
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver
+  Element.prototype.scrollIntoView = vi.fn()
 })
 import { CommandEngineProvider } from '../../src/react/context'
-import { CommandPalette } from '../../src/adapters/cmdk/command-palette'
+import { CommandPalette, useCommandPaletteShortcut } from '../../src/adapters/cmdk/command-palette'
 import { useEngineContext } from '../../src/react/context'
 
 // Helper: register commands within the provider
@@ -175,5 +176,27 @@ describe('CommandPalette (cmdk adapter)', () => {
   it('uses default placeholder when not specified', () => {
     renderPalette()
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeTruthy()
+  })
+
+  it('Cmd+K opens the dialog via useCommandPaletteShortcut (shared state)', () => {
+    function AppWithShortcut() {
+      useCommandPaletteShortcut('k')
+      return <CommandPalette dialog placeholder="Search here" />
+    }
+    render(
+      <CommandEngineProvider>
+        <RegisterCommands commands={[{ id: 'a', label: 'Alpha', href: '/a' }]} />
+        <AppWithShortcut />
+      </CommandEngineProvider>,
+    )
+    // Dialog is closed initially — its input is not mounted.
+    expect(screen.queryByPlaceholderText('Search here')).toBeNull()
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+    })
+
+    // The shortcut hook and the rendered dialog share isOpen → it opens.
+    expect(screen.getByPlaceholderText('Search here')).toBeTruthy()
   })
 })

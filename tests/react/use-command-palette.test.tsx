@@ -57,6 +57,34 @@ describe('useCommandPalette · select()', () => {
     expect(result.current.history.getRecent().map((e) => e.query)).toContain('alp')
   })
 
+  it('shares open + search state across every consumer under one provider', () => {
+    // Previously each useCommandPalette() owned its own state, so a Cmd+K
+    // shortcut hook and the rendered palette never synced (broken quickstart).
+    const { result } = renderHook(
+      () => ({ a: useCommandPalette(), b: useCommandPalette() }),
+      { wrapper: wrapperWith({}) },
+    )
+    expect(result.current.a.isOpen).toBe(false)
+    expect(result.current.b.isOpen).toBe(false)
+
+    act(() => result.current.a.toggle())
+    expect(result.current.a.isOpen).toBe(true)
+    expect(result.current.b.isOpen).toBe(true)
+
+    act(() => result.current.b.setSearch('hello'))
+    expect(result.current.a.search).toBe('hello')
+
+    act(() => result.current.a.close())
+    expect(result.current.b.isOpen).toBe(false)
+    expect(result.current.b.search).toBe('')
+  })
+
+  it('throws a helpful error when used outside a provider', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(() => renderHook(() => useCommandPalette())).toThrow(/CommandEngineProvider/)
+    spy.mockRestore()
+  })
+
   it('drills into children instead of executing the parent', () => {
     const action = vi.fn()
     const { result } = renderHook(() => useCommandPalette(), { wrapper: wrapperWith({}) })

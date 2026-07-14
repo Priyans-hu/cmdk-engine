@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
-import { useEngineContext } from './context'
+import { useEngineContext, usePaletteState } from './context'
 
 /** Options for a single `select()` call */
 export interface SelectOptions {
@@ -51,9 +51,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     groupManager, contextEngine, searchHistory, t, config,
   } = useEngineContext()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isOpen, setIsOpen] = useState(false)
-  const [activePath, setActivePath] = useState<CommandItem[]>([])
+  // Shared across all consumers under the same provider (see context.tsx).
+  const {
+    isOpen, setIsOpen,
+    search: searchQuery, setSearch: setSearchQuery,
+    activePath, setActivePath,
+  } = usePaletteState()
 
   // Subscribe to registry changes
   const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
@@ -147,38 +150,37 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return groupedResults.map((g) => g.group)
   }, [groupedResults])
 
-  const open = useCallback(() => setIsOpen(true), [])
+  const open = useCallback(() => setIsOpen(true), [setIsOpen])
   const close = useCallback(() => {
     setIsOpen(false)
     setSearchQuery('')
     setActivePath([])
-  }, [])
+  }, [setIsOpen, setSearchQuery, setActivePath])
   const toggle = useCallback(() => {
-    setIsOpen((prev) => {
-      if (prev) {
-        setSearchQuery('')
-        setActivePath([])
-      }
-      return !prev
-    })
-  }, [])
+    // Clear query/path when closing; keep setState updaters side-effect free.
+    if (isOpen) {
+      setSearchQuery('')
+      setActivePath([])
+    }
+    setIsOpen((prev) => !prev)
+  }, [isOpen, setIsOpen, setSearchQuery, setActivePath])
 
   // Nested navigation
   const drillDown = useCallback((item: CommandItem) => {
     if (!item.children?.length) return
     setActivePath((prev) => [...prev, item])
     setSearchQuery('')
-  }, [])
+  }, [setActivePath, setSearchQuery])
 
   const drillUp = useCallback(() => {
     setActivePath((prev) => prev.slice(0, -1))
     setSearchQuery('')
-  }, [])
+  }, [setActivePath, setSearchQuery])
 
   const resetPath = useCallback(() => {
     setActivePath([])
     setSearchQuery('')
-  }, [])
+  }, [setActivePath, setSearchQuery])
 
   const recordUsage = useCallback(
     (commandId: string) => {
