@@ -54,7 +54,7 @@ Look for issues labeled:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (matches `engines` in package.json and CI)
 - [Bun](https://bun.sh) (recommended) or npm/pnpm
 
 ### Setup
