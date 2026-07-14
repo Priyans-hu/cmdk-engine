@@ -12,30 +12,38 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  */
 export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEngine {
   // Lazy import to avoid bundling match-sorter in core
-  type MatchSorterFn = <T>(items: T[], value: string, options?: { keys?: string[] }) => T[]
+  type MatchSorterFn = <T>(
+    items: T[],
+    value: string,
+    options?: { keys?: string[]; threshold?: number },
+  ) => T[]
   let matchSorterFn: MatchSorterFn | null = null
 
   async function loadMatchSorter() {
     if (!matchSorterFn) {
       const mod = await import('match-sorter')
-      matchSorterFn = mod.matchSorter
+      // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
+      // plain number (Ranking values are numeric), so bridge at this boundary.
+      matchSorterFn = mod.matchSorter as unknown as MatchSorterFn
     }
     return matchSorterFn
   }
 
-  // Pre-load on creation
-  const ready = loadMatchSorter()
+  // Pre-load on creation so match-sorter is ready before the first search.
+  void loadMatchSorter()
 
   return {
     search(query: string, items: CommandItem[]): ScoredItem[] {
-      const visible = items.filter((item) => !item.hidden)
-
       if (!query || query.trim() === '') {
-        return visible
+        // Empty query = browse list: exclude hidden items.
+        return items
+          .filter((item) => !item.hidden)
           .map((item) => ({ item, score: 1 }))
           .sort((a, b) => (b.item.priority ?? 0) - (a.item.priority ?? 0))
       }
 
+      // With a non-empty query, hidden items stay searchable (searchable but
+      // not browsable) — matching createFuzzySearch()'s documented contract.
       if (!matchSorterFn) {
         // Fallback: if match-sorter hasn't loaded yet, basic ranked filter.
         // Differentiate scores so the first paint is at least roughly ordered:
@@ -45,7 +53,7 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
         //   keyword substring     → 0.5
         const q = query.toLowerCase()
         const ranked: ScoredItem[] = []
-        for (const item of visible) {
+        for (const item of items) {
           const label = item.label.toLowerCase()
           let score = 0
           if (label === q) score = 1
@@ -69,7 +77,7 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
         ...(options?.keys ?? []),
       ]
 
-      const matched = matchSorterFn(visible, query, { keys })
+      const matched = matchSorterFn(items, query, { keys, threshold: options?.threshold })
 
       // Convert to scored items (position-based scoring)
       return matched.map((item, index) => ({
@@ -78,9 +86,6 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
       }))
     },
   }
-
-  // Trigger eager load
-  void ready
 }
 
 export interface MatchSorterOptions {
