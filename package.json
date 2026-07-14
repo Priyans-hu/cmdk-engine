@@ -6,7 +6,11 @@
   "author": "Priyanshu <gargpriyanshu2004@gmail.com> (https://github.com/Priyans-hu)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Priyans-hu/cmdk-engine.git"
+    "url": "git+https://github.com/Priyans-hu/cmdk-engine.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://priyans-hu.github.io/cmdk-engine",
   "bugs": {
@@ -44,34 +48,76 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs"
+      "import": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
+      },
+      "require": {
+        "types": "./dist/core/index.d.cts",
+        "default": "./dist/core/index.cjs"
+      }
     },
     "./react": {
-      "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.js",
-      "require": "./dist/react/index.cjs"
+      "import": {
+        "types": "./dist/react/index.d.ts",
+        "default": "./dist/react/index.js"
+      },
+      "require": {
+        "types": "./dist/react/index.d.cts",
+        "default": "./dist/react/index.cjs"
+      }
     },
     "./adapters/cmdk": {
-      "types": "./dist/adapters/cmdk/index.d.ts",
-      "import": "./dist/adapters/cmdk/index.js",
-      "require": "./dist/adapters/cmdk/index.cjs"
+      "import": {
+        "types": "./dist/adapters/cmdk/index.d.ts",
+        "default": "./dist/adapters/cmdk/index.js"
+      },
+      "require": {
+        "types": "./dist/adapters/cmdk/index.d.cts",
+        "default": "./dist/adapters/cmdk/index.cjs"
+      }
     },
     "./adapters/react-router": {
-      "types": "./dist/adapters/react-router/index.d.ts",
-      "import": "./dist/adapters/react-router/index.js",
-      "require": "./dist/adapters/react-router/index.cjs"
+      "import": {
+        "types": "./dist/adapters/react-router/index.d.ts",
+        "default": "./dist/adapters/react-router/index.js"
+      },
+      "require": {
+        "types": "./dist/adapters/react-router/index.d.cts",
+        "default": "./dist/adapters/react-router/index.cjs"
+      }
     },
     "./search/match-sorter": {
-      "types": "./dist/core/search-match-sorter.d.ts",
-      "import": "./dist/core/search-match-sorter.js",
-      "require": "./dist/core/search-match-sorter.cjs"
-    }
+      "import": {
+        "types": "./dist/core/search-match-sorter.d.ts",
+        "default": "./dist/core/search-match-sorter.js"
+      },
+      "require": {
+        "types": "./dist/core/search-match-sorter.d.cts",
+        "default": "./dist/core/search-match-sorter.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "main": "./dist/core/index.cjs",
   "module": "./dist/core/index.js",
   "types": "./dist/core/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/react/index.d.ts"
+      ],
+      "adapters/cmdk": [
+        "./dist/adapters/cmdk/index.d.ts"
+      ],
+      "adapters/react-router": [
+        "./dist/adapters/react-router/index.d.ts"
+      ],
+      "search/match-sorter": [
+        "./dist/core/search-match-sorter.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist",
     "README.md",
@@ -95,14 +141,30 @@
     "size": "size-limit"
   },
   "peerDependencies": {
+    "cmdk": "^1.0.0",
+    "match-sorter": "^7.0.0 || ^8.0.0",
     "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-router": "^6.0.0 || ^7.0.0",
+    "react-router-dom": "^6.0.0 || ^7.0.0"
   },
   "peerDependenciesMeta": {
+    "cmdk": {
+      "optional": true
+    },
+    "match-sorter": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "react-router": {
+      "optional": true
+    },
+    "react-router-dom": {
       "optional": true
     }
   },
