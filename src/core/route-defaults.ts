@@ -33,6 +33,9 @@ export const DEFAULT_EXCLUDE: ExcludePattern[] = [
  */
 export function matchesExcludePattern(path: string, pattern: ExcludePattern): boolean {
   if (pattern instanceof RegExp) {
+    // Reset lastIndex so a consumer-supplied /g or /y regex can't carry state
+    // across calls and produce intermittent false negatives.
+    pattern.lastIndex = 0
     return pattern.test(path)
   }
   // Exact match for standalone '*' (React Router catch-all segment)

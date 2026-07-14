@@ -103,4 +103,11 @@ describe('createContextEngine', () => {
     const result = engine.boost(items, { path: '/settings/profile' })
     expect(result[0].score).toBe(0.5)
   })
+
+  it("boosts a command scoped to root '/' on any path", () => {
+    const engine = createContextEngine(0.2)
+    const items = [scored({ id: 'a', scope: ['/'] }, 0.5)]
+    expect(engine.boost(items, { path: '/' })[0].score).toBeCloseTo(0.7)
+    expect(engine.boost(items, { path: '/billing/overview' })[0].score).toBeCloseTo(0.7)
+  })
 })

@@ -50,7 +50,7 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
     /** Get recent search queries, sorted by timestamp descending. */
     getRecent(count?: number): SearchHistoryEntry[] {
       const entries = load()
-      return count ? entries.slice(0, count) : entries
+      return count !== undefined ? entries.slice(0, count) : entries
     },
 
     /** Remove a specific search query from history. */
@@ -88,7 +88,7 @@ export function createInMemorySearchHistory(config: SearchHistoryConfig = {}) {
     },
 
     getRecent(count?: number): SearchHistoryEntry[] {
-      return count ? entries.slice(0, count) : [...entries]
+      return count !== undefined ? entries.slice(0, count) : [...entries]
     },
 
     remove(query: string): void {

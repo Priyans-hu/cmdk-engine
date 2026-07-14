@@ -64,8 +64,8 @@ export interface CommandRegistry {
   register(command: CommandItem): () => void
   /** Register multiple commands. Returns an unregister function for all. */
   registerMany(commands: CommandItem[]): () => void
-  /** Update a command by ID with partial fields */
-  update(id: string, partial: Partial<CommandItem>): void
+  /** Update a command by ID with partial fields (the `id` itself is immutable) */
+  update(id: string, partial: Partial<Omit<CommandItem, 'id'>>): void
   /** Remove a command by ID */
   unregister(id: string): void
   /** Get all registered commands */

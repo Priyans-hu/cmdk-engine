@@ -200,4 +200,12 @@ describe('createGroupManager', () => {
       expect(gm.extractGroups(commands)).toEqual([])
     })
   })
+
+  describe('destructured usage', () => {
+    it('groupResults works when pulled off the returned object (no `this`)', () => {
+      const { groupResults } = createGroupManager([{ id: 'nav', label: 'Navigation' }])
+      const out = groupResults([scored({ id: 'a', label: 'A', group: 'nav' }, 1)], '')
+      expect(out.map((g) => g.group.id)).toContain('nav')
+    })
+  })
 })

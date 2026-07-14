@@ -49,10 +49,11 @@ export function createRegistry(): CommandRegistry {
     }
   }
 
-  function update(id: string, partial: Partial<CommandItem>): void {
+  function update(id: string, partial: Partial<Omit<CommandItem, 'id'>>): void {
     const existing = commands.get(id)
     if (!existing) return
-    commands.set(id, { ...existing, ...partial })
+    // Keep the map key and the item's own id in sync — never let `id` drift.
+    commands.set(id, { ...existing, ...partial, id })
     invalidateSnapshot()
   }
 

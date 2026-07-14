@@ -68,6 +68,8 @@ function matchPath(pattern: string, path: string): boolean {
     return path.startsWith(prefix + '/') && path !== prefix
   }
 
-  // Exact or prefix match
-  return path === pattern || path.startsWith(pattern + '/')
+  // Exact or prefix match. The root pattern '/' is a prefix of every path
+  // (avoids the '//' double-slash that would otherwise match nothing).
+  const prefix = pattern === '/' ? '' : pattern
+  return path === pattern || path.startsWith(prefix + '/')
 }

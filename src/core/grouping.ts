@@ -10,6 +10,12 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
     groups.set(group.id, group)
   }
 
+  // Local, `this`-free implementation so `const { groupResults } = createGroupManager()`
+  // keeps working when the returned object is destructured.
+  function allDefinedGroups(): CommandGroup[] {
+    return Array.from(groups.values()).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+  }
+
   return {
     /** Add or update a group definition */
     addGroup(group: CommandGroup): void {
@@ -28,9 +34,7 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
 
     /** Get all defined groups sorted by priority (higher first) */
     getAllGroups(): CommandGroup[] {
-      return Array.from(groups.values()).sort(
-        (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
-      )
+      return allDefinedGroups()
     },
 
     /**
@@ -59,7 +63,7 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
 
       // Collect all group entries
       const allEntries: GroupedResult[] = []
-      const definedGroups = this.getAllGroups()
+      const definedGroups = allDefinedGroups()
       const usedGroupIds = new Set<string>()
 
       for (const group of definedGroups) {
@@ -84,7 +88,7 @@ export function createGroupManager(initialGroups: CommandGroup[] = []) {
         allEntries.sort((a, b) => b.items[0].score - a.items[0].score)
       }
 
-      // Add ungrouped items last
+      // Ungrouped ("Other") items always render last, by documented contract.
       const ungrouped = grouped.get('__ungrouped__')
       if (ungrouped && ungrouped.length > 0) {
         allEntries.push({

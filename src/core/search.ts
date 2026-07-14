@@ -34,10 +34,14 @@ export function createFuzzySearch(): SearchEngine {
         }
       }
 
-      // Sort by score descending, then by priority descending
+      // Sort by score descending, then by priority descending.
+      // Scores are rounded to a fixed grid first so "approximately equal"
+      // is a transitive relation (an epsilon compare is not, and can produce
+      // inconsistent orderings under TimSort).
       results.sort((a, b) => {
-        const scoreDiff = b.score - a.score
-        if (Math.abs(scoreDiff) > 0.001) return scoreDiff
+        const aScore = Math.round(a.score * 1000)
+        const bScore = Math.round(b.score * 1000)
+        if (aScore !== bScore) return bScore - aScore
         return (b.item.priority ?? 0) - (a.item.priority ?? 0)
       })
 

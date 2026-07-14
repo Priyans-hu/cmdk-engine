@@ -42,7 +42,9 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
    * Calculate the decayed score for an entry at a given time.
    */
   function calculateScore(entry: FrecencyEntry, now: number): number {
-    const daysSinceUse = (now - entry.lastUsed) / MS_PER_DAY
+    // Clamp to 0 so a future-dated lastUsed (clock skew, edited storage)
+    // can't inflate the score via a negative exponent.
+    const daysSinceUse = Math.max(0, (now - entry.lastUsed) / MS_PER_DAY)
     return entry.count * Math.pow(2, -daysSinceUse / halfLife)
   }
 
@@ -65,6 +67,8 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
    */
   function rank(items: ScoredItem[], frecencyWeight = 0.3): ScoredItem[] {
     const now = Date.now()
+    // Keep the blended score within the documented [0,1] contract.
+    const weight = Math.min(Math.max(frecencyWeight, 0), 1)
 
     // Get max frecency score for normalization
     let maxFrecency = 0
@@ -85,8 +89,10 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
         const rawFrecency = frecencyScores.get(item.id) ?? 0
         const normalizedFrecency = maxFrecency > 0 ? rawFrecency / maxFrecency : 0
 
-        const blendedScore =
-          score * (1 - frecencyWeight) + normalizedFrecency * frecencyWeight
+        const blendedScore = Math.min(
+          score * (1 - weight) + normalizedFrecency * weight,
+          1,
+        )
 
         return { item, score: blendedScore }
       })

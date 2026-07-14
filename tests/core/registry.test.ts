@@ -187,4 +187,14 @@ describe('createRegistry', () => {
     // Registry should still have the original
     expect(registry.getById('cmd-1')?.label).toBe('Original')
   })
+
+  it('update() never lets the id drift from the map key', () => {
+    const registry = createRegistry()
+    registry.register(makeCommand({ id: 'a', label: 'A' }))
+    // Cast around the compile-time Omit guard to prove the runtime is safe too.
+    registry.update('a', { label: 'A2', ...({ id: 'b' } as object) })
+    expect(registry.getById('a')?.label).toBe('A2')
+    expect(registry.getById('a')?.id).toBe('a')
+    expect(registry.getById('b')).toBeUndefined()
+  })
 })

@@ -28,6 +28,8 @@ export function createBatchScheduler(): (fn: () => void) => void {
 export function pathSegmentToLabel(segment: string): string {
   return (
     segment
+      // Split acronym boundaries first: "APIKeys" -> "API Keys"
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
       // Insert space before uppercase letters in camelCase/PascalCase
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       // Replace hyphens and underscores with spaces
@@ -40,9 +42,9 @@ export function pathSegmentToLabel(segment: string): string {
 
 /**
  * Convert a full path to a readable label.
- * Uses the last meaningful segment.
+ * Uses the last meaningful (non-dynamic) segment.
  *
- * "/billing/overview" -> "Billing Overview"
+ * "/billing/overview" -> "Overview"
  * "/settings" -> "Settings"
  * "/" -> "Home"
  */

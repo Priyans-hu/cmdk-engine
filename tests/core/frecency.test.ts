@@ -162,4 +162,27 @@ describe('createInMemoryStorage', () => {
     storage.clear()
     expect(storage.getAll()).toHaveLength(0)
   })
+
+  it('does not inflate the score for a future-dated lastUsed', () => {
+    const storage = createInMemoryStorage()
+    // lastUsed 30 days in the future (clock skew / edited storage)
+    storage.set('a', {
+      id: 'a',
+      count: 1,
+      lastUsed: Date.now() + 30 * 86_400_000,
+      halfLifeScore: 0,
+    })
+    const engine = createFrecencyEngine({ storage })
+    // Clamped to "used now" → score ≈ count (1), never > count.
+    expect(engine.getScore('a')).toBeLessThanOrEqual(1)
+    expect(engine.getScore('a')).toBeGreaterThan(0)
+  })
+
+  it('keeps the blended score within [0,1] even with an out-of-range weight', () => {
+    const storage = createInMemoryStorage()
+    const engine = createFrecencyEngine({ storage })
+    engine.recordUsage('a')
+    const ranked = engine.rank([{ item: cmd('a'), score: 1 }], 5)
+    expect(ranked[0].score).toBeLessThanOrEqual(1)
+  })
 })

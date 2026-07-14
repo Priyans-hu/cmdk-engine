@@ -101,4 +101,13 @@ describe('createSearchHistory (in-memory)', () => {
     expect(history.getRecent()).toHaveLength(1)
     expect(history.getRecent()[0].query).toBe('ab')
   })
+
+  it('getRecent(0) returns no entries (not all of them)', () => {
+    const h = createInMemorySearchHistory()
+    h.record('alpha', 1)
+    h.record('bravo', 1)
+    expect(h.getRecent(0)).toHaveLength(0)
+    expect(h.getRecent()).toHaveLength(2)
+    expect(h.getRecent(1)).toHaveLength(1)
+  })
 })
