@@ -341,6 +341,12 @@ export interface CommandEngineConfig {
   maxResults?: number
   /** Centralized handler when a command is selected. Auto-records frecency. */
   onSelect?: (item: CommandItem) => void
+  /**
+   * Navigation handler for commands that only specify an `href` (no `action`
+   * or `onSelect`). Use your router here (e.g. `navigate(href)`) to avoid a
+   * full-page reload. Falls back to `window.location.href` when unset.
+   */
+  onNavigate?: (href: string, item: CommandItem) => void
   /** Current context for scope-aware command boosting */
   context?: CommandContext
   /** Boost weight for in-scope commands (0-1, default: 0.2) */

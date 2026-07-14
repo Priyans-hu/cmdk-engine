@@ -140,12 +140,10 @@ export function CommandPalette({
   footer,
 }: CommandPaletteProps) {
   const {
-    search, setSearch, results, isOpen, close, recordUsage, isLoading,
+    search, setSearch, results, isOpen, close, isLoading,
     breadcrumbs, depth, drillUp, select,
   } = useCommandPalette()
   const { groupManager, t } = useEngineContext()
-
-  const { onSelect: configOnSelect } = useEngineContext().config
 
   // Use i18n for defaults
   const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
@@ -157,29 +155,12 @@ export function CommandPalette({
     (value: string) => {
       const scored = results.find((r) => r.item.id === value)
       if (!scored) return
-      const item = scored.item
-
-      // If item has children, drill down
-      if (item.children && item.children.length > 0) {
-        select(item) // select() handles drillDown internally
-        return
-      }
-
-      recordUsage(item.id)
-
-      if (onSelect) {
-        onSelect(item)
-      } else if (configOnSelect) {
-        configOnSelect(item)
-      } else if (item.action) {
-        item.action(item)
-      } else if (item.href) {
-        window.location.href = item.href
-      }
-
-      close()
+      // Delegate to the hook's select(): it drills into children, records
+      // frecency + search history, applies onSelect/action/onNavigate/href,
+      // and closes. The component-level onSelect prop takes priority.
+      select(scored.item, { onSelect })
     },
-    [results, recordUsage, onSelect, configOnSelect, close, select],
+    [results, select, onSelect],
   )
 
   // Handle backspace for nested navigation

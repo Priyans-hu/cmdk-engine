@@ -4,6 +4,12 @@ import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext } from './context'
 
+/** Options for a single `select()` call */
+export interface SelectOptions {
+  /** Per-call handler that takes priority over the provider-level `onSelect` */
+  onSelect?: (item: CommandItem) => void
+}
+
 export interface UseCommandPaletteReturn extends CommandPaletteState {
   /** Set the search query */
   setSearch: (query: string) => void
@@ -15,8 +21,12 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   toggle: () => void
   /** Record that a command was selected (for frecency) */
   recordUsage: (commandId: string) => void
-  /** Select a command — records frecency, runs onSelect/action/href, closes palette */
-  select: (itemOrId: CommandItem | string) => void
+  /**
+   * Select a command — records frecency + search history, runs
+   * onSelect/action/href, closes palette. An optional per-call `onSelect`
+   * takes priority over the provider-level `onSelect`.
+   */
+  select: (itemOrId: CommandItem | string, options?: SelectOptions) => void
   /** Flat list of all result items (ungrouped) */
   flatResults: ScoredItem[]
   /** Results grouped by group, sorted by group priority (or relevance during search) */
@@ -178,7 +188,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   )
 
   const select = useCallback(
-    (itemOrId: CommandItem | string) => {
+    (itemOrId: CommandItem | string, options?: SelectOptions) => {
       const item =
         typeof itemOrId === 'string'
           ? limitedResults.find((r) => r.item.id === itemOrId)?.item
@@ -198,12 +208,18 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         searchHistory.record(searchQuery, limitedResults.length)
       }
 
-      if (config.onSelect) {
-        config.onSelect(item)
+      // Precedence: per-call onSelect → provider onSelect → action → href
+      const handler = options?.onSelect ?? config.onSelect
+      if (handler) {
+        handler(item)
       } else if (item.action) {
         item.action(item)
       } else if (item.href) {
-        window.location.href = item.href
+        if (config.onNavigate) {
+          config.onNavigate(item.href, item)
+        } else if (typeof window !== 'undefined') {
+          window.location.href = item.href
+        }
       }
 
       close()
