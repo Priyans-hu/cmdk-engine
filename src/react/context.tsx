@@ -5,6 +5,7 @@ import { createFuzzySearch } from '../core/search'
 import { createKeywordEngine } from '../core/keywords'
 import { createAccessFilter } from '../core/access-control'
 import { createFrecencyEngine } from '../core/frecency'
+import { createLocalStorageFrecencyStorage } from '../core/frecency-storage'
 import { createGroupManager } from '../core/grouping'
 import { createContextEngine } from '../core/context'
 import { createDefaultTranslation } from '../core/i18n'
@@ -79,7 +80,17 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       accessFilter: config.accessControl
         ? createAccessFilter(config.accessControl, config.accessCheckMode)
         : null,
-      frecency: createFrecencyEngine(config.frecency),
+      // Default to localStorage persistence (SSR-safe: the storage no-ops when
+      // window/localStorage is unavailable) so frecency survives reloads, as
+      // documented. Consumers can still pass their own `frecency.storage`.
+      frecency: createFrecencyEngine(
+        config.frecency?.storage
+          ? config.frecency
+          : {
+              ...config.frecency,
+              storage: createLocalStorageFrecencyStorage(config.frecency?.storageKey),
+            },
+      ),
       groupManager: createGroupManager(config.groups),
       contextEngine: createContextEngine(config.contextBoostWeight),
       t: config.t ?? createDefaultTranslation(),

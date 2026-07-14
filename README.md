@@ -48,7 +48,11 @@ pnpm add cmdk-engine cmdk
 yarn add cmdk-engine cmdk
 ```
 
-> `cmdk` and `react` are peer dependencies.
+> **Peer dependencies (all optional — install only what you use):** `react`,
+> `react-dom`, `cmdk` (for the cmdk adapter), `match-sorter` (for the
+> match-sorter search backend), and `react-router` / `react-router-dom` (for
+> the React Router adapter). The core engine (`cmdk-engine`) has zero runtime
+> dependencies.
 
 ---
 
@@ -129,6 +133,20 @@ Or use `config.onSelect` on the provider to handle all selections in one place:
 >
 ```
 
+### SPA navigation with `onNavigate`
+
+If your commands mostly just navigate (`href`), skip the `onSelect` boilerplate
+and pass `onNavigate` — it's called for any `href`-only command so you can route
+without a full-page reload. `action` and `onSelect` still take priority; only
+plain `href` commands fall through to `onNavigate` (and to `window.location`
+when it's unset):
+
+```tsx
+const navigate = useNavigate() // react-router
+
+<CommandEngineProvider config={{ onNavigate: (href) => navigate(href) }}>
+```
+
 ### 4. Or build your own UI with hooks
 
 ```tsx
@@ -156,7 +174,8 @@ function CustomCommandMenu() {
 }
 ```
 
-> `select()` records frecency, runs `onSelect`/`action`/`href`, and closes the palette — all in one call.
+> `select()` records frecency + search history, runs `onSelect` → `action` →
+> `onNavigate`/`href`, and closes the palette — all in one call.
 
 ---
 
@@ -235,6 +254,41 @@ import { createSimpleAccessProvider } from 'cmdk-engine'
 ```
 
 Commands with `permissions: ['admin.view']` will only show for users who have that permission.
+
+### Per-command access mode
+
+`accessCheckMode` is the engine-wide default, but any command can override it —
+useful when most commands need *any* of their permissions but a few sensitive
+ones need *all*:
+
+```tsx
+useCommandRegister([
+  // Uses the engine default ('any')
+  { id: 'reports', label: 'Reports', permissions: ['reports.view', 'admin'] },
+  // Overrides to require ALL permissions for this one command
+  { id: 'delete-org', label: 'Delete Org', permissions: ['org.admin', 'billing.owner'], accessMode: 'all' },
+])
+```
+
+### Dynamic visibility (`when`)
+
+Static `permissions` cover role-based access. For everything else — feature
+flags, plan tiers, org type, A/B gates — use `when`. A command whose `when`
+resolves to `false` is removed entirely (not searchable, not browsable):
+
+```tsx
+useCommandRegister([
+  { id: 'beta-tool', label: 'Beta Tool', when: () => flags.betaEnabled },
+  { id: 'enterprise', label: 'SSO Settings', when: () => org.plan === 'enterprise' },
+], [flags.betaEnabled, org.plan])
+```
+
+> `permissions` (+ `accessMode`) and `when` compose: a command must pass both.
+> `hidden: true` is different again — it keeps a command out of the empty-query
+> browse list but still lets a matching query find it.
+
+> **Note:** access filtering is a UI concern, not a security boundary. Always
+> enforce permissions server-side.
 
 ---
 

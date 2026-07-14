@@ -4,6 +4,7 @@ import { renderHook, act } from '@testing-library/react'
 import { CommandEngineProvider } from '../../src/react/context'
 import { useCommandPalette } from '../../src/react/use-command-palette'
 import { useSearchHistory } from '../../src/react/use-search-history'
+import { useFrecency } from '../../src/react/use-frecency'
 import type { CommandEngineConfig, CommandItem } from '../../src/core/types'
 
 function wrapperWith(config: CommandEngineConfig = {}) {
@@ -77,6 +78,13 @@ describe('useCommandPalette · select()', () => {
     act(() => result.current.a.close())
     expect(result.current.b.isOpen).toBe(false)
     expect(result.current.b.search).toBe('')
+  })
+
+  it('persists frecency to localStorage by default', () => {
+    localStorage.removeItem('cmdk-frecency')
+    const { result } = renderHook(() => useFrecency(), { wrapper: wrapperWith({}) })
+    act(() => result.current.recordUsage('persist-me'))
+    expect(localStorage.getItem('cmdk-frecency')).toContain('persist-me')
   })
 
   it('throws a helpful error when used outside a provider', () => {
