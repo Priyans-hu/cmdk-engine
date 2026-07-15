@@ -3,11 +3,17 @@ import type { Sitemap, SitemapRoute } from '../../core/types'
 /**
  * Generate a sitemap object from discovered routes.
  */
-export function generateSitemap(routes: SitemapRoute[], framework: string): Sitemap {
+export function generateSitemap(
+  routes: SitemapRoute[],
+  framework: string,
+  generatedAt: string = new Date().toISOString(),
+): Sitemap {
   return {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     framework,
-    routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
+    // Non-mutating, locale-independent (ordinal) sort so generated output is
+    // byte-identical across machines/CI regardless of the system locale.
+    routes: [...routes].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)),
   }
 }

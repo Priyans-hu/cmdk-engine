@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { ExcludePattern } from './route-defaults'
 
 // ============================================================
 // Command Definition
@@ -218,8 +219,8 @@ export interface CmdkEngineConfig {
   output?: string
   /** Custom keyword/metadata overrides per route path */
   overrides?: Record<string, Partial<RouteCommandMeta>>
-  /** Route paths/patterns to exclude */
-  exclude?: string[]
+  /** Route paths/patterns to exclude (exact string, glob with `*`, or RegExp) */
+  exclude?: ExcludePattern[]
   /** Synonym dictionary */
   synonyms?: SynonymMap
 }

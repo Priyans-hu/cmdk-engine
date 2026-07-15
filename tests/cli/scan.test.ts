@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { scanCommand } from '../../src/cli/commands/scan'
 import { scanReactRouterFiles } from '../../src/cli/scanners/react-router'
 import { scanNextJsAppDir } from '../../src/cli/scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../../src/cli/scanners/nextjs-pages'
@@ -391,6 +392,27 @@ describe('applyDefaultExclusions', () => {
 
   it('handles empty input', () => {
     expect(applyDefaultExclusions([])).toEqual([])
+  })
+})
+
+describe('scan command (integration)', () => {
+  it('writes a sitemap for discovered routes via parseAsync', async () => {
+    const routesDir = join(TEMP_DIR, 'routes')
+    mkdirSync(routesDir, { recursive: true })
+    writeFileSync(join(routesDir, 'r.tsx'), `export const routes = [{ path: '/dashboard' }]`)
+    const out = join(TEMP_DIR, 'out.json')
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    await scanCommand.parseAsync(
+      ['--framework', 'react-router', '--routes-dir', routesDir, '--output', out],
+      { from: 'user' },
+    )
+    logSpy.mockRestore()
+
+    const sitemap = JSON.parse(readFileSync(out, 'utf-8'))
+    expect(sitemap.framework).toBe('react-router')
+    expect(sitemap.routes.map((r: { path: string }) => r.path)).toContain('/dashboard')
+    expect(existsSync(out)).toBe(true)
   })
 })
 

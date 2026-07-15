@@ -1,13 +1,13 @@
 import { Command } from 'commander'
 import { resolve, dirname } from 'node:path'
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { loadConfig } from '../config-loader'
 import { scanReactRouterFiles } from '../scanners/react-router'
 import { scanNextJsAppDir } from '../scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../scanners/nextjs-pages'
 import { generateSitemap } from '../generators/sitemap'
-import type { CmdkEngineConfig, SitemapRoute } from '../../core/types'
-import { DEFAULT_EXCLUDE, matchesExcludePattern } from '../../core/route-defaults'
+import type { CmdkEngineConfig, Sitemap, SitemapRoute } from '../../core/types'
+import { DEFAULT_EXCLUDE, matchesExcludePattern, type ExcludePattern } from '../../core/route-defaults'
 
 export const scanCommand = new Command('scan')
   .description('Scan project routes and generate a command sitemap')
@@ -16,16 +16,39 @@ export const scanCommand = new Command('scan')
   .option('-f, --format <format>', 'Output format: json or ts', 'json')
   .option('--framework <framework>', 'Framework: react-router, nextjs-app, nextjs-pages')
   .option('--routes-dir <dir>', 'Directory to scan for routes')
+  .option('--allow-empty', 'Write output even when no routes are found')
   .option(
     '--no-default-exclude',
     'Skip the default exclusion list (auth/error routes like /login, /signup, /404 are normally excluded)',
   )
-  .action(async (options) => {
+  .action(async (options, command: Command) => {
     try {
+      // Validate --format up front so a typo doesn't silently produce JSON.
+      if (options.format !== 'json' && options.format !== 'ts') {
+        console.error(`Invalid --format "${options.format}". Use "json" or "ts".`)
+        process.exit(1)
+      }
+
+      // An explicitly-passed --config must exist (a typo shouldn't silently
+      // fall back to full auto-detection).
+      if (
+        command.getOptionValueSource('config') === 'cli' &&
+        !existsSync(resolve(options.config))
+      ) {
+        console.error(`Config file not found: ${options.config}`)
+        process.exit(1)
+      }
+
       const config = await loadConfig(options.config)
       const framework = options.framework ?? config.framework ?? detectFramework()
       const routesDir = options.routesDir ?? config.routesDir ?? detectRoutesDir(framework)
       const outputPath = options.output ?? config.output ?? 'src/generated/command-routes.json'
+
+      const resolvedRoutesDir = resolve(routesDir)
+      if (!existsSync(resolvedRoutesDir)) {
+        console.error(`Routes directory not found: ${routesDir}`)
+        process.exit(1)
+      }
 
       console.log(`Scanning ${framework} routes in ${routesDir}...`)
 
@@ -33,16 +56,18 @@ export const scanCommand = new Command('scan')
 
       switch (framework) {
         case 'react-router':
-          routes = scanReactRouterFiles(resolve(routesDir))
+          routes = scanReactRouterFiles(resolvedRoutesDir)
           break
         case 'nextjs-app':
-          routes = scanNextJsAppDir(resolve(routesDir))
+          routes = scanNextJsAppDir(resolvedRoutesDir)
           break
         case 'nextjs-pages':
-          routes = scanNextJsPagesDir(resolve(routesDir))
+          routes = scanNextJsPagesDir(resolvedRoutesDir)
           break
         default:
-          console.error(`Unknown framework: ${framework}`)
+          console.error(
+            `Unknown framework: ${framework}. Use react-router, nextjs-app, or nextjs-pages.`,
+          )
           process.exit(1)
       }
 
@@ -52,8 +77,7 @@ export const scanCommand = new Command('scan')
       }
 
       // Apply default exclusions (auth/error routes) — matches the runtime
-      // adapter behavior so the README's "smart defaults" claim holds for
-      // the CLI scanner too. Opt out via --no-default-exclude.
+      // adapter behavior. Opt out via --no-default-exclude.
       if (options.defaultExclude !== false) {
         routes = applyDefaultExclusions(routes)
       }
@@ -63,19 +87,38 @@ export const scanCommand = new Command('scan')
         routes = applyExclusions(routes, config.exclude)
       }
 
-      const sitemap = generateSitemap(routes, framework)
+      // Refuse to silently overwrite good output with an empty sitemap (a
+      // mistyped --routes-dir/--framework is a common cause of 0 routes).
+      if (routes.length === 0 && !options.allowEmpty) {
+        console.error(
+          `No routes found in ${routesDir}. Check --framework / --routes-dir, ` +
+            `or pass --allow-empty to write an empty sitemap. Left ${outputPath} untouched.`,
+        )
+        process.exit(1)
+      }
 
-      // Ensure output directory exists
-      const outputDir = dirname(resolve(outputPath))
+      const targetPath = resolve(
+        options.format === 'ts' ? outputPath.replace(/\.json$/, '.ts') : outputPath,
+      )
+
+      // Reuse the previous timestamp when the routes are unchanged so committed
+      // output stays diff-clean (idempotent scans).
+      const generatedAt =
+        options.format === 'json'
+          ? reusePriorTimestamp(targetPath, routes, framework)
+          : new Date().toISOString()
+      const sitemap = generateSitemap(routes, framework, generatedAt)
+
+      const outputDir = dirname(targetPath)
       if (!existsSync(outputDir)) {
         mkdirSync(outputDir, { recursive: true })
       }
 
       if (options.format === 'ts') {
-        const tsOutput = `// Auto-generated by cmdk-engine scan\n// Do not edit manually\n\nimport type { Sitemap } from 'cmdk-engine'\n\nexport const commandRoutes: Sitemap = ${JSON.stringify(sitemap, null, 2)} as const\n`
-        writeFileSync(resolve(outputPath.replace(/\.json$/, '.ts')), tsOutput, 'utf-8')
+        const tsOutput = `// Auto-generated by cmdk-engine scan\n// Do not edit manually\n\nimport type { Sitemap } from 'cmdk-engine'\n\nexport const commandRoutes: Sitemap = ${JSON.stringify(sitemap, null, 2)}\n`
+        writeFileSync(targetPath, tsOutput, 'utf-8')
       } else {
-        writeFileSync(resolve(outputPath), JSON.stringify(sitemap, null, 2), 'utf-8')
+        writeFileSync(targetPath, JSON.stringify(sitemap, null, 2) + '\n', 'utf-8')
       }
 
       console.log(`Found ${routes.length} routes`)
@@ -86,8 +129,33 @@ export const scanCommand = new Command('scan')
     }
   })
 
+/** Reuse the prior output's timestamp when the route set is unchanged. */
+function reusePriorTimestamp(
+  targetPath: string,
+  routes: SitemapRoute[],
+  framework: string,
+): string {
+  try {
+    if (existsSync(targetPath)) {
+      const prev = JSON.parse(readFileSync(targetPath, 'utf-8')) as Sitemap
+      const nextRoutes = JSON.stringify(generateSitemap(routes, framework, '').routes)
+      if (JSON.stringify(prev.routes) === nextRoutes && typeof prev.generatedAt === 'string') {
+        return prev.generatedAt
+      }
+    }
+  } catch {
+    // Ignore malformed/absent prior output — fall through to a fresh timestamp.
+  }
+  return new Date().toISOString()
+}
+
 function detectFramework(): string {
-  if (existsSync('next.config.ts') || existsSync('next.config.js') || existsSync('next.config.mjs')) {
+  if (
+    existsSync('next.config.ts') ||
+    existsSync('next.config.js') ||
+    existsSync('next.config.mjs') ||
+    existsSync('next.config.cjs')
+  ) {
     // Check if using app router
     if (existsSync('app') || existsSync('src/app')) {
       return 'nextjs-app'
@@ -135,15 +203,14 @@ function applyOverrides(
   })
 }
 
-function applyExclusions(routes: SitemapRoute[], exclude: string[]): SitemapRoute[] {
-  return routes.filter((route) => {
-    return !exclude.some((pattern) => {
-      if (pattern.endsWith('*')) {
-        return route.path.startsWith(pattern.slice(0, -1))
-      }
-      return route.path === pattern
-    })
-  })
+/**
+ * Filter out routes matching user-supplied exclude patterns. Uses the shared
+ * matcher so globs boundary-check correctly (`/admin*` won't match
+ * `/administration`) and RegExp patterns are supported, matching the runtime
+ * React Router adapter.
+ */
+function applyExclusions(routes: SitemapRoute[], exclude: ExcludePattern[]): SitemapRoute[] {
+  return routes.filter((route) => !exclude.some((pattern) => matchesExcludePattern(route.path, pattern)))
 }
 
 /**

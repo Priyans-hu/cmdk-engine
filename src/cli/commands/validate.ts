@@ -19,17 +19,27 @@ export const validateCommand = new Command('validate')
       const config = await loadConfig(options.config)
       const errors: string[] = []
 
-      // Validate framework
-      const validFrameworks = ['react-router', 'nextjs-app', 'nextjs-pages', 'custom']
-      if (config.framework && !validFrameworks.includes(config.framework)) {
+      // Validate framework — only the scannable frameworks are accepted, so
+      // `validate` and `scan` agree (scan can't handle 'custom' yet).
+      const scannable = ['react-router', 'nextjs-app', 'nextjs-pages']
+      if (config.framework === 'custom') {
         errors.push(
-          `Invalid framework "${config.framework}". Must be one of: ${validFrameworks.join(', ')}`,
+          `framework "custom" is not supported by the CLI scanner yet. Use one of: ${scannable.join(', ')}`,
+        )
+      } else if (config.framework && !scannable.includes(config.framework)) {
+        errors.push(
+          `Invalid framework "${config.framework}". Must be one of: ${scannable.join(', ')}`,
         )
       }
 
-      // Validate routesDir exists
-      if (config.routesDir && !existsSync(resolve(config.routesDir))) {
+      // Validate routesDir / output are strings before using them as paths.
+      if (config.routesDir !== undefined && typeof config.routesDir !== 'string') {
+        errors.push('routesDir must be a string')
+      } else if (config.routesDir && !existsSync(resolve(config.routesDir))) {
         errors.push(`Routes directory not found: ${config.routesDir}`)
+      }
+      if (config.output !== undefined && typeof config.output !== 'string') {
+        errors.push('output must be a string')
       }
 
       // Validate overrides format

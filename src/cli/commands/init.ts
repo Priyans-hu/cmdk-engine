@@ -33,19 +33,25 @@ export default defineConfig({
 
 export const initCommand = new Command('init')
   .description('Create a cmdk-engine.config.ts file')
+  .option('-c, --config <path>', 'Config file path to create', 'cmdk-engine.config.ts')
   .option('-f, --force', 'Overwrite existing config file')
   .action((options) => {
-    const configPath = resolve('cmdk-engine.config.ts')
+    try {
+      const configPath = resolve(options.config)
 
-    if (existsSync(configPath) && !options.force) {
-      console.error('Config file already exists. Use --force to overwrite.')
+      if (existsSync(configPath) && !options.force) {
+        console.error(`Config file already exists: ${options.config}. Use --force to overwrite.`)
+        process.exit(1)
+      }
+
+      writeFileSync(configPath, CONFIG_TEMPLATE, 'utf-8')
+      console.log(`Created ${options.config}`)
+      console.log('')
+      console.log('Next steps:')
+      console.log('  1. Edit the config file to match your project')
+      console.log('  2. Run `npx cmdk-engine scan` to generate routes')
+    } catch (error) {
+      console.error('Init failed:', (error as Error).message)
       process.exit(1)
     }
-
-    writeFileSync(configPath, CONFIG_TEMPLATE, 'utf-8')
-    console.log('Created cmdk-engine.config.ts')
-    console.log('')
-    console.log('Next steps:')
-    console.log('  1. Edit the config file to match your project')
-    console.log('  2. Run `npx cmdk-engine scan` to generate routes')
   })
