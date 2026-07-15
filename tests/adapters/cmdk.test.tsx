@@ -178,6 +178,12 @@ describe('CommandPalette (cmdk adapter)', () => {
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeTruthy()
   })
 
+  it('marks decorative item icons as aria-hidden', () => {
+    renderPalette([{ id: 'a', label: 'Alpha', icon: '🔧' }])
+    const icon = document.querySelector('[data-cmdk-engine-icon]')
+    expect(icon?.getAttribute('aria-hidden')).toBe('true')
+  })
+
   it('Cmd+K opens the dialog via useCommandPaletteShortcut (shared state)', () => {
     function AppWithShortcut() {
       useCommandPaletteShortcut('k')

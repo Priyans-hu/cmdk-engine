@@ -2,9 +2,11 @@ import type { TranslationFn } from './types'
 
 /** Default English UI strings */
 const DEFAULT_STRINGS: Record<string, string> = {
+  'palette.label': 'Command palette',
   'palette.placeholder': 'Type a command or search...',
   'palette.empty': 'No results found.',
   'palette.loading': 'Loading...',
+  'breadcrumbs.back': 'Go back',
   'group.recent': 'Recent',
   'group.other': 'Other',
   'search.history': 'Recent Searches',

@@ -63,7 +63,7 @@ function DefaultItem({ item }: { item: CommandItem }) {
   const hasChildren = item.children && item.children.length > 0
   return (
     <div data-cmdk-engine-item="">
-      {item.icon && <span data-cmdk-engine-icon="">{item.icon}</span>}
+      {item.icon && <span data-cmdk-engine-icon="" aria-hidden="true">{item.icon}</span>}
       <div data-cmdk-engine-item-content="">
         <span data-cmdk-engine-item-label="">{item.label}</span>
         {item.description && (
@@ -86,15 +86,32 @@ function DefaultItem({ item }: { item: CommandItem }) {
   )
 }
 
-function DefaultBreadcrumbs({ crumbs, onBack }: { crumbs: CommandItem[]; onBack: () => void }) {
+function DefaultBreadcrumbs({
+  crumbs,
+  onBack,
+  backLabel,
+}: {
+  crumbs: CommandItem[]
+  onBack: () => void
+  backLabel: string
+}) {
   return (
     <div data-cmdk-engine-breadcrumbs="">
-      <button data-cmdk-engine-breadcrumb-back="" onClick={onBack} type="button">
+      <button
+        data-cmdk-engine-breadcrumb-back=""
+        onClick={onBack}
+        type="button"
+        aria-label={backLabel}
+      >
         ‹
       </button>
       {crumbs.map((crumb, i) => (
         <span key={crumb.id} data-cmdk-engine-breadcrumb="">
-          {i > 0 && <span data-cmdk-engine-breadcrumb-separator="">/</span>}
+          {i > 0 && (
+            <span data-cmdk-engine-breadcrumb-separator="" aria-hidden="true">
+              /
+            </span>
+          )}
           {crumb.label}
         </span>
       ))}
@@ -122,7 +139,7 @@ export function CommandPalette({
   renderBreadcrumbs,
   onSelect,
   loop = true,
-  label = 'Command palette',
+  label,
   placeholder,
   className,
   inputClassName,
@@ -145,6 +162,7 @@ export function CommandPalette({
   const { t } = useEngineContext()
 
   // Use i18n for defaults
+  const resolvedLabel = label ?? t('palette.label')
   const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
   const resolvedRenderEmpty = renderEmpty ?? (() => (
     <div data-cmdk-engine-empty="">{t('palette.empty')}</div>
@@ -179,10 +197,15 @@ export function CommandPalette({
   const firstItemId = results[0]?.item.id
   const [activeValue, setActiveValue] = useState<string | undefined>(firstItemId)
 
+  // Fall back to the first item whenever the active id is no longer rendered
+  // (e.g. the previously-highlighted item was filtered out mid-list). Computed
+  // during render so cmdk always receives a value that exists.
+  const activeValueValid = activeValue !== undefined && results.some((r) => r.item.id === activeValue)
+  const effectiveValue = activeValueValid ? activeValue : firstItemId
+
   useEffect(() => {
-    // Reset to first item whenever the result set changes.
-    setActiveValue(firstItemId)
-  }, [firstItemId])
+    if (!activeValueValid) setActiveValue(firstItemId)
+  }, [activeValueValid, firstItemId])
 
   // groupedResults comes memoized from the hook (was recomputed here on every
   // keystroke / arrow-key render).
@@ -206,7 +229,7 @@ export function CommandPalette({
       {depth > 0 && (
         renderBreadcrumbs
           ? renderBreadcrumbs(breadcrumbs, drillUp)
-          : <DefaultBreadcrumbs crumbs={breadcrumbs} onBack={drillUp} />
+          : <DefaultBreadcrumbs crumbs={breadcrumbs} onBack={drillUp} backLabel={t('breadcrumbs.back')} />
       )}
       <Cmdk.Input
         value={search}
@@ -247,14 +270,14 @@ export function CommandPalette({
         }}
         shouldFilter={false}
         loop={loop}
-        label={label}
+        label={resolvedLabel}
         className={className}
         disablePointerSelection={disablePointerSelection}
         vimBindings={vimBindings}
         overlayClassName={overlayClassName}
         contentClassName={contentClassName}
         container={container}
-        value={activeValue}
+        value={effectiveValue}
         onValueChange={setActiveValue}
       >
         {content}
@@ -266,11 +289,11 @@ export function CommandPalette({
     <Cmdk
       shouldFilter={false}
       loop={loop}
-      label={label}
+      label={resolvedLabel}
       className={className}
       disablePointerSelection={disablePointerSelection}
       vimBindings={vimBindings}
-      value={activeValue}
+      value={effectiveValue}
       onValueChange={setActiveValue}
     >
       {content}
