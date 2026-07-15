@@ -54,6 +54,18 @@ yarn add cmdk-engine cmdk
 > the React Router adapter). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
 
+### Standalone CLI (no Node project required)
+
+The `cmdk-engine` route scanner also ships as a standalone binary:
+
+```bash
+# Homebrew
+brew install Priyans-hu/tap/cmdk-engine
+
+# curl installer (macOS/Linux)
+curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
+```
+
 ---
 
 ## Quick Start
@@ -318,6 +330,61 @@ Show a "Recent" group at the top of the palette when the search is empty:
 >
 ```
 
+> Frecency (and search history, below) persist to `localStorage` by default and
+> degrade to in-memory automatically during SSR. Override the backend via
+> `config.frecency.storage`.
+
+---
+
+## Context / Scope Boosting
+
+Commands with a `scope` are boosted when they match the current app context —
+so on `/billing`, billing commands rank higher:
+
+```tsx
+<CommandEngineProvider
+  config={{
+    context: { path: location.pathname, tags: ['billing'] },
+    contextBoostWeight: 0.2, // 0–1, default 0.2
+  }}
+>
+
+// A command relevant to the billing area:
+{ id: 'add-card', label: 'Add Card', scope: ['/billing', '/billing/*'] }
+```
+
+## Internationalization (i18n)
+
+All built-in UI strings go through a translation function. Pass your own to
+localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
+
+```tsx
+import { getTranslationKeys } from 'cmdk-engine'
+
+<CommandEngineProvider
+  config={{ t: (key) => myDictionary[key] ?? key }}
+>
+
+// getTranslationKeys() lists every key the engine uses.
+```
+
+## Search History
+
+Opt-in tracking of past queries (persisted to `localStorage`):
+
+```tsx
+import { useSearchHistory } from 'cmdk-engine/react'
+
+<CommandEngineProvider
+  config={{ searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }}
+>
+
+function RecentSearches() {
+  const { getRecent, remove, clear } = useSearchHistory()
+  return <>{getRecent(5).map((e) => <button key={e.query} onClick={() => setSearch(e.query)}>{e.query}</button>)}</>
+}
+```
+
 ---
 
 ## CLI Tool
@@ -364,12 +431,17 @@ export default defineConfig({
   overrides: {
     '/billing': { keywords: ['money', 'payment'], group: 'Billing' },
   },
-  exclude: ['/_*', '/admin/*'], // user excludes (defaults handle /404, /500, /login, etc.)
+  exclude: ['/_*', '/admin/*', /^\/debug\//], // strings, globs, or RegExp
   synonyms: {
     billing: ['money', 'payment', 'credits'],
   },
 })
 ```
+
+> **Next.js:** the CLI **scans** both the App Router (`nextjs-app`) and Pages
+> Router (`nextjs-pages`) to generate a sitemap. A dedicated Next.js *runtime*
+> adapter is not implemented yet — render commands with `<CommandPalette>` from
+> `cmdk-engine/adapters/cmdk` (mark the file `'use client'`).
 
 ### Pre-commit hook
 
