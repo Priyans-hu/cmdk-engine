@@ -108,4 +108,64 @@ describe('loadConfig', () => {
     const config = await loadConfig(configPath)
     expect(config.overrides?.['/billing']?.keywords).toEqual(['money', 'payment'])
   })
+
+  it('preserves apostrophes in TS config string values', async () => {
+    mkdirSync(TEMP_DIR, { recursive: true })
+    const configPath = resolve(TEMP_DIR, 'config.ts')
+    writeFileSync(
+      configPath,
+      `import { defineConfig } from 'cmdk-engine'
+      export default defineConfig({
+        overrides: {
+          '/help': { keywords: ["don't panic", "user's guide"], group: 'Help' },
+        },
+      })`,
+    )
+    const config = await loadConfig(configPath)
+    expect(config.overrides?.['/help']?.keywords).toEqual(["don't panic", "user's guide"])
+    expect(config.overrides?.['/help']?.group).toBe('Help')
+  })
+
+  it('preserves colons/URLs in TS config values (not treated as comments)', async () => {
+    mkdirSync(TEMP_DIR, { recursive: true })
+    const configPath = resolve(TEMP_DIR, 'config.ts')
+    writeFileSync(
+      configPath,
+      `export default {
+        overrides: {
+          '/faq': { keywords: ['faq: frequently asked', 'https://example.com/docs'] },
+        },
+      }`,
+    )
+    const config = await loadConfig(configPath)
+    expect(config.overrides?.['/faq']?.keywords).toEqual([
+      'faq: frequently asked',
+      'https://example.com/docs',
+    ])
+  })
+
+  it('ignores block and line comments in TS config', async () => {
+    mkdirSync(TEMP_DIR, { recursive: true })
+    const configPath = resolve(TEMP_DIR, 'config.ts')
+    writeFileSync(
+      configPath,
+      `import { defineConfig } from 'cmdk-engine'
+      export default defineConfig({
+        /* block comment { framework: 'nextjs-app' } */
+        framework: 'react-router', // line comment
+        exclude: ['/404'],
+      })`,
+    )
+    const config = await loadConfig(configPath)
+    expect(config.framework).toBe('react-router')
+    expect(config.exclude).toEqual(['/404'])
+  })
+
+  it('strips a UTF-8 BOM from JSON configs', async () => {
+    mkdirSync(TEMP_DIR, { recursive: true })
+    const configPath = resolve(TEMP_DIR, 'config.json')
+    writeFileSync(configPath, String.fromCharCode(0xfeff) + JSON.stringify({ framework: 'react-router' }))
+    const config = await loadConfig(configPath)
+    expect(config.framework).toBe('react-router')
+  })
 })
