@@ -128,7 +128,13 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
 
     for (const entry of storage.getAll()) {
       if (entry.lastUsed < cutoff) {
-        storage.set(entry.id, { ...entry, count: 0, halfLifeScore: 0 })
+        // Actually remove the entry; fall back to zeroing for custom storages
+        // that don't implement delete().
+        if (storage.delete) {
+          storage.delete(entry.id)
+        } else {
+          storage.set(entry.id, { ...entry, count: 0, halfLifeScore: 0 })
+        }
       }
     }
   }
@@ -162,6 +168,9 @@ export function createInMemoryStorage(): FrecencyStorage {
     },
     set(key: string, entry: FrecencyEntry): void {
       store.set(key, entry)
+    },
+    delete(key: string): void {
+      store.delete(key)
     },
     getAll(): FrecencyEntry[] {
       return Array.from(store.values())

@@ -48,6 +48,12 @@ export function createLocalStorageFrecencyStorage(
       writeAll(data)
     },
 
+    delete(key: string): void {
+      const data = readAll()
+      delete data[key]
+      writeAll(data)
+    },
+
     getAll(): FrecencyEntry[] {
       return Object.values(readAll())
     },

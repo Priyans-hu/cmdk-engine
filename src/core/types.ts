@@ -138,6 +138,8 @@ export interface FrecencyStorage {
   get(key: string): FrecencyEntry | null
   /** Set entry */
   set(key: string, entry: FrecencyEntry): void
+  /** Remove an entry by key (optional; cleanup falls back to zeroing without it) */
+  delete?(key: string): void
   /** Get all entries */
   getAll(): FrecencyEntry[]
   /** Clear all entries */

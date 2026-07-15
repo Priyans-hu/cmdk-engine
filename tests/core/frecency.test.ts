@@ -106,7 +106,7 @@ describe('createFrecencyEngine', () => {
   })
 
   describe('cleanup', () => {
-    it('resets entries older than maxAge', () => {
+    it('removes entries older than maxAge', () => {
       const engine = createFrecencyEngine({ storage, maxAge: 30 })
 
       // Add an old entry
@@ -119,8 +119,7 @@ describe('createFrecencyEngine', () => {
 
       engine.cleanup()
 
-      const entry = storage.get('old')
-      expect(entry?.count).toBe(0)
+      expect(storage.get('old')).toBeNull()
     })
   })
 
@@ -184,5 +183,30 @@ describe('createInMemoryStorage', () => {
     engine.recordUsage('a')
     const ranked = engine.rank([{ item: cmd('a'), score: 1 }], 5)
     expect(ranked[0].score).toBeLessThanOrEqual(1)
+  })
+
+  it('cleanup() removes entries older than maxAge (not just zeroes them)', () => {
+    const storage = createInMemoryStorage()
+    storage.set('old', {
+      id: 'old',
+      count: 3,
+      lastUsed: Date.now() - 40 * 86_400_000,
+      halfLifeScore: 0,
+    })
+    storage.set('fresh', { id: 'fresh', count: 1, lastUsed: Date.now(), halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage, maxAge: 30 })
+
+    engine.cleanup()
+
+    expect(storage.get('old')).toBeNull()
+    expect(storage.get('fresh')).not.toBeNull()
+    expect(storage.getAll()).toHaveLength(1)
+  })
+
+  it('storage.delete removes an entry', () => {
+    const storage = createInMemoryStorage()
+    storage.set('a', { id: 'a', count: 1, lastUsed: Date.now(), halfLifeScore: 0 })
+    storage.delete?.('a')
+    expect(storage.get('a')).toBeNull()
   })
 })
