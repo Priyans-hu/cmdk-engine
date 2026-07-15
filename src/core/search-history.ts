@@ -15,7 +15,16 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY
   const minQueryLength = config.minQueryLength ?? DEFAULT_MIN_QUERY_LENGTH
 
+  function isAvailable(): boolean {
+    try {
+      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+    } catch {
+      return false
+    }
+  }
+
   function load(): SearchHistoryEntry[] {
+    if (!isAvailable()) return []
     try {
       const raw = localStorage.getItem(storageKey)
       return raw ? JSON.parse(raw) : []
@@ -25,6 +34,7 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
   }
 
   function save(entries: SearchHistoryEntry[]): void {
+    if (!isAvailable()) return
     try {
       localStorage.setItem(storageKey, JSON.stringify(entries))
     } catch {
@@ -61,6 +71,7 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
 
     /** Clear all search history. */
     clear(): void {
+      if (!isAvailable()) return
       try {
         localStorage.removeItem(storageKey)
       } catch {

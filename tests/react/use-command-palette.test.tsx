@@ -107,6 +107,16 @@ describe('useCommandPalette · select()', () => {
     spy.mockRestore()
   })
 
+  it('persists search history to localStorage by default when enabled', () => {
+    localStorage.removeItem('cmdk-search-history')
+    const { result } = renderHook(() => useCommandPalette(), {
+      wrapper: wrapperWith({ searchHistory: { enabled: true, minQueryLength: 2 } }),
+    })
+    act(() => result.current.setSearch('billing'))
+    act(() => result.current.select(leaf({ action: () => {} })))
+    expect(localStorage.getItem('cmdk-search-history')).toContain('billing')
+  })
+
   it('drills into children instead of executing the parent', () => {
     const action = vi.fn()
     const { result } = renderHook(() => useCommandPalette(), { wrapper: wrapperWith({}) })

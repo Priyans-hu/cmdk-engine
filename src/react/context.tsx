@@ -9,7 +9,7 @@ import { createLocalStorageFrecencyStorage } from '../core/frecency-storage'
 import { createGroupManager } from '../core/grouping'
 import { createContextEngine } from '../core/context'
 import { createDefaultTranslation } from '../core/i18n'
-import { createInMemorySearchHistory } from '../core/search-history'
+import { createInMemorySearchHistory, createSearchHistory } from '../core/search-history'
 import type { SearchEngine } from '../core/types'
 
 /** Internal engine context shape */
@@ -94,7 +94,12 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       groupManager: createGroupManager(config.groups),
       contextEngine: createContextEngine(config.contextBoostWeight),
       t: config.t ?? createDefaultTranslation(),
-      searchHistory: createInMemorySearchHistory(config.searchHistory),
+      // Persist search history to localStorage in the browser (so `storageKey`
+      // works, as documented); fall back to in-memory for SSR/non-browser.
+      searchHistory:
+        typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+          ? createSearchHistory(config.searchHistory)
+          : createInMemorySearchHistory(config.searchHistory),
     }),
     [
       config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
