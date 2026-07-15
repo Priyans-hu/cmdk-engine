@@ -87,6 +87,20 @@ describe('useCommandPalette · select()', () => {
     expect(localStorage.getItem('cmdk-frecency')).toContain('persist-me')
   })
 
+  it('useFrecency records, scores, lists recent, and clears', () => {
+    localStorage.removeItem('cmdk-frecency')
+    const { result } = renderHook(() => useFrecency(), { wrapper: wrapperWith({}) })
+    act(() => {
+      result.current.recordUsage('a')
+      result.current.recordUsage('b')
+    })
+    expect(result.current.getScore('a')).toBeGreaterThan(0)
+    expect(result.current.getRecent()).toContain('b')
+    act(() => result.current.clear())
+    expect(result.current.getScore('a')).toBe(0)
+    expect(result.current.getRecent()).toHaveLength(0)
+  })
+
   it('throws a helpful error when used outside a provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => renderHook(() => useCommandPalette())).toThrow(/CommandEngineProvider/)
