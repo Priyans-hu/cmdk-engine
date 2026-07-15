@@ -1,5 +1,11 @@
 # cmdk-engine
 
+## 0.5.1
+
+### Patch Changes
+
+- Fix the CLI binary failing with "Cannot find package 'commander'" on a fresh install. `commander` is a devDependency and was externalized from the bundle, so it was never available to consumers. The CLI is now emitted as a self-contained CommonJS bin (`dist/cli/index.cjs`) with `commander` bundled in, so `npx cmdk-engine scan` works with no extra install.
+
 ## 0.5.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "cmdk-engine",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling.",
   "license": "MIT",
   "author": "Priyanshu <gargpriyanshu2004@gmail.com> (https://github.com/Priyans-hu)",
@@ -44,7 +44,7 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "cmdk-engine": "./dist/cli/index.js"
+    "cmdk-engine": "./dist/cli/index.cjs"
   },
   "exports": {
     ".": {
@@ -137,7 +137,7 @@
     "version": "changeset version",
     "release": "bun run build && changeset publish",
     "prepublishOnly": "bun run build",
-    "build:binary": "bun run build && bun build dist/cli/index.js --compile --outfile dist/cmdk-engine",
+    "build:binary": "bun run build && bun build dist/cli/index.cjs --compile --outfile dist/cmdk-engine",
     "size": "size-limit"
   },
   "peerDependencies": {

@@ -70,15 +70,19 @@ export default defineConfig([
     sourcemap: false,
     external: ['match-sorter'],
   },
-  // CLI tool
+  // CLI tool — emit CJS and bundle commander so the bin is fully self-contained.
+  // commander is a devDependency (not shipped to consumers) and does internal
+  // require()s of Node built-ins; CJS output lets those resolve natively without
+  // the ESM dynamic-require shim that would otherwise throw.
   {
     entry: { 'cli/index': 'src/cli/index.ts' },
-    format: ['esm'],
+    format: ['cjs'],
     dts: false,
     treeshake: true,
     splitting: false,
     sourcemap: false,
     banner: { js: '#!/usr/bin/env node' },
-    external: ['commander'],
+    noExternal: ['commander'],
+    external: [],
   },
 ])
