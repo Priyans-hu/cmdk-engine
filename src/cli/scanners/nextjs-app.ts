@@ -1,7 +1,10 @@
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, statSync, realpathSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
+import { deduplicateRoutes, isIgnoredDir, toSource } from './shared'
+
+const PAGE_FILE_RE = /^page\.(?:[mc]?[jt]s|[jt]sx|mdx?)$/
 
 /**
  * Scan a Next.js app/ directory for routes.
@@ -16,52 +19,56 @@ import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
 export function scanNextJsAppDir(dir: string): SitemapRoute[] {
   const routes: SitemapRoute[] = []
   walkAppDir(dir, dir, routes)
-  return routes
+  return deduplicateRoutes(routes)
 }
 
-function walkAppDir(currentDir: string, baseDir: string, routes: SitemapRoute[]): void {
+function walkAppDir(
+  currentDir: string,
+  baseDir: string,
+  routes: SitemapRoute[],
+  visited = new Set<string>(),
+): void {
   let entries: string[]
   try {
+    const real = realpathSync(currentDir)
+    if (visited.has(real)) return
+    visited.add(real)
     entries = readdirSync(currentDir)
   } catch {
     return
   }
 
   // Check if this directory has a page file
-  const hasPage = entries.some((e) =>
-    /^page\.(tsx?|jsx?|mdx?)$/.test(e),
-  )
+  const pageFile = entries.find((e) => PAGE_FILE_RE.test(e))
 
-  if (hasPage) {
+  if (pageFile) {
     const relativePath = relative(baseDir, currentDir)
     const routePath = dirToRoutePath(relativePath)
 
     // Skip dynamic route segments for command palette (they need params)
     if (!routePath.includes(':') && !routePath.includes('*')) {
-      const source = join(
-        relative(process.cwd(), currentDir),
-        entries.find((e) => /^page\.(tsx?|jsx?|mdx?)$/.test(e))!,
-      )
-
       routes.push({
         id: pathToId(routePath || '/'),
         path: routePath || '/',
         label: routePath ? pathToLabel(routePath) : 'Home',
         keywords: generateKeywords(routePath),
         group: routePath ? pathToGroup(routePath) : undefined,
-        source,
+        source: toSource(join(currentDir, pageFile)),
       })
     }
   }
 
   // Recurse into subdirectories
   for (const entry of entries) {
-    if (entry.startsWith('.') || entry === 'node_modules' || entry === 'api') continue
+    if (isIgnoredDir(entry)) continue
+    // Only the top-level app/api holds Next.js route handlers; a nested folder
+    // named "api" (e.g. app/dashboard/api/page.tsx) is a real UI route.
+    if (entry === 'api' && currentDir === baseDir) continue
 
     const fullPath = join(currentDir, entry)
     try {
       if (statSync(fullPath).isDirectory()) {
-        walkAppDir(fullPath, baseDir, routes)
+        walkAppDir(fullPath, baseDir, routes, visited)
       }
     } catch {
       // Skip inaccessible directories

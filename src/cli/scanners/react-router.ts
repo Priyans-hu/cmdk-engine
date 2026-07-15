@@ -1,7 +1,8 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { readdirSync, readFileSync, statSync, realpathSync } from 'node:fs'
+import { join } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
+import { SOURCE_FILE_RE, isIgnoredDir, deduplicateRoutes, toSource, stripComments } from './shared'
 
 /**
  * Scan a directory for React Router route definitions.
@@ -10,6 +11,10 @@ import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
  * - Route objects with `path` properties
  * - `handle.command` metadata
  * - createBrowserRouter / createRoutesFromElements patterns
+ *
+ * Note: relative child paths inside nested `children` arrays are not composed
+ * into full paths (a known limitation of the regex-based scanner) — declare
+ * such routes with absolute `path` values to have them discovered.
  */
 export function scanReactRouterFiles(dir: string): SitemapRoute[] {
   const files = findSourceFiles(dir)
@@ -17,27 +22,27 @@ export function scanReactRouterFiles(dir: string): SitemapRoute[] {
 
   for (const file of files) {
     const content = readFileSync(file, 'utf-8')
-    const fileRoutes = extractRoutes(content, file, dir)
-    routes.push(...fileRoutes)
+    routes.push(...extractRoutes(content, file))
   }
 
   return deduplicateRoutes(routes)
 }
 
-function findSourceFiles(dir: string, files: string[] = []): string[] {
+function findSourceFiles(dir: string, files: string[] = [], visited = new Set<string>()): string[] {
   try {
-    const entries = readdirSync(dir)
+    // Guard against symlink loops by tracking real paths already visited.
+    const real = realpathSync(dir)
+    if (visited.has(real)) return files
+    visited.add(real)
 
-    for (const entry of entries) {
+    for (const entry of readdirSync(dir)) {
+      if (isIgnoredDir(entry)) continue
+
       const fullPath = join(dir, entry)
-
-      // Skip node_modules, dist, hidden dirs
-      if (entry.startsWith('.') || entry === 'node_modules' || entry === 'dist') continue
-
       const stat = statSync(fullPath)
       if (stat.isDirectory()) {
-        findSourceFiles(fullPath, files)
-      } else if (/\.(tsx?|jsx?)$/.test(entry)) {
+        findSourceFiles(fullPath, files, visited)
+      } else if (SOURCE_FILE_RE.test(entry)) {
         files.push(fullPath)
       }
     }
@@ -50,25 +55,27 @@ function findSourceFiles(dir: string, files: string[] = []): string[] {
 
 /**
  * Extract route paths from a source file using regex patterns.
- * This is an AST-light approach — covers common patterns without needing a full parser.
+ * This is an AST-light approach — covers common patterns without a full parser.
  */
-function extractRoutes(content: string, filePath: string, baseDir: string): SitemapRoute[] {
+function extractRoutes(content: string, filePath: string): SitemapRoute[] {
   const routes: SitemapRoute[] = []
-  const source = relative(baseDir, filePath)
+  const source = toSource(filePath)
+  // Strip comments so commented-out route definitions aren't scanned in.
+  const cleaned = stripComments(content)
 
   // Pattern 1: { path: '/...' } in route objects
   const pathRegex = /path\s*:\s*['"`]([^'"`]+)['"`]/g
   let match
 
-  while ((match = pathRegex.exec(content)) !== null) {
+  while ((match = pathRegex.exec(cleaned)) !== null) {
     const path = match[1]
-    if (!path.startsWith('/')) continue // Skip relative child paths
+    if (!path.startsWith('/')) continue // Skip relative child paths (see note above)
     if (path === '*' || path === '404') continue // Skip catch-all
 
     const route = createRoute(path, source)
 
     // Try to find handle.command metadata near this path
-    const metadata = extractMetadataNear(content, match.index)
+    const metadata = extractMetadataNear(cleaned, match.index)
     if (metadata) {
       if (metadata.label) route.label = metadata.label
       if (metadata.keywords) route.keywords = [...route.keywords, ...metadata.keywords]
@@ -81,7 +88,7 @@ function extractRoutes(content: string, filePath: string, baseDir: string): Site
   // Pattern 2: <Route path="/..." /> JSX routes
   const jsxRouteRegex = /<Route\s[^>]*path\s*=\s*['"`]([^'"`]+)['"`]/g
 
-  while ((match = jsxRouteRegex.exec(content)) !== null) {
+  while ((match = jsxRouteRegex.exec(cleaned)) !== null) {
     const path = match[1]
     if (!path.startsWith('/')) continue
     if (path === '*') continue
@@ -143,14 +150,4 @@ function extractMetadataNear(
   }
 
   return Object.keys(result).length > 0 ? result : null
-}
-
-function deduplicateRoutes(routes: SitemapRoute[]): SitemapRoute[] {
-  const seen = new Map<string, SitemapRoute>()
-  for (const route of routes) {
-    if (!seen.has(route.path)) {
-      seen.set(route.path, route)
-    }
-  }
-  return Array.from(seen.values())
 }

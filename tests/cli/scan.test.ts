@@ -138,6 +138,19 @@ describe('scanReactRouterFiles', () => {
     const routes = scanReactRouterFiles('/non-existent-dir-12345')
     expect(routes).toEqual([])
   })
+
+  it('ignores commented-out route definitions', () => {
+    writeFileSync(
+      join(TEMP_DIR, 'routes.ts'),
+      `export const routes = [
+        { path: '/dashboard' },
+        // { path: '/old-feature' },
+        /* { path: '/deprecated' } */
+      ]`,
+    )
+    const routes = scanReactRouterFiles(TEMP_DIR)
+    expect(routes.map((r) => r.path)).toEqual(['/dashboard'])
+  })
 })
 
 describe('scanNextJsAppDir', () => {
@@ -191,6 +204,14 @@ describe('scanNextJsAppDir', () => {
     const routes = scanNextJsAppDir(TEMP_DIR)
     expect(routes).toHaveLength(0)
   })
+
+  it('keeps a nested "api" folder that is a real page route', () => {
+    mkdirSync(join(TEMP_DIR, 'dashboard', 'api'), { recursive: true })
+    writeFileSync(join(TEMP_DIR, 'dashboard', 'api', 'page.tsx'), '')
+
+    const routes = scanNextJsAppDir(TEMP_DIR)
+    expect(routes.map((r) => r.path)).toContain('/dashboard/api')
+  })
 })
 
 describe('scanNextJsPagesDir', () => {
@@ -241,6 +262,15 @@ describe('scanNextJsPagesDir', () => {
 
     const routes = scanNextJsPagesDir(TEMP_DIR)
     expect(routes).toHaveLength(0)
+  })
+
+  it('deduplicates colliding paths (about.tsx + about/index.tsx)', () => {
+    writeFileSync(join(TEMP_DIR, 'about.tsx'), '')
+    mkdirSync(join(TEMP_DIR, 'about'), { recursive: true })
+    writeFileSync(join(TEMP_DIR, 'about', 'index.tsx'), '')
+
+    const routes = scanNextJsPagesDir(TEMP_DIR)
+    expect(routes.filter((r) => r.path === '/about')).toHaveLength(1)
   })
 })
 
