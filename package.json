@@ -1,6 +1,6 @@
 {
   "name": "cmdk-engine",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling.",
   "license": "MIT",
   "author": "Priyanshu <gargpriyanshu2004@gmail.com> (https://github.com/Priyans-hu)",

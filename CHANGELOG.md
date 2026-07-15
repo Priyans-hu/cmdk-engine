@@ -1,5 +1,29 @@
 # cmdk-engine
 
+## 0.5.0
+
+### Minor Changes
+
+- CLI hardening, runtime fixes, and smaller installs.
+
+  **CLI**
+  - String-literal-safe config parsing: values containing `//`, `:`, or apostrophes (URLs, `faq: ...`, `don't`) are no longer corrupted. Also strips a UTF-8 BOM and supports `.mjs/.cjs/.mts/.cts` configs.
+  - Scanners: strip commented-out route definitions; only skip the top-level `api/` dir (a nested `api` folder can be a real page route); deduplicate colliding Next.js paths; guard against symlink loops; portable, forward-slashed `source` paths; broader file-extension support.
+  - `scan`: validates `--format`; errors on a missing routes dir and on zero routes (`--allow-empty` to override) instead of silently overwriting good output; requires an explicitly-passed `--config` to exist; drops the `as const` that made generated `.ts` fail to type-check; reuses the prior timestamp when routes are unchanged (idempotent output).
+  - User `exclude` now supports globs (boundary-checked) and RegExp, matching the runtime adapter (`CmdkEngineConfig.exclude` widened to `ExcludePattern[]`).
+  - `validate` reports `framework: 'custom'` as not-yet-scannable (agrees with `scan`) and type-checks `routesDir`/`output`; `init` gains error handling and `-c/--config`.
+
+  **Runtime**
+  - `useCommandRegister` no longer freezes `action` closures: without an explicit `deps` array it re-registers on command shape changes and delegates actions to the latest closure via a live ref.
+  - Search history persists to `localStorage` by default (SSR-safe), so `SearchHistoryConfig.storageKey` works as documented.
+  - `frecency.cleanup()` actually removes stale entries via a new optional `FrecencyStorage.delete()` (non-breaking; custom storages fall back to zeroing).
+  - Accessibility: localized accessible name for the palette and breadcrumb back button; decorative icons/separators marked `aria-hidden`. The controlled active item resets when it's no longer in the results.
+  - `pathToGroup` ignores leading dynamic segments (`/:tenantId/billing` → `Billing`).
+
+  **Packaging / tooling**
+  - Source maps are no longer published (roughly halves the npm tarball).
+  - Coverage thresholds are enforced, `tests/` are type-checked, CI cancels superseded runs, dependabot watches `docs/`, and the release workflow fails fast if a pushed tag doesn't match `package.json`.
+
 ## 0.4.0
 
 ### Minor Changes
