@@ -40,6 +40,14 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Verify pushed tag matches package.json version
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ github.ref_name }}" != "${{ steps.meta.outputs.tag }}" ]; then
+            echo "::error::Pushed tag ${{ github.ref_name }} does not match package.json version (${{ steps.meta.outputs.tag }}). Run 'changeset version' and retag."
+            exit 1
+          fi
+
       # Use the package.json `release` script so Changesets consumes any
       # pending entries in .changeset/ and updates CHANGELOG.md. This keeps
       # the tag-push flow consistent with `bun run release` locally.

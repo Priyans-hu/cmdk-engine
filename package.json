@@ -132,7 +132,7 @@
     "lint": "eslint src/ tests/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "bun run build && changeset publish",
