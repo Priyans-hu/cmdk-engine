@@ -9,7 +9,6 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  * - Exact prefix match (highest)
  * - Word boundary match
  * - Consecutive character matches
- * - Case-sensitive exact match
  */
 export function createFuzzySearch(): SearchEngine {
   return {

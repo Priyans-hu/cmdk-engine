@@ -44,6 +44,11 @@ describe('pathToGroup', () => {
     expect(pathToGroup('/settings')).toBeUndefined()
     expect(pathToGroup('/')).toBeUndefined()
   })
+
+  it('ignores leading dynamic segments', () => {
+    expect(pathToGroup('/:tenantId/billing/overview')).toBe('Billing')
+    expect(pathToGroup('/[org]/settings')).toBeUndefined() // only one real segment
+  })
 })
 
 describe('pathToId', () => {

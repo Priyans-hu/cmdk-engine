@@ -67,7 +67,12 @@ export function pathToLabel(path: string): string {
  * "/settings/team" -> "Settings"
  */
 export function pathToGroup(path: string): string | undefined {
-  const segments = path.split('/').filter(Boolean)
+  // Ignore dynamic segments (:id, [id]) so a route like `/:tenantId/billing`
+  // groups under "Billing", not a stray ":Tenant Id".
+  const segments = path
+    .split('/')
+    .filter(Boolean)
+    .filter((s) => !s.startsWith(':') && !s.startsWith('['))
   const first = segments[0]
 
   if (!first || segments.length <= 1) return undefined
