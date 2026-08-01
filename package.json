@@ -208,7 +208,7 @@
     "cmdk": "^1.1",
     "commander": "^14.0",
     "eslint": "^10.0",
-    "jsdom": "^29.1",
+    "jsdom": "^30.0",
     "match-sorter": "^8.0",
     "prettier": "^3.5",
     "react-router": "^7.0",
