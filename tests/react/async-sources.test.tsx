@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { renderHook, act } from '@testing-library/react'
-import { CommandEngineProvider } from '../../src/react/context'
+import { CommandEngineProvider, usePaletteState } from '../../src/react/context'
 import { useCommandPalette } from '../../src/react/use-command-palette'
 import type { UseCommandPaletteReturn } from '../../src/react/use-command-palette'
 import { useCommandRegister } from '../../src/react/use-command-register'
@@ -296,5 +296,457 @@ describe('async sources · surface and compatibility', () => {
     act(() => result.current.select('local'))
 
     expect(storage.getAll().map((e) => e.id)).toEqual(['local'])
+  })
+})
+
+describe('async sources · lifecycle', () => {
+  it('isLoading is true from the trigger passing, through the debounce, until every source settles', async () => {
+    const fast = deferred<CommandItem[]>()
+    const slow = deferred<CommandItem[]>()
+    const loadFast = vi.fn<Load>(() => fast.promise)
+    const loadSlow = vi.fn<Load>(() => slow.promise)
+    const { result } = renderPalette({
+      asyncSources: [
+        { id: 'fast', load: loadFast, debounceMs: 100 },
+        { id: 'slow', load: loadSlow, debounceMs: 300 },
+      ],
+    })
+    expect(result.current.isLoading).toBe(false)
+
+    act(() => result.current.setSearch('x'))
+    expect(result.current.isLoading).toBe(true) // debounce window, nothing called yet
+    expect(loadFast).not.toHaveBeenCalled()
+
+    await advance(100)
+    expect(loadFast).toHaveBeenCalledTimes(1)
+    await act(async () => fast.resolve([item('f', 'x fast')]))
+    expect(ids(result.current)).toEqual(['f'])
+    expect(result.current.isLoading).toBe(true) // slow is still debouncing
+
+    await advance(200)
+    expect(loadSlow).toHaveBeenCalledTimes(1)
+    expect(result.current.isLoading).toBe(true)
+    await act(async () => slow.resolve([item('s', 'x slow')]))
+    expect(result.current.isLoading).toBe(false)
+    expect(ids(result.current)).toEqual(['f', 's'])
+  })
+
+  it('isLoading never sticks when the query is cleared mid-flight', async () => {
+    const gate = deferred<CommandItem[]>()
+    const failing = deferred<CommandItem[]>()
+    const { result } = renderPalette({
+      asyncSources: [
+        { id: 'ok', load: () => gate.promise },
+        { id: 'bad', load: () => failing.promise },
+      ],
+    })
+
+    act(() => result.current.setSearch('abc'))
+    await advance(200)
+    expect(result.current.isLoading).toBe(true)
+
+    act(() => result.current.setSearch(''))
+    expect(result.current.isLoading).toBe(false)
+
+    // The superseded loads settle afterwards and change nothing.
+    await act(async () => {
+      gate.resolve([item('late', 'abc late')])
+      failing.reject(new Error('late failure'))
+    })
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.results).toEqual([])
+    expect(result.current.asyncErrors).toEqual({})
+  })
+
+  it('aborts and clears the previous query as soon as the query changes', async () => {
+    const signals: AbortSignal[] = []
+    const gates: ReturnType<typeof deferred<CommandItem[]>>[] = []
+    const load = vi.fn<Load>((_query, { signal }) => {
+      signals.push(signal)
+      gates.push(deferred<CommandItem[]>())
+      return gates[gates.length - 1].promise
+    })
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load }] })
+
+    act(() => result.current.setSearch('alpha'))
+    await advance(200)
+    await act(async () => gates[0].resolve([item('alpha-1', 'alpha one')]))
+    expect(ids(result.current)).toEqual(['alpha-1'])
+
+    act(() => result.current.setSearch('alphab'))
+    expect(ids(result.current)).toEqual([]) // cleared before the new load even starts
+    await advance(200)
+    expect(load).toHaveBeenLastCalledWith('alphab', { signal: expect.any(AbortSignal) })
+
+    act(() => result.current.setSearch('alphabe'))
+    expect(signals[1].aborted).toBe(true)
+    expect(signals[2]).toBeUndefined()
+  })
+
+  it('never renders the new query with the old items or with isLoading false', async () => {
+    const frames: { search: string; ids: string[]; isLoading: boolean }[] = []
+    // The label matches both queries, so a stale item would survive the client filter.
+    const load: Load = async (query) => [item(`${query}-hit`, 'alpha beta hit')]
+    const { result } = renderHook(
+      () => {
+        const palette = useCommandPalette()
+        frames.push({ search: palette.search, ids: ids(palette), isLoading: palette.isLoading })
+        return palette
+      },
+      { wrapper: wrapperWith({ asyncSources: [{ id: 'remote', load }] }) },
+    )
+
+    act(() => result.current.setSearch('alpha'))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['alpha-hit'])
+
+    frames.length = 0
+    act(() => result.current.setSearch('beta'))
+    const beta = frames.filter((frame) => frame.search === 'beta')
+    expect(beta.length).toBeGreaterThan(0)
+    expect(beta.every((frame) => frame.ids.length === 0 && frame.isLoading)).toBe(true)
+  })
+
+  it('ignores stale and out-of-order responses', async () => {
+    const gates = new Map<string, ReturnType<typeof deferred<CommandItem[]>>>()
+    const load: Load = (query) => {
+      const gate = deferred<CommandItem[]>()
+      gates.set(query, gate)
+      return gate.promise // ignores the signal on purpose
+    }
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load }] })
+
+    act(() => result.current.setSearch('rep'))
+    await advance(200)
+    act(() => result.current.setSearch('repo'))
+    await advance(200)
+
+    await act(async () => gates.get('repo')!.resolve([item('new', 'repo new')]))
+    await act(async () => gates.get('rep')!.resolve([item('old', 'rep old')]))
+
+    expect(ids(result.current)).toEqual(['new'])
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('aborts and clears on close() and on a toggle that closes', async () => {
+    const signals: AbortSignal[] = []
+    const load = vi.fn<Load>((query, { signal }) => {
+      signals.push(signal)
+      return query === 'done' ? Promise.resolve([item('d', 'done item')]) : new Promise(() => {})
+    })
+    const { result } = renderPalette({
+      asyncSources: [{ id: 'remote', load, trigger: () => true }],
+    })
+    await advance(200) // the empty-query load of the never-opened palette
+
+    act(() => result.current.open())
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    expect(result.current.isLoading).toBe(true)
+    act(() => result.current.close())
+    expect(signals[1].aborted).toBe(true)
+    expect(result.current.isLoading).toBe(false)
+
+    act(() => result.current.toggle())
+    act(() => result.current.setSearch('done'))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['d'])
+    act(() => result.current.toggle())
+    expect(result.current.isOpen).toBe(false)
+    expect(result.current.results).toEqual([])
+    expect(result.current.isLoading).toBe(false)
+
+    // Closed with the query reset: nothing loads until it reopens.
+    const calls = load.mock.calls.length
+    await advance(1000)
+    expect(load).toHaveBeenCalledTimes(calls)
+  })
+
+  it('pauses when the palette closes with the query kept, and loads afresh on reopen', async () => {
+    const signals: AbortSignal[] = []
+    const load = vi.fn<Load>(async (query, { signal }) => {
+      signals.push(signal)
+      return [item(`hit-${signals.length}`, `${query} hit`)]
+    })
+    const { result } = renderHook(
+      () => ({ palette: useCommandPalette(), state: usePaletteState() }),
+      { wrapper: wrapperWith({ asyncSources: [{ id: 'remote', load }] }) },
+    )
+
+    act(() => result.current.state.setIsOpen(true))
+    act(() => result.current.palette.setSearch('foo'))
+    await advance(200)
+    expect(ids(result.current.palette)).toEqual(['hit-1'])
+
+    // Close through the raw state setter: the query is NOT reset.
+    act(() => result.current.state.setIsOpen(false))
+    expect(result.current.palette.search).toBe('foo')
+    expect(result.current.palette.results).toEqual([])
+    expect(result.current.palette.isLoading).toBe(false)
+    await advance(1000)
+    expect(load).toHaveBeenCalledTimes(1)
+
+    act(() => result.current.state.setIsOpen(true))
+    expect(result.current.palette.isLoading).toBe(true)
+    await advance(200)
+    expect(load).toHaveBeenCalledTimes(2)
+    expect(load).toHaveBeenLastCalledWith('foo', { signal: expect.any(AbortSignal) })
+    expect(ids(result.current.palette)).toEqual(['hit-2'])
+
+    // An in-flight load is aborted by the close too.
+    const pending = deferred<CommandItem[]>()
+    load.mockImplementationOnce((_query, { signal }) => {
+      signals.push(signal)
+      return pending.promise
+    })
+    act(() => result.current.palette.setSearch('foo bar'))
+    await advance(200)
+    act(() => result.current.state.setIsOpen(false))
+    expect(signals[2].aborted).toBe(true)
+    await act(async () => pending.resolve([item('stale', 'foo bar stale')]))
+    expect(result.current.palette.results).toEqual([])
+  })
+
+  it('keeps loading for a palette that never opened (inline palette)', async () => {
+    const load = vi.fn<Load>(async () => [item('inline', 'inline result')])
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load }] })
+
+    act(() => result.current.setSearch('inline'))
+    await advance(200)
+
+    expect(result.current.isOpen).toBe(false)
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(ids(result.current)).toEqual(['inline'])
+  })
+
+  it('resumes loading when the query changes after a close (inline palette plus a shortcut)', async () => {
+    const load = vi.fn<Load>(async () => [item('again', 'typed again')])
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load }] })
+
+    act(() => result.current.toggle())
+    act(() => result.current.toggle())
+    act(() => result.current.setSearch('typed'))
+    await advance(200)
+
+    expect(result.current.isOpen).toBe(false)
+    expect(ids(result.current)).toEqual(['again'])
+  })
+
+  it('loads only at the root: drillDown aborts and clears, drillUp loads again', async () => {
+    const signals: AbortSignal[] = []
+    const load = vi.fn<Load>((_query, { signal }) => {
+      signals.push(signal)
+      return new Promise(() => {})
+    })
+    const parent = item('parent', 'Parent', { children: [item('child', 'Child')] })
+    const { result } = renderPalette(
+      { asyncSources: [{ id: 'remote', load, trigger: () => true }] },
+      [parent],
+    )
+    await advance(200)
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(result.current.isLoading).toBe(true)
+
+    act(() => result.current.drillDown(result.current.results[0].item))
+    expect(signals[0].aborted).toBe(true)
+    expect(result.current.isLoading).toBe(false)
+
+    act(() => result.current.setSearch('chi'))
+    await advance(1000)
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(ids(result.current)).toEqual(['child'])
+
+    act(() => result.current.drillUp())
+    expect(result.current.isLoading).toBe(true)
+    await advance(200)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('aborts on unmount', async () => {
+    const signals: AbortSignal[] = []
+    const gate = deferred<CommandItem[]>()
+    const { result, unmount } = renderPalette({
+      asyncSources: [
+        {
+          id: 'remote',
+          load: (_query, { signal }) => {
+            signals.push(signal)
+            return gate.promise
+          },
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    unmount()
+    expect(signals[0].aborted).toBe(true)
+    await act(async () => gate.resolve([item('late', 'x late')]))
+  })
+
+  it('debounces bursts and honours a custom trigger', async () => {
+    const load = vi.fn<Load>(async () => [])
+    const { result } = renderPalette({
+      asyncSources: [{ id: 'cmd', load, debounceMs: 50, trigger: (q) => q.startsWith('>') }],
+    })
+
+    act(() => result.current.setSearch('hello'))
+    expect(result.current.isLoading).toBe(false)
+    await advance(500)
+    expect(load).not.toHaveBeenCalled()
+
+    act(() => result.current.setSearch('>a'))
+    await advance(20)
+    act(() => result.current.setSearch('>ab'))
+    await advance(20)
+    act(() => result.current.setSearch('>abc'))
+    await advance(50)
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(load).toHaveBeenCalledWith('>abc', { signal: expect.any(AbortSignal) })
+  })
+})
+
+describe('async sources · errors', () => {
+  it('reports sync throws and rejections per source and clears them on the next success', async () => {
+    let mode: 'throw' | 'string' | 'object' | 'ok' = 'throw'
+    const failing: Load = (query) => {
+      if (mode === 'throw') throw new Error('sync boom')
+      if (mode === 'string') return Promise.reject('flat reason')
+      if (mode === 'object') return Promise.reject({ status: 500 })
+      return Promise.resolve([item('recovered', `${query} recovered`)])
+    }
+    const { result } = renderPalette({
+      asyncSources: [
+        { id: 'flaky', load: failing },
+        { id: 'steady', load: async (query) => [item('steady', `${query} steady`)] },
+      ],
+    })
+
+    act(() => result.current.setSearch('q'))
+    await advance(200)
+    expect(result.current.asyncErrors.flaky.message).toBe('sync boom')
+    expect(result.current.asyncErrors.steady).toBeUndefined()
+    expect(ids(result.current)).toEqual(['steady'])
+    expect(result.current.isLoading).toBe(false)
+
+    // Errors outlive query changes until that source succeeds.
+    act(() => result.current.setSearch(''))
+    expect(result.current.asyncErrors.flaky.message).toBe('sync boom')
+
+    mode = 'string'
+    act(() => result.current.setSearch('q2'))
+    await advance(200)
+    expect(result.current.asyncErrors.flaky).toBeInstanceOf(Error)
+    expect(result.current.asyncErrors.flaky.message).toBe('flat reason')
+
+    mode = 'object'
+    act(() => result.current.setSearch('q3'))
+    await advance(200)
+    expect(result.current.asyncErrors.flaky).toBeInstanceOf(Error)
+    expect((result.current.asyncErrors.flaky as Error & { cause?: unknown }).cause).toEqual({
+      status: 500,
+    })
+
+    mode = 'ok'
+    act(() => result.current.setSearch('q4'))
+    await advance(200)
+    expect(result.current.asyncErrors).toEqual({})
+    expect(ids(result.current).sort()).toEqual(['recovered', 'steady'])
+  })
+
+  it('treats an AbortError rejection as a settled load, not an error', async () => {
+    const { result } = renderPalette({
+      asyncSources: [
+        {
+          id: 'remote',
+          load: () => Promise.reject(new DOMException('The operation was aborted.', 'AbortError')),
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+
+    expect(result.current.asyncErrors).toEqual({})
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('reports a throwing trigger as an error without loading', async () => {
+    const load = vi.fn<Load>(async () => [])
+    const { result } = renderPalette({
+      asyncSources: [
+        {
+          id: 'remote',
+          load,
+          trigger: () => {
+            throw new Error('bad trigger')
+          },
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('x'))
+    await advance(500)
+
+    expect(load).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.asyncErrors.remote.message).toBe('bad trigger')
+  })
+
+  it('drops the errors of sources that are no longer configured', async () => {
+    let sources: AsyncSource[] = [
+      {
+        id: 'gone',
+        load: () => {
+          throw new Error('boom')
+        },
+      },
+    ]
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <CommandEngineProvider config={{ asyncSources: sources }}>{children}</CommandEngineProvider>
+      )
+    }
+    const { result, rerender } = renderHook(() => useCommandPalette(), { wrapper: Wrapper })
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    expect(Object.keys(result.current.asyncErrors)).toEqual(['gone'])
+
+    sources = [{ id: 'other', load: async () => [] }]
+    rerender()
+    await act(async () => {})
+    expect(result.current.asyncErrors).toEqual({})
+  })
+
+  it('never writes to the console', async () => {
+    const spies = (['error', 'warn', 'log', 'info', 'debug'] as const).map((method) =>
+      vi.spyOn(console, method).mockImplementation(() => {}),
+    )
+    const { result, unmount } = renderPalette({
+      asyncSources: [
+        {
+          id: 'throws',
+          load: () => {
+            throw new Error('sync')
+          },
+        },
+        { id: 'rejects', load: () => Promise.reject('nope') },
+        { id: 'aborts', load: () => Promise.reject(new DOMException('x', 'AbortError')) },
+        { id: 'hangs', load: () => new Promise(() => {}) },
+      ],
+    })
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    act(() => result.current.setSearch('y'))
+    await advance(200)
+    unmount()
+    await advance(1000)
+
+    for (const spy of spies) {
+      expect(spy).not.toHaveBeenCalled()
+      spy.mockRestore()
+    }
   })
 })

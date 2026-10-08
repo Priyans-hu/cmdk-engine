@@ -51,6 +51,7 @@ export function useAsyncSources(
   sources: AsyncSource[] | undefined,
   search: string,
   atRoot: boolean,
+  isOpen: boolean,
 ): AsyncSourcesValue {
   const sourcesRef = useRef(sources)
   // Declared before the loader effect so it runs first in the same commit.
@@ -58,8 +59,20 @@ export function useAsyncSources(
     sourcesRef.current = sources
   })
 
+  // Closing a palette that was open pauses loading at the current query, until
+  // it reopens or the query changes. A palette that never opened (an inline
+  // one) keeps loading.
+  const [pause, setPause] = useState<{ isOpen: boolean; query: string | null }>({
+    isOpen,
+    query: null,
+  })
+  if (pause.isOpen !== isOpen || (pause.query !== null && pause.query !== search)) {
+    setPause({ isOpen, query: pause.isOpen && !isOpen ? search : null })
+  }
+
   const ids = sources ? sources.map((source) => source.id) : []
-  const key = ids.length > 0 && atRoot ? JSON.stringify([ids, search]) : null
+  const key =
+    ids.length > 0 && atRoot && pause.query === null ? JSON.stringify([ids, search]) : null
 
   // Triggers run once per request, not on every render.
   const due = useMemo(() => {

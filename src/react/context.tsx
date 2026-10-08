@@ -71,7 +71,9 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   )
 
   // Async sources load here, once per query, not in each useCommandPalette().
-  const asyncSources = useAsyncSources(config.asyncSources, search, activePath.length === 0)
+  const asyncSources = useAsyncSources(
+    config.asyncSources, search, activePath.length === 0, isOpen,
+  )
 
   // Build the engine singletons from the specific config fields they depend on
   // (not the whole `config` object) so an inline config that only changes an
