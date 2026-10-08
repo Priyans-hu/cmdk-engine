@@ -12,7 +12,7 @@ export { DEFAULT_EXCLUDE }
 export type { ExcludePattern }
 
 /**
- * A React Router route object shape (compatible with v6 and v7).
+ * A React Router route object shape (compatible with v6, v7 and v8).
  * We only use the fields we need for scanning.
  */
 export interface RouteObject {
@@ -23,6 +23,18 @@ export interface RouteObject {
     [key: string]: unknown
   }
   [key: string]: unknown
+}
+
+/**
+ * The fields scanRoutes reads, without an index signature, so React Router's
+ * own route types and app-defined route interfaces are accepted as they are.
+ */
+interface ScannableRoute {
+  path?: string | undefined
+  index?: boolean | undefined
+  children?: readonly ScannableRoute[] | undefined
+  // `object &` lets a handle without a `command` key through TypeScript's weak-type check
+  handle?: (object & { command?: RouteCommandMeta | undefined }) | undefined
 }
 
 /** Options for scanRoutes */
@@ -45,23 +57,24 @@ export interface ScanRoutesOptions {
  * creates a CommandItem. If the route has `handle.command` metadata,
  * uses it to enrich the item.
  *
- * @param routes - React Router route objects
+ * @param routes - React Router route objects (v6, v7 or v8) or your own route type
  * @param options - Scan options (exclude paths, etc.)
  * @returns Array of discovered command items
  */
 export function scanRoutes(
-  routes: RouteObject[],
+  routes: readonly (RouteObject | ScannableRoute)[],
   options?: ScanRoutesOptions | string,
 ): CommandItem[] {
   // Support legacy signature: scanRoutes(routes, parentPath)
   const opts: ScanRoutesOptions = typeof options === 'string' ? {} : (options ?? {})
   const parentPath = typeof options === 'string' ? options : ''
 
-  return scanRoutesInternal(routes, parentPath, opts)
+  // RouteObject's index signature is the loosest view of every accepted shape
+  return scanRoutesInternal(routes as readonly RouteObject[], parentPath, opts)
 }
 
 function scanRoutesInternal(
-  routes: RouteObject[],
+  routes: readonly RouteObject[],
   parentPath: string,
   options: ScanRoutesOptions,
 ): CommandItem[] {
