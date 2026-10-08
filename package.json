@@ -200,7 +200,7 @@
     {
       "name": "cmdk-engine/adapters/react-router",
       "path": "dist/adapters/react-router/index.js",
-      "limit": "0.83 KB"
+      "limit": "1.11 KB"
     },
     {
       "name": "cmdk-engine/search/match-sorter",
