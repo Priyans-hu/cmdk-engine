@@ -53,6 +53,63 @@ const item = (id: string, label: string, extra: Partial<CommandItem> = {}): Comm
 })
 
 describe('CommandPalette with async sources', () => {
+  it('shows the palette.loading row instead of the empty state while sources load', async () => {
+    let finish: (items: CommandItem[]) => void = () => {}
+    const load = vi.fn<AsyncSource['load']>(
+      () => new Promise<CommandItem[]>((resolve) => (finish = resolve)),
+    )
+    renderPalette({ asyncSources: [{ id: 'remote', load }] })
+    expect(screen.queryByText('Loading...')).toBeNull()
+
+    await type('rem')
+    // Debounce window: nothing requested yet, but no "No results found." flash.
+    expect(load).not.toHaveBeenCalled()
+    expect(screen.getByText('Loading...')).toBeTruthy()
+    expect(screen.getByRole('progressbar').getAttribute('aria-label')).toBe('Loading...')
+    expect(screen.queryByText('No results found.')).toBeNull()
+
+    await advance(200)
+    expect(screen.getByText('Loading...')).toBeTruthy()
+    await act(async () => finish([item('remote-1', 'Remote one')]))
+
+    expect(screen.queryByText('Loading...')).toBeNull()
+    expect(screen.getByText('Remote one')).toBeTruthy()
+  })
+
+  it('translates the loading row and honours renderLoading', async () => {
+    const config: CommandEngineConfig = {
+      t: (key) => (key === 'palette.loading' ? 'Chargement...' : key),
+      asyncSources: [{ id: 'remote', load: () => new Promise(() => {}) }],
+    }
+    const { unmount } = renderPalette(config)
+    await type('x')
+    expect(screen.getByText('Chargement...')).toBeTruthy()
+    expect(screen.getByRole('progressbar').getAttribute('aria-label')).toBe('Chargement...')
+    unmount()
+
+    renderPalette(config, { renderLoading: () => <span>Fetching</span> })
+    await type('x')
+    expect(screen.getByText('Fetching')).toBeTruthy()
+  })
+
+  it('renders no loading row without async sources', async () => {
+    renderPalette({})
+    await type('anything')
+    expect(screen.queryByRole('progressbar')).toBeNull()
+    expect(screen.getByText('No results found.')).toBeTruthy()
+  })
+
+  it('loads in an inline palette that never opens', async () => {
+    renderPalette({
+      asyncSources: [{ id: 'remote', load: async () => [item('inline', 'Inline result')] }],
+    })
+
+    await type('inline')
+    await advance(200)
+
+    expect(screen.getByText('Inline result')).toBeTruthy()
+  })
+
   it('custom renderItem anchors only ever see allowed hrefs', async () => {
     const source: AsyncSource = {
       id: 'links',

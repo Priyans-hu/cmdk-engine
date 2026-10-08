@@ -13,7 +13,7 @@ export interface CommandPaletteProps {
   renderItem?: (item: CommandItem, score: number) => React.ReactNode
   /** Render function for empty state */
   renderEmpty?: () => React.ReactNode
-  /** Render function for loading state */
+  /** Render function for the loading state while async sources load (default: `palette.loading`) */
   renderLoading?: () => React.ReactNode
   /** Render function for group heading */
   renderGroupHeading?: (group: CommandGroup) => React.ReactNode
@@ -167,6 +167,9 @@ export function CommandPalette({
   const resolvedRenderEmpty = renderEmpty ?? (() => (
     <div data-cmdk-engine-empty="">{t('palette.empty')}</div>
   ))
+  const resolvedRenderLoading = renderLoading ?? (() => (
+    <div data-cmdk-engine-loading="">{t('palette.loading')}</div>
+  ))
 
   const handleSelect = useCallback(
     (value: string) => {
@@ -239,8 +242,8 @@ export function CommandPalette({
         onKeyDown={handleKeyDown}
       />
       <Cmdk.List className={listClassName}>
-        {isLoading && renderLoading && (
-          <Cmdk.Loading>{renderLoading()}</Cmdk.Loading>
+        {isLoading && (
+          <Cmdk.Loading label={t('palette.loading')}>{resolvedRenderLoading()}</Cmdk.Loading>
         )}
         {results.length === 0 && !isLoading && (
           <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
