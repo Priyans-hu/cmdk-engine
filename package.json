@@ -124,12 +124,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "rm -rf dist && tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src/ tests/",
+    "test:dist": "node tests-dist/node-esm.mjs && node tests-dist/node-cjs.cjs && vitest run --config vitest.dist.config.ts",
+    "lint": "eslint src/ tests/ tests-dist/",
+    "lint:package": "publint --strict && attw --pack .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
@@ -170,31 +172,55 @@
   },
   "size-limit": [
     {
+      "name": "cmdk-engine",
       "path": "dist/core/index.js",
-      "limit": "4.5 KB"
+      "limit": "3.55 KB"
     },
     {
+      "name": "cmdk-engine/react (own code)",
       "path": "dist/react/index.js",
-      "limit": "4 KB",
+      "limit": "2.1 KB",
       "ignore": [
+        "cmdk-engine",
         "react",
         "react-dom"
       ]
     },
     {
+      "name": "cmdk-engine/adapters/cmdk (own code)",
       "path": "dist/adapters/cmdk/index.js",
-      "limit": "3 KB",
+      "limit": "1.5 KB",
       "ignore": [
+        "cmdk-engine",
         "cmdk",
         "react",
         "react-dom"
       ]
+    },
+    {
+      "name": "cmdk-engine/adapters/react-router",
+      "path": "dist/adapters/react-router/index.js",
+      "limit": "0.83 KB"
+    },
+    {
+      "name": "cmdk-engine/search/match-sorter",
+      "path": "dist/core/search-match-sorter.js",
+      "limit": "0.76 KB"
+    },
+    {
+      "name": "Quick Start stack",
+      "import": {
+        "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
+        "dist/adapters/cmdk/index.js": "{ CommandPalette, useCommandPaletteShortcut }"
+      },
+      "limit": "5.95 KB"
     }
   ],
   "engines": {
     "node": ">=20.0.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "^2.29",
     "@size-limit/preset-small-lib": "^12.0",
     "@testing-library/jest-dom": "^6.6",
@@ -211,6 +237,7 @@
     "jsdom": "^29.1",
     "match-sorter": "^8.0",
     "prettier": "^3.5",
+    "publint": "0.3.25",
     "react-router": "^8",
     "react-router-dom": "^7.0",
     "react-router-v6": "npm:react-router@^6",

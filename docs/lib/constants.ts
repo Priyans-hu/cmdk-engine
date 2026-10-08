@@ -53,8 +53,8 @@ export const FEATURES = [
   },
   {
     icon: '📦',
-    title: '< 5 KB Core',
-    description: 'Tree-shakeable, zero runtime dependencies. Core engine is under 5 KB minified + brotli.',
+    title: '3.2 kB Core',
+    description: 'Tree-shakeable, zero runtime dependencies. Core engine is 3.2 kB minified + brotli; the full Quick Start stack is 5.4 kB.',
   },
 ]
 

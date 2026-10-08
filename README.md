@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling — all in < 5KB.
+The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling — about 5.4 kB (min + brotli) on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -20,7 +20,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
-| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > alphabetical |
+| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
 | First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
 | Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | CLI tooling | No | Yes — scan, init, validate |
@@ -343,6 +343,11 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > degrade to in-memory automatically during SSR. Override the backend via
 > `config.frecency.storage`.
 
+> `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
+> keys, not prefixes, so everyone using a browser shares the defaults. If
+> several users can sign in on one browser, namespace both keys per user, e.g.
+> ``storageKey: `cmdk-frecency:${user.id}` ``.
+
 ---
 
 ## Context / Scope Boosting
@@ -364,7 +369,7 @@ so on `/billing`, billing commands rank higher:
 
 ## Internationalization (i18n)
 
-All built-in UI strings go through a translation function. Pass your own to
+Built-in UI strings go through a translation function. Pass your own to
 localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
 
 ```tsx
@@ -374,8 +379,12 @@ import { getTranslationKeys } from 'cmdk-engine'
   config={{ t: (key) => myDictionary[key] ?? key }}
 >
 
-// getTranslationKeys() lists every key the engine uses.
+// getTranslationKeys() lists every key that has a default English string.
 ```
+
+> `getTranslationKeys()` also lists `group.other` and `search.history`, which
+> nothing reads yet. The heading of the ungrouped "Other" group is fixed
+> English text for now.
 
 ## Search History
 
@@ -493,13 +502,20 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 
 ### Package Entry Points
 
-| Import | Size | Purpose |
+| Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
-| `cmdk-engine` | ~4KB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | ~2KB | React hooks (provider, useCommandPalette, useCommandRegister) |
-| `cmdk-engine/adapters/cmdk` | ~1KB | Pre-wired cmdk components |
-| `cmdk-engine/adapters/react-router` | ~1KB | React Router v6/v7/v8 route scanner |
-| `cmdk-engine/search/match-sorter` | ~1KB | Optional match-sorter search backend |
+| `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
+| `cmdk-engine/react` | 1.9 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
+| `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
+| `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
+
+Sizes are minified + brotli. Entries import the siblings they use (the cmdk
+adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
+bundling them, so each one's code ships once. The Quick Start stack
+(`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
+`useCommandPaletteShortcut`) is **5.4 kB** in total, without the `react`,
+`react-dom` and `cmdk` peers. CI enforces all of these figures.
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
@@ -591,7 +607,7 @@ import type {
 |-------|-------------|---------------|
 | [#264](https://github.com/pacocoursey/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
 | [#280](https://github.com/pacocoursey/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
-| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → alphabetical |
+| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
 | [#267](https://github.com/pacocoursey/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
 
 ---

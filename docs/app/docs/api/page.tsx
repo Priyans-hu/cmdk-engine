@@ -21,7 +21,7 @@ unregister() // cleanup`}
       />
 
       <h3><code>createFuzzySearch()</code></h3>
-      <p>Built-in lightweight fuzzy search engine. Scores by exact match, prefix, substring, word boundary, and character matching. Under 1 KB.</p>
+      <p>Built-in lightweight fuzzy search engine. Scores by exact match, prefix, substring, word boundary, and character matching. Under 1 kB minified + brotli.</p>
 
       <h3><code>createKeywordEngine(synonyms, userAliases?)</code></h3>
       <p>Creates a keyword engine with bidirectional synonym lookup.</p>

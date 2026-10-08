@@ -150,7 +150,7 @@ export interface FrecencyStorage {
 export interface FrecencyOptions {
   /** Storage backend (defaults to localStorage) */
   storage?: FrecencyStorage
-  /** localStorage key prefix (default: 'cmdk-frecency') */
+  /** Full localStorage key, not a prefix (default: 'cmdk-frecency') */
   storageKey?: string
   /** Max age in days before entries are removed (default: 30) */
   maxAge?: number
@@ -294,7 +294,7 @@ export interface SearchHistoryConfig {
   enabled?: boolean
   /** Maximum history entries to keep (default: 20) */
   maxEntries?: number
-  /** localStorage key prefix (default: 'cmdk-search-history') */
+  /** Full localStorage key, not a prefix (default: 'cmdk-search-history') */
   storageKey?: string
   /** Minimum query length to record (default: 2) */
   minQueryLength?: number

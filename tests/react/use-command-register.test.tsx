@@ -26,7 +26,7 @@ describe('useCommandRegister', () => {
     const seen: number[] = []
     const { result, rerender } = renderHook(
       ({ n }: { n: number }) => {
-        useCommandRegister([{ id: 'a', label: 'Alpha', action: () => seen.push(n) }])
+        useCommandRegister([{ id: 'a', label: 'Alpha', action: () => void seen.push(n) }])
         return useEngineContext().registry
       },
       { wrapper, initialProps: { n: 1 } },
