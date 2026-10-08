@@ -20,7 +20,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
-| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > alphabetical |
+| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
 | First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
 | Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | CLI tooling | No | Yes — scan, init, validate |
@@ -360,7 +360,7 @@ so on `/billing`, billing commands rank higher:
 
 ## Internationalization (i18n)
 
-All built-in UI strings go through a translation function. Pass your own to
+Built-in UI strings go through a translation function. Pass your own to
 localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
 
 ```tsx
@@ -370,8 +370,12 @@ import { getTranslationKeys } from 'cmdk-engine'
   config={{ t: (key) => myDictionary[key] ?? key }}
 >
 
-// getTranslationKeys() lists every key the engine uses.
+// getTranslationKeys() lists every key that has a default English string.
 ```
+
+> `getTranslationKeys()` also lists `group.other` and `search.history`, which
+> nothing reads yet. The heading of the ungrouped "Other" group is fixed
+> English text for now.
 
 ## Search History
 
@@ -594,7 +598,7 @@ import type {
 |-------|-------------|---------------|
 | [#264](https://github.com/pacocoursey/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
 | [#280](https://github.com/pacocoursey/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
-| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → alphabetical |
+| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
 | [#267](https://github.com/pacocoursey/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
 
 ---
