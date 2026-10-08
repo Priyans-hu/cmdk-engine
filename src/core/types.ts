@@ -360,6 +360,43 @@ export interface CommandEngineConfig {
   locale?: string
   /** Search history configuration */
   searchHistory?: SearchHistoryConfig
+  /**
+   * Commands loaded asynchronously for the current query (e.g. server-side
+   * search), merged into the root-level results. See `AsyncSource`.
+   */
+  asyncSources?: AsyncSource[]
+}
+
+/**
+ * A source of commands loaded asynchronously for the current query.
+ *
+ * Loads run at the root level only. Each one is debounced, and its `signal`
+ * aborts when the query changes, the palette closes, the user drills into a
+ * command, or the provider unmounts. A failing source never breaks the
+ * palette: its error is reported in `asyncErrors[id]`.
+ *
+ * Items are untrusted: an `href` that is not relative, `http(s):`, `mailto:`
+ * or `tel:` is removed. Use `action` (or `onSelect`) for deep links.
+ */
+export interface AsyncSource {
+  /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */
+  id: string
+  /** Load the commands for `query`. Pass `signal` to `fetch` so stale requests are cancelled. */
+  load: (query: string, options: { signal: AbortSignal }) => Promise<CommandItem[]>
+  /** Whether to load for this query (default: the trimmed query is non-empty) */
+  trigger?: (query: string) => boolean
+  /** Delay in ms between the last query change and `load` (default: 200) */
+  debounceMs?: number
+  /**
+   * Filter and rank the items locally like registered commands (default: true).
+   * Set `false` when the server already matched the query: items are then
+   * shown as returned, after the local results, capped by `maxResults`.
+   */
+  shouldFilter?: boolean
+  /** Max items shown from this source when `shouldFilter` is false (default: 10) */
+  maxResults?: number
+  /** Group for every item from this source (overrides each item's `group`) */
+  group?: string
 }
 
 /** Configuration for the "Recent" commands group */
