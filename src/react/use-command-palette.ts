@@ -147,7 +147,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }
 
     // No "Recent" group: still apply frecency so frequently-used commands
-    // float to the top on empty query (README: frecency > priority > alpha).
+    // float to the top on empty query (README: frecency > priority > registration order).
     return frecency.rank(searched, 0.3)
   }, [
     enrichedCommands, searchQuery, search, accessFilter, frecency,
