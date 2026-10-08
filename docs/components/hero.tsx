@@ -27,7 +27,8 @@ export function Hero() {
         {/* Subtitle */}
         <p className="text-lg sm:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-8 text-balance animate-fade-in" style={{ animationDelay: '0.2s' }}>
           Built on cmdk. Auto-discover routes, fuzzy search with synonyms,
-          RBAC filtering, frecency ranking, CLI tooling — about 6.6 kB on top of React and cmdk.
+          RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register
+          hook, cmdk adapter and shortcut) is about 6.6 kB min + brotli on top of React and cmdk.
         </p>
 
         {/* CTAs */}

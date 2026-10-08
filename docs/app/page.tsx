@@ -96,8 +96,8 @@ export default function Home() {
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-4">
           Minified + brotli, each entry&apos;s own code; siblings and peers excluded. The Quick
-          Start stack is 6.6 kB in total. All entry points are tree-shakeable. The core has zero
-          runtime dependencies.
+          Start stack (provider, register hook, cmdk adapter and shortcut) is 6.6 kB in total. All
+          entry points are tree-shakeable. The core has zero runtime dependencies.
         </p>
       </section>
     </>
