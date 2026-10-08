@@ -73,29 +73,31 @@ export default function Home() {
             <tbody className="divide-y divide-[var(--border)]">
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">~2.3 KB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">3.2 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Core engine (types, registry, search, keywords, access control, frecency)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/react</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">~2.6 KB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">1.9 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React hooks (provider, useCommandPalette, useCommandRegister)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/cmdk</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">~1.4 KB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">1.4 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired cmdk components</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/react-router</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">~2.0 KB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">0.75 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7 route scanner</td>
               </tr>
             </tbody>
           </table>
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-4">
-          All entry points are tree-shakeable. The core has zero runtime dependencies.
+          Minified + brotli, each entry&apos;s own code; siblings and peers excluded. The Quick
+          Start stack is 5.4 kB in total. All entry points are tree-shakeable. The core has zero
+          runtime dependencies.
         </p>
       </section>
     </>

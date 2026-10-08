@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling — all in < 5KB.
+The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling — about 5.4 kB (min + brotli) on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -484,13 +484,20 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 
 ### Package Entry Points
 
-| Import | Size | Purpose |
+| Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
-| `cmdk-engine` | ~4KB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | ~2KB | React hooks (provider, useCommandPalette, useCommandRegister) |
-| `cmdk-engine/adapters/cmdk` | ~1KB | Pre-wired cmdk components |
-| `cmdk-engine/adapters/react-router` | ~1KB | React Router v6/v7 route scanner |
-| `cmdk-engine/search/match-sorter` | ~1KB | Optional match-sorter search backend |
+| `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
+| `cmdk-engine/react` | 1.9 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
+| `cmdk-engine/adapters/react-router` | 0.75 kB | React Router v6/v7 route scanner |
+| `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
+
+Sizes are minified + brotli. Entries import the siblings they use (the cmdk
+adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
+bundling them, so each one's code ships once. The Quick Start stack
+(`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
+`useCommandPaletteShortcut`) is **5.4 kB** in total, without the `react`,
+`react-dom` and `cmdk` peers. CI enforces all of these figures.
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
