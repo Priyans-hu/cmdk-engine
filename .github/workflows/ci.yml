@@ -40,4 +40,6 @@ jobs:
 
       - run: bun run test:dist
 
+      - run: bun run lint:package
+
       - run: bun run size
