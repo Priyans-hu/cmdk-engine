@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext, usePaletteState } from './context'
+import { ASYNC_SOURCE_META, AsyncSourcesContext, withAsyncItems } from './async-sources'
 
 /** Options for a single `select()` call */
 export interface SelectOptions {
@@ -37,6 +38,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   drillUp: () => void
   /** Reset to root level */
   resetPath: () => void
+  /** Last error per async source id; an entry clears on that source's next successful load */
+  asyncErrors: Record<string, Error>
 }
 
 /**
@@ -58,15 +61,21 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     activePath, setActivePath,
   } = usePaletteState()
 
+  // Async sources load once in the provider; every consumer reads the same state.
+  const { loaded, isLoading, errors: asyncErrors } = useContext(AsyncSourcesContext)
+
   // Subscribe to registry changes
   const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
 
+  // Loaded async items join the root-level commands (registered ids win).
+  const rootCommands = useMemo(() => withAsyncItems(commands, loaded), [commands, loaded])
+
   // Determine which commands to search: root or nested children
   const activeCommands = useMemo(() => {
-    if (activePath.length === 0) return commands
+    if (activePath.length === 0) return rootCommands
     const parent = activePath[activePath.length - 1]
     return parent.children ?? []
-  }, [commands, activePath])
+  }, [rootCommands, activePath])
 
   // Enrichment is query-independent and the most expensive stage, so memoize
   // it on its own — it only re-runs when the command set or synonyms change,
@@ -212,7 +221,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         return
       }
 
-      frecency.recordUsage(item.id)
+      // Async items are never recorded: their ids may not exist on the next load.
+      if (item.meta?.[ASYNC_SOURCE_META] === undefined) frecency.recordUsage(item.id)
 
       // Record search history if enabled
       if (config.searchHistory?.enabled && searchQuery.trim()) {
@@ -246,7 +256,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     groupedResults,
     groups,
     isOpen,
-    isLoading: false,
+    isLoading,
+    asyncErrors,
     breadcrumbs: activePath,
     depth: activePath.length,
     open,

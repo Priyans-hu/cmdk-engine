@@ -314,7 +314,10 @@ export interface CommandPaletteState {
   groups: CommandGroup[]
   /** Whether the palette is open */
   isOpen: boolean
-  /** Whether results are loading (async) */
+  /**
+   * Whether an async source is loading: true from when its trigger passes
+   * (debounce included) until every triggered source settles or is aborted
+   */
   isLoading: boolean
   /** Breadcrumb trail of parent commands (for nested navigation) */
   breadcrumbs: CommandItem[]

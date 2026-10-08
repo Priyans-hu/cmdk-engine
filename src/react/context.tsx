@@ -11,6 +11,7 @@ import { createContextEngine } from '../core/context'
 import { createDefaultTranslation } from '../core/i18n'
 import { createInMemorySearchHistory, createSearchHistory } from '../core/search-history'
 import type { SearchEngine } from '../core/types'
+import { AsyncSourcesContext, useAsyncSources } from './async-sources'
 
 /** Internal engine context shape */
 export interface EngineContextValue {
@@ -69,6 +70,9 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
     [isOpen, search, activePath],
   )
 
+  // Async sources load here, once per query, not in each useCommandPalette().
+  const asyncSources = useAsyncSources(config.asyncSources, search, activePath.length === 0)
+
   // Build the engine singletons from the specific config fields they depend on
   // (not the whole `config` object) so an inline config that only changes an
   // unrelated field — e.g. `context` on every route change — doesn't rebuild
@@ -115,7 +119,9 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   return (
     <EngineContext.Provider value={value}>
       <PaletteStateContext.Provider value={paletteState}>
-        {children}
+        <AsyncSourcesContext.Provider value={asyncSources}>
+          {children}
+        </AsyncSourcesContext.Provider>
       </PaletteStateContext.Provider>
     </EngineContext.Provider>
   )

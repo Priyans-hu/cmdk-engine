@@ -1,0 +1,219 @@
+import { createContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { AsyncSource, CommandItem } from '../core/types'
+
+const DEFAULT_DEBOUNCE_MS = 200
+
+/** Meta key set on every async item (and its children) to the id of its source */
+export const ASYNC_SOURCE_META = '_asyncSource'
+
+/** What one source loaded for the current request */
+export interface LoadedSource {
+  items: CommandItem[]
+}
+
+/** Async source state, shared by every `useCommandPalette()` under one provider */
+export interface AsyncSourcesValue {
+  /** Sources that settled for the current request, in `asyncSources` order (holes = pending) */
+  loaded: (LoadedSource | undefined)[]
+  /** Whether a source whose trigger passed for the current request has not settled */
+  isLoading: boolean
+  /** Last error per source id; an entry clears on that source's next success */
+  errors: Record<string, Error>
+}
+
+interface State {
+  /** Token of the effect run that owns `loaded`/`settled` (sequence guard) */
+  run: object | null
+  key: string | null
+  loaded: (LoadedSource | undefined)[]
+  settled: number
+  errors: Record<string, Error>
+}
+
+const NONE: (LoadedSource | undefined)[] = []
+const NO_ITEMS: CommandItem[] = []
+const NO_ERRORS: Record<string, Error> = {}
+const IDLE: State = { run: null, key: null, loaded: NONE, settled: 0, errors: NO_ERRORS }
+
+export const AsyncSourcesContext = createContext<AsyncSourcesValue>({
+  loaded: NONE,
+  isLoading: false,
+  errors: NO_ERRORS,
+})
+
+/**
+ * Runs `config.asyncSources` inside the provider, so every consumer shares one
+ * load per source per request. A request is the query plus the source ids, at
+ * the root level only. `load`, `trigger` and `debounceMs` are read through a
+ * ref: a fresh inline config with the same ids restarts nothing.
+ */
+export function useAsyncSources(
+  sources: AsyncSource[] | undefined,
+  search: string,
+  atRoot: boolean,
+): AsyncSourcesValue {
+  const sourcesRef = useRef(sources)
+  // Declared before the loader effect so it runs first in the same commit.
+  useEffect(() => {
+    sourcesRef.current = sources
+  })
+
+  const ids = sources ? sources.map((source) => source.id) : []
+  const key = ids.length > 0 && atRoot ? JSON.stringify([ids, search]) : null
+
+  // Triggers run once per request, not on every render.
+  const due = useMemo(() => {
+    const indexes: number[] = []
+    const errors: Record<string, Error> = {}
+    if (key !== null) {
+      sources!.forEach((source, i) => {
+        try {
+          if ((source.trigger ?? hasQuery)(search)) indexes.push(i)
+        } catch (error) {
+          errors[source.id] = toError(error)
+        }
+      })
+    }
+    return { indexes, errors }
+  }, [key])
+
+  const [state, setState] = useState<State>(IDLE)
+
+  useEffect(() => {
+    const run = {}
+    let live = true
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const controllers: AbortController[] = []
+
+    // A new request drops the previous one's items; errors stay until a success.
+    setState((prev) => {
+      const errors = keepErrors(prev.errors, ids, due.errors)
+      return key === null && prev.key === null && errors === prev.errors
+        ? prev
+        : { run, key, loaded: NONE, settled: 0, errors }
+    })
+
+    const finish = (i: number, id: string, items?: CommandItem[], error?: Error) => {
+      if (live) setState((prev) => (prev.run === run ? settle(prev, i, id, items, error) : prev))
+    }
+
+    for (const i of due.indexes) {
+      const { id, debounceMs = DEFAULT_DEBOUNCE_MS } = sourcesRef.current![i]
+      timers.push(
+        setTimeout(() => {
+          const source = sourcesRef.current![i]
+          const controller = new AbortController()
+          controllers.push(controller)
+          // The executor turns a synchronous throw from load() into a rejection.
+          new Promise<Iterable<CommandItem>>((resolve) =>
+            resolve(source.load(search, { signal: controller.signal })),
+          )
+            .then((items) => toAsyncItems(items, id))
+            .then(
+              (items) => finish(i, id, items),
+              (reason) =>
+                finish(i, id, undefined, isAbortError(reason) ? undefined : toError(reason)),
+            )
+        }, debounceMs),
+      )
+    }
+
+    return () => {
+      live = false
+      timers.forEach(clearTimeout)
+      controllers.forEach((controller) => controller.abort())
+    }
+  }, [key])
+
+  const current = key !== null && state.key === key
+  const loaded = current ? state.loaded : NONE
+  const isLoading = due.indexes.length > (current ? state.settled : 0)
+  return useMemo(
+    () => ({ loaded, isLoading, errors: state.errors }),
+    [loaded, isLoading, state.errors],
+  )
+}
+
+/**
+ * Root-level commands plus the loaded async items, deduped by id: registered
+ * commands win, then earlier sources. Returns `commands` itself when nothing
+ * new was added.
+ */
+export function withAsyncItems(
+  commands: CommandItem[],
+  loaded: (LoadedSource | undefined)[],
+): CommandItem[] {
+  if (loaded.length === 0) return commands
+  const seen = new Set(commands.map((command) => command.id))
+  const merged = commands.slice()
+  for (const source of loaded) {
+    for (const item of source?.items ?? NO_ITEMS) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      merged.push(item)
+    }
+  }
+  return merged.length === commands.length ? commands : merged
+}
+
+function hasQuery(query: string): boolean {
+  return query.trim() !== ''
+}
+
+function settle(prev: State, i: number, id: string, items?: CommandItem[], error?: Error): State {
+  let { loaded, errors } = prev
+  if (items) {
+    loaded = loaded.slice()
+    loaded[i] = { items }
+    if (id in errors) {
+      errors = { ...errors }
+      delete errors[id]
+    }
+  } else if (error) {
+    errors = { ...errors, [id]: error }
+  }
+  return { ...prev, loaded, settled: prev.settled + 1, errors }
+}
+
+/** Errors of sources still configured, plus `extra`; the same object when unchanged. */
+function keepErrors(
+  errors: Record<string, Error>,
+  ids: string[],
+  extra: Record<string, Error>,
+): Record<string, Error> {
+  const next: Record<string, Error> = {}
+  let changed = false
+  for (const id in errors) {
+    if (ids.includes(id)) next[id] = errors[id]
+    else changed = true
+  }
+  for (const id in extra) {
+    next[id] = extra[id]
+    changed = true
+  }
+  return changed ? next : errors
+}
+
+/** Copies tagged with their source id, so the hook can tell them from registered commands. */
+function toAsyncItems(items: Iterable<CommandItem>, sourceId: string): CommandItem[] {
+  const out: CommandItem[] = []
+  for (const item of items) out.push(toAsyncItem(item, sourceId))
+  return out
+}
+
+function toAsyncItem(item: CommandItem, sourceId: string): CommandItem {
+  const copy: CommandItem = { ...item, meta: { ...item.meta, [ASYNC_SOURCE_META]: sourceId } }
+  if (item.children) copy.children = item.children.map((child) => toAsyncItem(child, sourceId))
+  return copy
+}
+
+function isAbortError(reason: unknown): boolean {
+  return (reason as { name?: unknown } | null)?.name === 'AbortError'
+}
+
+/** Normalize a thrown value; a non-Error keeps the original value as `cause`. */
+function toError(reason: unknown): Error {
+  if (reason instanceof Error) return reason
+  const message = typeof reason === 'string' ? reason : 'Async source failed'
+  return Object.assign(new Error(message), { cause: reason })
+}
