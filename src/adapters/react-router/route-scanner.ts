@@ -170,7 +170,7 @@ function toCommand(fullPath: string, route: RouteObject): CommandItem {
 }
 
 /** handle.command fields, each copied onto the CommandItem field of the same name */
-const COMMAND_META_KEYS: (keyof RouteCommandMeta)[] = [
+const COMMAND_META_KEYS = [
   'label',
   'description',
   'keywords',
@@ -179,7 +179,14 @@ const COMMAND_META_KEYS: (keyof RouteCommandMeta)[] = [
   'permissions',
   'priority',
   'hidden',
-]
+] as const satisfies readonly (keyof RouteCommandMeta)[]
+
+// Compile-time only: the `satisfies` above rejects an unknown key, and this check
+// (applied where the keys are used) names any RouteCommandMeta key the list misses
+type MissingCommandMetaKey = Exclude<keyof RouteCommandMeta, (typeof COMMAND_META_KEYS)[number]>
+type CommandMetaKeysCheck = [MissingCommandMetaKey] extends [never]
+  ? unknown
+  : { missingKey: MissingCommandMetaKey }
 
 /**
  * Fold each index route into the item for its URL, wherever that item sits in
@@ -202,7 +209,7 @@ function mergeIndexRoutes(commands: CommandItem[], indexMeta: IndexMeta): Comman
       continue
     }
     folded.add(item)
-    for (const key of COMMAND_META_KEYS) {
+    for (const key of COMMAND_META_KEYS satisfies CommandMetaKeysCheck) {
       if (meta?.[key] !== undefined) Object.assign(target, { [key]: meta[key] })
     }
   }
