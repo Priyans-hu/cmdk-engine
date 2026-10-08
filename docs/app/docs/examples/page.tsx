@@ -65,6 +65,7 @@ function RegisterRoutes() {
   return null
 }`}
       />
+      <p>On React Router 8 there is no <code>react-router-dom</code>: import <code>createBrowserRouter</code> from <code>react-router</code> and <code>RouterProvider</code> from <code>react-router/dom</code>.</p>
 
       <h2>With RBAC</h2>
       <p>Filter commands based on user permissions. Commands with restricted permissions are automatically hidden.</p>
