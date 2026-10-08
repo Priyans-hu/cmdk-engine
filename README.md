@@ -334,6 +334,11 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > degrade to in-memory automatically during SSR. Override the backend via
 > `config.frecency.storage`.
 
+> `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
+> keys, not prefixes, so everyone using a browser shares the defaults. If
+> several users can sign in on one browser, namespace both keys per user, e.g.
+> ``storageKey: `cmdk-frecency:${user.id}` ``.
+
 ---
 
 ## Context / Scope Boosting

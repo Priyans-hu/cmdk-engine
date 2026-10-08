@@ -4,7 +4,7 @@ import type { FrecencyEntry, FrecencyStorage } from './types'
  * Create a localStorage-backed frecency storage.
  * Falls back gracefully in SSR or when localStorage is unavailable.
  *
- * @param storageKey - localStorage key prefix (default: 'cmdk-frecency')
+ * @param storageKey - Full localStorage key, not a prefix (default: 'cmdk-frecency')
  */
 export function createLocalStorageFrecencyStorage(
   storageKey = 'cmdk-frecency',
