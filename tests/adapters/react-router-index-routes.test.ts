@@ -114,4 +114,59 @@ describe('scanRoutes index routes', () => {
 
     expect(hrefs(routes)).toEqual(['/settings', '/settings/general'])
   })
+
+  it('keeps one item for two index routes on one URL, the later one winning', () => {
+    const routes: RouteObject[] = [
+      {
+        children: [
+          { index: true, handle: { command: { label: 'First', group: 'Main' } } },
+          { children: [{ index: true, handle: { command: { label: 'Second' } } }] },
+        ],
+      },
+    ]
+
+    expect(scanRoutes(routes)).toMatchObject([{ href: '/', label: 'Second', group: 'Main' }])
+  })
+
+  it('never lets handle.command override id or href', () => {
+    // Not part of RouteCommandMeta, but route configs are untyped at runtime
+    const command = { label: 'Billing Home', id: 'stray', href: '/elsewhere' }
+    const merged: RouteObject[] = [
+      { path: '/billing', children: [{ index: true, handle: { command } }] },
+    ]
+    const own: RouteObject[] = [{ children: [{ index: true, handle: { command } }] }]
+
+    expect(scanRoutes(merged)).toMatchObject([
+      { id: 'billing', href: '/billing', label: 'Billing Home' },
+    ])
+    expect(scanRoutes(own)).toMatchObject([{ id: 'home', href: '/', label: 'Billing Home' }])
+  })
+
+  it('applies falsy handle.command values from an index route', () => {
+    const routes: RouteObject[] = [
+      {
+        path: '/billing',
+        handle: { command: { description: 'Invoices', priority: 5, hidden: true } },
+        children: [
+          { index: true, handle: { command: { description: '', priority: 0, hidden: false } } },
+        ],
+      },
+    ]
+
+    expect(scanRoutes(routes)).toMatchObject([
+      { href: '/billing', description: '', priority: 0, hidden: false },
+    ])
+  })
+
+  it('resolves index routes against a legacy parent path', () => {
+    const routes: RouteObject[] = [
+      { index: true, handle: { command: { label: 'Settings Home' } } },
+      { path: 'team' },
+    ]
+
+    expect(scanRoutes(routes, '/settings')).toMatchObject([
+      { id: 'settings', href: '/settings', label: 'Settings Home' },
+      { id: 'settings--team', href: '/settings/team' },
+    ])
+  })
 })
