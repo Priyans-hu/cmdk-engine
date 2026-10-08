@@ -33,6 +33,10 @@ jobs:
 
       - run: bun run test
 
+      - run: bun run build
+
+      - run: bun run test:dist
+
       - name: Get version metadata
         id: meta
         run: |
@@ -66,7 +70,7 @@ jobs:
           - os: macos-latest
             target: darwin-arm64
             binary_name: cmdk-engine-darwin-arm64
-          - os: macos-13
+          - os: macos-15-intel
             target: darwin-x64
             binary_name: cmdk-engine-darwin-x64
           - os: ubuntu-latest
@@ -87,7 +91,7 @@ jobs:
       - run: bun run build
 
       - name: Compile standalone binary
-        run: bun build dist/cli/index.js --compile --outfile dist/${{ matrix.binary_name }}
+        run: bun build dist/cli/index.cjs --compile --outfile dist/${{ matrix.binary_name }}
 
       - name: Generate checksum
         run: shasum -a 256 dist/${{ matrix.binary_name }} > dist/${{ matrix.binary_name }}.sha256
