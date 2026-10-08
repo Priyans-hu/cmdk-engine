@@ -994,3 +994,135 @@ describe('async sources · unfiltered items (shouldFilter: false)', () => {
     expect(ids(result.current)).toEqual(['beta-hit'])
   })
 })
+
+describe('async sources · href allowlist', () => {
+  const REJECTED = [
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    ' javascript:alert(1)',
+    'java\tscript:alert(1)',
+    'java\nscript:alert(1)',
+    'javascript\r:alert(1)',
+    '\u0001javascript:alert(1)',
+    '\u0000 \u001fjavascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'vbscript:msgbox(1)',
+    'blob:https://example.com/0f6a',
+    'file:///etc/passwd',
+    'ftp://example.com/file',
+    'myapp://open/item',
+    'http://[bad',
+  ]
+  const ALLOWED = [
+    '/relative/path',
+    'relative/path',
+    '?tab=2',
+    '#section',
+    '//example.com/x',
+    'https://example.com/a',
+    'HTTPS://EXAMPLE.COM/A',
+    'http://example.com',
+    'mailto:team@example.com',
+    'tel:+15551234567',
+    // Not a scheme: parses as a relative path, as it does in browsers.
+    'java\u0001script:alert(1)',
+  ]
+  const links = (prefix: string, hrefs: string[]) =>
+    hrefs.map((href, i) => item(`${prefix}-${i}`, `link ${prefix} ${i}`, { href }))
+
+  async function loadLinks(shouldFilter: boolean) {
+    const { result } = renderPalette({
+      asyncSources: [
+        {
+          id: 'links',
+          shouldFilter,
+          maxResults: 100,
+          load: async () => [...links('bad', REJECTED), ...links('ok', ALLOWED)],
+        },
+      ],
+    })
+    act(() => result.current.setSearch('link'))
+    await advance(200)
+    return result
+  }
+
+  for (const shouldFilter of [true, false]) {
+    it(`strips every href outside the allowlist when items arrive (shouldFilter: ${shouldFilter})`, async () => {
+      const result = await loadLinks(shouldFilter)
+      const hrefs = Object.fromEntries(result.current.results.map((r) => [r.item.id, r.item.href]))
+
+      expect(Object.keys(hrefs)).toHaveLength(REJECTED.length + ALLOWED.length)
+      REJECTED.forEach((_, i) => expect(hrefs[`bad-${i}`]).toBeUndefined())
+      ALLOWED.forEach((href, i) => expect(hrefs[`ok-${i}`]).toBe(href))
+    })
+  }
+
+  it('strips hrefs on children and non-string hrefs', async () => {
+    const { result } = renderPalette({
+      asyncSources: [
+        {
+          id: 'nested',
+          load: async () => [
+            item('parent', 'Parent link', {
+              children: [
+                item('child-bad', 'Child bad', { href: 'javascript:alert(1)' }),
+                item('child-ok', 'Child ok', { href: '/child' }),
+              ],
+            }),
+            item('number', 'Number link', { href: 42 as unknown as string }),
+          ],
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('link'))
+    await advance(200)
+    const parent = result.current.results.find((r) => r.item.id === 'parent')!.item
+    expect(result.current.results.find((r) => r.item.id === 'number')!.item).not.toHaveProperty(
+      'href',
+    )
+
+    act(() => result.current.drillDown(parent))
+    const children = Object.fromEntries(result.current.results.map((r) => [r.item.id, r.item]))
+    expect(children['child-bad']).not.toHaveProperty('href')
+    expect(children['child-ok'].href).toBe('/child')
+  })
+
+  it('select() never navigates to a stripped href', async () => {
+    const onNavigate = vi.fn()
+    const { result } = renderPalette({
+      onNavigate,
+      asyncSources: [
+        {
+          id: 'links',
+          shouldFilter: false,
+          load: async () => [
+            item('evil', 'Evil', { href: 'javascript:alert(1)' }),
+            item('fine', 'Fine', { href: '/fine' }),
+          ],
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    act(() => result.current.select('evil'))
+    expect(onNavigate).not.toHaveBeenCalled()
+
+    act(() => result.current.setSearch('x'))
+    await advance(200)
+    act(() => result.current.select('fine'))
+    expect(onNavigate).toHaveBeenCalledWith('/fine', expect.objectContaining({ id: 'fine' }))
+  })
+
+  it('leaves registered commands untouched', async () => {
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load: async () => [] }] }, [
+      item('local', 'Local link', { href: 'myapp://local' }),
+    ])
+    await act(async () => {})
+
+    act(() => result.current.setSearch('link'))
+    await advance(200)
+    expect(result.current.results[0].item.href).toBe('myapp://local')
+  })
+})

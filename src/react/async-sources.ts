@@ -4,6 +4,8 @@ import type { AsyncSource, CommandItem } from '../core/types'
 const DEFAULT_DEBOUNCE_MS = 200
 /** Default per-source cap for unfiltered (`shouldFilter: false`) items */
 const DEFAULT_MAX_RESULTS = 10
+/** The only `href` protocols kept on async items (relative URLs resolve to `http:`) */
+const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
 
 /** Meta key set on every async item (and its children) to the id of its source */
 export const ASYNC_SOURCE_META = '_asyncSource'
@@ -246,8 +248,23 @@ function toAsyncItems(
 
 function toAsyncItem(item: CommandItem, sourceId: string): CommandItem {
   const copy: CommandItem = { ...item, meta: { ...item.meta, [ASYNC_SOURCE_META]: sourceId } }
+  // Remote hrefs reach window.location and custom renderItem anchors, so the
+  // check happens here, once, for every consumer: anything else is stripped.
+  if ('href' in copy && !isSafeHref(copy.href)) delete copy.href
   if (item.children) copy.children = item.children.map((child) => toAsyncItem(child, sourceId))
   return copy
+}
+
+/** Allowlist: relative, http(s), mailto and tel. Unparsable input is rejected. */
+function isSafeHref(href: unknown): boolean {
+  if (typeof href !== 'string') return false
+  try {
+    // The URL parser strips the whitespace and control characters that
+    // obfuscate a scheme, and lowercases it.
+    return SAFE_PROTOCOLS.includes(new URL(href, 'http://x').protocol)
+  } catch {
+    return false
+  }
 }
 
 function isAbortError(reason: unknown): boolean {

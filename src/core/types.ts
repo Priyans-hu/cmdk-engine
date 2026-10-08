@@ -379,7 +379,8 @@ export interface CommandEngineConfig {
  * palette: its error is reported in `asyncErrors[id]`.
  *
  * Items are untrusted: an `href` that is not relative, `http(s):`, `mailto:`
- * or `tel:` is removed. Use `action` (or `onSelect`) for deep links.
+ * or `tel:` is removed when the items arrive (children included). For deep
+ * links, return an `action`, or an allowed `href` that `onNavigate` maps.
  */
 export interface AsyncSource {
   /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */
