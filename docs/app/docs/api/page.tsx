@@ -95,6 +95,8 @@ const expanded = keywords.expandQuery('money')
   groupedResults,  // GroupedResult[] — results grouped by group
   groups,          // Active CommandGroup[]
   isOpen,          // Palette visibility
+  isLoading,       // True while an async source is loading
+  asyncErrors,     // Record<sourceId, Error> — last error per async source
   open, close, toggle,
   select,          // Select command (frecency + handler + close)
   recordUsage,     // Record command selection manually
@@ -150,6 +152,24 @@ const expanded = keywords.expandQuery('money')
   },
 }}>`}
       />
+
+      <h3><code>asyncSources</code></h3>
+      <p>Commands loaded for each query, such as a server-side search. The provider loads every source once per query for all consumers, at the root level only: it debounces (<code>debounceMs</code>, default 200), aborts stale requests on query change, close, drill-down and unmount, and reports failures per source in <code>asyncErrors</code>. <code>trigger(query)</code> decides whether to load (default: a non-empty query).</p>
+      <CodeBlock
+        language="tsx"
+        code={`<CommandEngineProvider config={{
+  asyncSources: [{
+    id: 'issues',
+    // Resolves to CommandItem[]
+    load: (query, { signal }) =>
+      fetch(\`/api/issues?q=\${encodeURIComponent(query)}\`, { signal }).then((res) => res.json()),
+    shouldFilter: false, // the server already matched the query
+    maxResults: 10,      // cap per source when shouldFilter is false (default 10)
+    group: 'Issues',
+  }],
+}}>`}
+      />
+      <p>With the default <code>shouldFilter: true</code>, loaded items are searched and ranked with your commands and count toward <code>maxResults</code>. With <code>false</code>, they are shown as returned after the local results. Only relative, <code>http(s)</code>, <code>mailto</code> and <code>tel</code> hrefs are kept on loaded items; use <code>action</code> for deep links.</p>
     </>
   )
 }
