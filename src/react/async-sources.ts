@@ -2,6 +2,8 @@ import { createContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { AsyncSource, CommandItem } from '../core/types'
 
 const DEFAULT_DEBOUNCE_MS = 200
+/** Default per-source cap for unfiltered (`shouldFilter: false`) items */
+const DEFAULT_MAX_RESULTS = 10
 
 /** Meta key set on every async item (and its children) to the id of its source */
 export const ASYNC_SOURCE_META = '_asyncSource'
@@ -9,6 +11,18 @@ export const ASYNC_SOURCE_META = '_asyncSource'
 /** What one source loaded for the current request */
 export interface LoadedSource {
   items: CommandItem[]
+  /** `shouldFilter` when the load started */
+  filter: boolean
+  /** `maxResults` when the load started (applies when `filter` is false) */
+  max: number
+}
+
+/** Root commands merged with the loaded async items */
+export interface AsyncItems {
+  /** Registered root commands plus client-filtered async items */
+  commands: CommandItem[]
+  /** Unfiltered (`shouldFilter: false`) items, per source in source order */
+  unfiltered: { items: CommandItem[]; max: number }[]
 }
 
 /** Async source state, shared by every `useCommandPalette()` under one provider */
@@ -31,7 +45,7 @@ interface State {
 }
 
 const NONE: (LoadedSource | undefined)[] = []
-const NO_ITEMS: CommandItem[] = []
+const NO_UNFILTERED: AsyncItems['unfiltered'] = []
 const NO_ERRORS: Record<string, Error> = {}
 const IDLE: State = { run: null, key: null, loaded: NONE, settled: 0, errors: NO_ERRORS }
 
@@ -106,8 +120,8 @@ export function useAsyncSources(
         : { run, key, loaded: NONE, settled: 0, errors }
     })
 
-    const finish = (i: number, id: string, items?: CommandItem[], error?: Error) => {
-      if (live) setState((prev) => (prev.run === run ? settle(prev, i, id, items, error) : prev))
+    const finish = (i: number, id: string, loaded?: LoadedSource, error?: Error) => {
+      if (live) setState((prev) => (prev.run === run ? settle(prev, i, id, loaded, error) : prev))
     }
 
     for (const i of due.indexes) {
@@ -121,9 +135,13 @@ export function useAsyncSources(
           new Promise<Iterable<CommandItem>>((resolve) =>
             resolve(source.load(search, { signal: controller.signal })),
           )
-            .then((items) => toAsyncItems(items, id))
+            .then((items) => ({
+              items: toAsyncItems(items, id, source.group),
+              filter: source.shouldFilter !== false,
+              max: source.maxResults ?? DEFAULT_MAX_RESULTS,
+            }))
             .then(
-              (items) => finish(i, id, items),
+              (loaded) => finish(i, id, loaded),
               (reason) =>
                 finish(i, id, undefined, isAbortError(reason) ? undefined : toError(reason)),
             )
@@ -148,36 +166,40 @@ export function useAsyncSources(
 }
 
 /**
- * Root-level commands plus the loaded async items, deduped by id: registered
- * commands win, then earlier sources. Returns `commands` itself when nothing
- * new was added.
+ * Merge the loaded async items into the root commands, deduped by id:
+ * registered commands win, then earlier sources. Client-filtered items join
+ * `commands` (the same array when none were added); unfiltered ones are kept
+ * per source for their own pipeline.
  */
-export function withAsyncItems(
+export function mergeAsyncItems(
   commands: CommandItem[],
   loaded: (LoadedSource | undefined)[],
-): CommandItem[] {
-  if (loaded.length === 0) return commands
+): AsyncItems {
+  if (loaded.length === 0) return { commands, unfiltered: NO_UNFILTERED }
   const seen = new Set(commands.map((command) => command.id))
   const merged = commands.slice()
+  const unfiltered: AsyncItems['unfiltered'] = []
   for (const source of loaded) {
-    for (const item of source?.items ?? NO_ITEMS) {
-      if (seen.has(item.id)) continue
-      seen.add(item.id)
-      merged.push(item)
-    }
+    if (!source) continue
+    const fresh = source.items.filter((item) => !seen.has(item.id) && seen.add(item.id))
+    if (!source.filter) unfiltered.push({ items: fresh, max: source.max })
+    else for (const item of fresh) merged.push(item)
   }
-  return merged.length === commands.length ? commands : merged
+  return {
+    commands: merged.length === commands.length ? commands : merged,
+    unfiltered: unfiltered.length ? unfiltered : NO_UNFILTERED,
+  }
 }
 
 function hasQuery(query: string): boolean {
   return query.trim() !== ''
 }
 
-function settle(prev: State, i: number, id: string, items?: CommandItem[], error?: Error): State {
+function settle(prev: State, i: number, id: string, result?: LoadedSource, error?: Error): State {
   let { loaded, errors } = prev
-  if (items) {
+  if (result) {
     loaded = loaded.slice()
-    loaded[i] = { items }
+    loaded[i] = result
     if (id in errors) {
       errors = { ...errors }
       delete errors[id]
@@ -208,9 +230,17 @@ function keepErrors(
 }
 
 /** Copies tagged with their source id, so the hook can tell them from registered commands. */
-function toAsyncItems(items: Iterable<CommandItem>, sourceId: string): CommandItem[] {
+function toAsyncItems(
+  items: Iterable<CommandItem>,
+  sourceId: string,
+  group: string | undefined,
+): CommandItem[] {
   const out: CommandItem[] = []
-  for (const item of items) out.push(toAsyncItem(item, sourceId))
+  for (const item of items) {
+    const copy = toAsyncItem(item, sourceId)
+    if (group !== undefined) copy.group = group
+    out.push(copy)
+  }
   return out
 }
 

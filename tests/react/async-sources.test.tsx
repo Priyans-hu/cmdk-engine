@@ -6,6 +6,7 @@ import { useCommandPalette } from '../../src/react/use-command-palette'
 import type { UseCommandPaletteReturn } from '../../src/react/use-command-palette'
 import { useCommandRegister } from '../../src/react/use-command-register'
 import { createInMemoryStorage } from '../../src/core/frecency'
+import { createSimpleAccessProvider } from '../../src/core/access-control'
 import type { AsyncSource, CommandEngineConfig, CommandItem } from '../../src/core/types'
 
 type Load = AsyncSource['load']
@@ -748,5 +749,248 @@ describe('async sources · errors', () => {
       expect(spy).not.toHaveBeenCalled()
       spy.mockRestore()
     }
+  })
+})
+
+describe('async sources · unfiltered items (shouldFilter: false)', () => {
+  const grouped = (palette: UseCommandPaletteReturn) =>
+    palette.groupedResults.map((g) => `${g.group.id}=${g.items.map((s) => s.item.id).join(',')}`)
+
+  it('shows a non-matching server item with shouldFilter false and drops it otherwise', async () => {
+    const load: Load = async () => [item('server-hit', 'Quarterly numbers')]
+    const on = renderPalette({ asyncSources: [{ id: 'srv', load, shouldFilter: false }] })
+    const off = renderPalette({ asyncSources: [{ id: 'srv', load }] })
+
+    act(() => on.result.current.setSearch('revenue'))
+    act(() => off.result.current.setSearch('revenue'))
+    await advance(200)
+
+    expect(ids(on.result.current)).toEqual(['server-hit'])
+    expect(ids(off.result.current)).toEqual([])
+  })
+
+  it('bypasses enrichment, search, frecency, the context boost and maxResults', async () => {
+    const storage = createInMemoryStorage()
+    storage.set('srv-2', { id: 'srv-2', count: 10, lastUsed: Date.now(), halfLifeScore: 0 })
+    const config: CommandEngineConfig = {
+      maxResults: 1,
+      context: { path: '/x' },
+      synonyms: { server: ['backend'] },
+      frecency: { storage },
+      asyncSources: [
+        {
+          id: 'srv',
+          shouldFilter: false,
+          load: async () => [
+            item('srv-1', 'Server one', { scope: ['/x'], keywords: ['server'] }),
+            item('srv-2', 'Server two'),
+            item('srv-3', 'Server three'),
+          ],
+        },
+      ],
+    }
+    const { result } = renderPalette(config, [
+      item('local-a', 'Alpha one', { keywords: ['server'] }),
+      item('local-b', 'Alpha two'),
+    ])
+    await act(async () => {})
+
+    act(() => result.current.setSearch('alpha'))
+    await advance(200)
+
+    // One local result (maxResults: 1), then every server item in server order.
+    expect(ids(result.current)).toEqual(['local-a', 'srv-1', 'srv-2', 'srv-3'])
+    const server = result.current.results.slice(1)
+    expect(server.map((r) => r.score)).toEqual([0, 0, 0])
+    expect(server[0].item.meta?._synonymKeywords).toBeUndefined()
+    expect(result.current.results[0].item.meta?._synonymKeywords).toEqual(['backend'])
+  })
+
+  it('applies when, access control and hidden (empty query only); disabled items stay', async () => {
+    const items = [
+      item('plain', 'Plain'),
+      item('gated', 'Gated', { when: () => false }),
+      item('denied', 'Denied', { permissions: ['nope'] }),
+      item('allowed', 'Allowed', { permissions: ['ok'] }),
+      item('hidden', 'Hidden', { hidden: true }),
+      item('disabled', 'Disabled', { disabled: true }),
+    ]
+    const { result } = renderPalette({
+      accessControl: createSimpleAccessProvider(['ok']),
+      asyncSources: [
+        { id: 'srv', shouldFilter: false, trigger: () => true, load: async () => items },
+      ],
+    })
+
+    act(() => result.current.setSearch('q'))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['plain', 'allowed', 'hidden', 'disabled'])
+    expect(result.current.results[3].item.disabled).toBe(true)
+
+    act(() => result.current.setSearch(''))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['plain', 'allowed', 'disabled'])
+  })
+
+  it('caps each source at 10 by default, or at its own maxResults after visibility', async () => {
+    const many = Array.from({ length: 15 }, (_, i) => item(`many-${i}`, `Many ${i}`))
+    const { result } = renderPalette({
+      asyncSources: [
+        { id: 'many', shouldFilter: false, load: async () => many },
+        {
+          id: 'few',
+          shouldFilter: false,
+          maxResults: 2,
+          load: async () => [
+            item('few-0', 'Few 0', { when: () => false }),
+            item('few-1', 'Few 1'),
+            item('few-2', 'Few 2'),
+            item('few-3', 'Few 3'),
+          ],
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('q'))
+    await advance(200)
+
+    const all = ids(result.current)
+    expect(all.filter((id) => id.startsWith('many-'))).toEqual(many.slice(0, 10).map((i) => i.id))
+    expect(all.filter((id) => id.startsWith('few-'))).toEqual(['few-1', 'few-2'])
+  })
+
+  it('dedupes across modes: registered commands first, then source order', async () => {
+    const { result } = renderPalette(
+      {
+        asyncSources: [
+          { id: 'filtered', load: async () => [item('shared', 'Shared filtered')] },
+          {
+            id: 'srv',
+            shouldFilter: false,
+            load: async () => [
+              item('dup', 'Dup server'),
+              item('shared', 'Shared server'),
+              item('only', 'Only server'),
+            ],
+          },
+        ],
+      },
+      [item('dup', 'Dup local')],
+    )
+    await act(async () => {})
+
+    act(() => result.current.setSearch('d'))
+    await advance(200)
+
+    const labels = Object.fromEntries(result.current.results.map((r) => [r.item.id, r.item.label]))
+    expect(labels).toEqual({ dup: 'Dup local', shared: 'Shared filtered', only: 'Only server' })
+  })
+
+  it('places server groups after local groups, in server order', async () => {
+    const { result } = renderPalette(
+      {
+        groups: [{ id: 'Pages', label: 'Pages', priority: 1 }],
+        asyncSources: [
+          {
+            id: 'srv',
+            shouldFilter: false,
+            load: async () => [
+              item('t1', 'One', { group: 'Tickets' }),
+              item('d1', 'Two', { group: 'Docs' }),
+              item('t2', 'Three', { group: 'Tickets' }),
+              item('p2', 'Four', { group: 'Pages' }),
+              item('u1', 'Five'),
+            ],
+          },
+        ],
+      },
+      [item('p1', 'Report page', { group: 'Pages' }), item('o1', 'Report misc')],
+    )
+    await act(async () => {})
+
+    act(() => result.current.setSearch('report'))
+    await advance(200)
+
+    // Server items join a matching local group at its end; new groups follow
+    // the local ones in server order; ungrouped items stay in "Other", last.
+    expect(grouped(result.current)).toEqual([
+      'Pages=p1,p2',
+      'Tickets=t1,t2',
+      'Docs=d1',
+      '__ungrouped__=o1,u1',
+    ])
+  })
+
+  it('puts every item of a source with a group into that group', async () => {
+    const { result } = renderPalette(
+      {
+        asyncSources: [
+          {
+            id: 'issues',
+            shouldFilter: false,
+            group: 'Issues',
+            load: async () => [
+              item('i1', 'First', { group: 'Elsewhere' }),
+              item('i2', 'Second'),
+              item('i3', 'Third', { group: 'Pages' }),
+            ],
+          },
+        ],
+      },
+      [item('p1', 'Issue page', { group: 'Pages' })],
+    )
+    await act(async () => {})
+
+    act(() => result.current.setSearch('issue'))
+    await advance(200)
+
+    expect(grouped(result.current)).toEqual(['Pages=p1', 'Issues=i1,i2,i3'])
+  })
+
+  it('never records unfiltered items in frecency, and select() still runs them', async () => {
+    const storage = createInMemoryStorage()
+    const action = vi.fn()
+    const { result } = renderPalette({
+      frecency: { storage },
+      asyncSources: [
+        {
+          id: 'srv',
+          shouldFilter: false,
+          load: async () => [item('srv-action', 'Server action', { action })],
+        },
+      ],
+    })
+
+    act(() => result.current.open())
+    act(() => result.current.setSearch('anything'))
+    await advance(200)
+    act(() => result.current.select('srv-action'))
+
+    expect(action).toHaveBeenCalledOnce()
+    expect(result.current.isOpen).toBe(false)
+    expect(storage.getAll()).toEqual([])
+  })
+
+  it('never renders the previous query items for the new query', async () => {
+    const frames: { search: string; ids: string[] }[] = []
+    const load: Load = async (query) => [item(`${query}-hit`, `${query} hit`)]
+    const { result } = renderHook(
+      () => {
+        const palette = useCommandPalette()
+        frames.push({ search: palette.search, ids: ids(palette) })
+        return palette
+      },
+      { wrapper: wrapperWith({ asyncSources: [{ id: 'srv', load, shouldFilter: false }] }) },
+    )
+
+    act(() => result.current.setSearch('alpha'))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['alpha-hit'])
+
+    frames.length = 0
+    act(() => result.current.setSearch('beta'))
+    expect(frames.filter((f) => f.search === 'beta').every((f) => f.ids.length === 0)).toBe(true)
+    await advance(200)
+    expect(ids(result.current)).toEqual(['beta-hit'])
   })
 })
