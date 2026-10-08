@@ -192,6 +192,8 @@ type CommandMetaKeysCheck = [MissingCommandMetaKey] extends [never]
  * Fold each index route into the item for its URL, wherever that item sits in
  * the tree, so the result does not depend on route order. The index route's
  * handle.command wins; it keeps its own item only when no other route has its URL.
+ * Only handle.command is merged: the index route's `title`/`icon` fallbacks
+ * apply only when it keeps its own item.
  */
 function mergeIndexRoutes(commands: CommandItem[], indexMeta: IndexMeta): CommandItem[] {
   if (indexMeta.size === 0) return commands

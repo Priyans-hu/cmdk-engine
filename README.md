@@ -253,7 +253,7 @@ A `handle` returned from `lazy()` is not read, because the scanner never calls `
 
 ### Index routes
 
-An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
+An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
 
 The CLI scanner (`npx cmdk-engine scan`) is regex-based and unchanged, so it does not resolve index routes.
 
