@@ -17,7 +17,7 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 | `cmdk-engine` | Core engine (types, registry, search, keywords, access control, frecency) |
 | `cmdk-engine/react` | React hooks (CommandEngineProvider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | cmdk UI adapter |
-| `cmdk-engine/adapters/react-router` | React Router v6/v7 route scanner |
+| `cmdk-engine/adapters/react-router` | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | Optional match-sorter search backend |
 
 ### Key Design Decisions

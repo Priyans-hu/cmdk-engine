@@ -89,7 +89,7 @@ export default function Home() {
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/react-router</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">~2.0 KB</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7 route scanner</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7/v8 route scanner</td>
               </tr>
             </tbody>
           </table>
