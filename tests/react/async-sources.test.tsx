@@ -240,6 +240,39 @@ describe('async sources · surface and compatibility', () => {
     expect(ids(result.current)).toEqual(['billing', 'remote-match'])
   })
 
+  it('applies when and permissions to client-filtered async items', async () => {
+    const { result } = renderPalette({
+      accessControl: createSimpleAccessProvider(['ok']),
+      asyncSources: [
+        {
+          id: 'remote',
+          load: async () => [
+            item('open', 'Remote open'),
+            item('gated', 'Remote gated', { when: () => false }),
+            item('denied', 'Remote denied', { permissions: ['nope'] }),
+            item('allowed', 'Remote allowed', { permissions: ['ok'] }),
+          ],
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('remote'))
+    await advance(200)
+
+    expect(ids(result.current).sort()).toEqual(['allowed', 'open'])
+  })
+
+  it('does not load for an empty or whitespace-only query by default', async () => {
+    const load = vi.fn<Load>(async () => [])
+    const { result } = renderPalette({ asyncSources: [{ id: 'remote', load }] })
+
+    act(() => result.current.setSearch('   '))
+    await advance(1000)
+
+    expect(load).not.toHaveBeenCalled()
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('dedupes by id: registered commands win, then earlier sources', async () => {
     const config: CommandEngineConfig = {
       asyncSources: [
