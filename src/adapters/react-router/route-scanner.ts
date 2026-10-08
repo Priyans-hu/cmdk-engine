@@ -57,6 +57,11 @@ export interface ScanRoutesOptions {
  * creates a CommandItem. If the route has `handle.command` metadata,
  * uses it to enrich the item.
  *
+ * An index route resolves to its parent's URL (`/` for a pathless root). Its
+ * `handle.command` is merged over the item for that URL (the index route
+ * wins), and it gets its own item only when no other route has that URL.
+ * A `handle` returned by `lazy()` is not read.
+ *
  * @param routes - React Router route objects (v6, v7 or v8) or your own route type
  * @param options - Scan options (exclude paths, etc.)
  * @returns Array of discovered command items
@@ -70,13 +75,27 @@ export function scanRoutes(
   const parentPath = typeof options === 'string' ? options : ''
 
   // RouteObject's index signature is the loosest view of every accepted shape
-  return scanRoutesInternal(routes as readonly RouteObject[], parentPath, opts)
+  const indexMeta: IndexMeta = new Map()
+  const commands = scanRoutesInternal(
+    routes as readonly RouteObject[],
+    parentPath,
+    opts,
+    false,
+    indexMeta,
+  )
+  return mergeIndexRoutes(commands, indexMeta)
 }
+
+/** Items created for index routes, with each index route's own handle.command */
+type IndexMeta = Map<CommandItem, RouteCommandMeta | undefined>
 
 function scanRoutesInternal(
   routes: readonly RouteObject[],
   parentPath: string,
   options: ScanRoutesOptions,
+  // Whether the nearest ancestor with a path was excluded (index routes share its URL)
+  parentExcluded: boolean,
+  indexMeta: IndexMeta,
 ): CommandItem[] {
   const commands: CommandItem[] = []
   const excludePatterns: ExcludePattern[] = options.noDefaultExclude
@@ -85,6 +104,7 @@ function scanRoutesInternal(
 
   for (const route of routes) {
     const fullPath = buildPath(parentPath, route.path)
+    let excluded = parentExcluded
 
     // Only create commands for routes with paths (skip layout routes)
     if (route.path !== undefined && route.path !== '') {
@@ -97,6 +117,7 @@ function scanRoutesInternal(
         (p) =>
           matchesExcludePattern(fullPath, p) || matchesExcludePattern(route.path ?? '', p),
       )
+      excluded = isExcluded
 
       if (isExcluded) {
         // Still recurse into children — only this path is excluded
@@ -104,30 +125,89 @@ function scanRoutesInternal(
         // Skip dynamic routes — can't navigate to /billing/:uuid without a real ID
         // Unless the route explicitly declares handle.command (user opted in)
       } else {
-        const meta = route.handle?.command
+        commands.push(toCommand(fullPath, route))
+      }
+    } else if (route.index === true) {
+      // An index route renders at its parent's URL ('/' at the root), so it follows
+      // the parent's exclusion; mergeIndexRoutes folds it into that URL's item
+      const href = fullPath || '/'
+      const meta = route.handle?.command
+      const isExcluded =
+        parentExcluded || excludePatterns.some((p) => matchesExcludePattern(href, p))
+      const isSkippedDynamic = /[:[\*]/.test(href) && !options.includeDynamic && !meta
 
-        commands.push({
-          id: pathToId(fullPath),
-          label: meta?.label ?? (route.title as string) ?? pathToLabel(fullPath),
-          description: meta?.description,
-          keywords: meta?.keywords,
-          group: meta?.group ?? pathToGroup(fullPath),
-          icon: meta?.icon ?? (route.icon as ReactNode),
-          permissions: meta?.permissions,
-          priority: meta?.priority,
-          hidden: meta?.hidden,
-          href: fullPath,
-        })
+      if (!isExcluded && !isSkippedDynamic) {
+        const item = toCommand(href, route)
+        indexMeta.set(item, meta)
+        commands.push(item)
       }
     }
 
     // Recurse into children
     if (route.children) {
-      commands.push(...scanRoutesInternal(route.children, fullPath, options))
+      commands.push(...scanRoutesInternal(route.children, fullPath, options, excluded, indexMeta))
     }
   }
 
   return commands
+}
+
+function toCommand(fullPath: string, route: RouteObject): CommandItem {
+  const meta = route.handle?.command
+
+  return {
+    id: pathToId(fullPath),
+    label: meta?.label ?? (route.title as string) ?? pathToLabel(fullPath),
+    description: meta?.description,
+    keywords: meta?.keywords,
+    group: meta?.group ?? pathToGroup(fullPath),
+    icon: meta?.icon ?? (route.icon as ReactNode),
+    permissions: meta?.permissions,
+    priority: meta?.priority,
+    hidden: meta?.hidden,
+    href: fullPath,
+  }
+}
+
+/** handle.command fields, each copied onto the CommandItem field of the same name */
+const COMMAND_META_KEYS: (keyof RouteCommandMeta)[] = [
+  'label',
+  'description',
+  'keywords',
+  'group',
+  'icon',
+  'permissions',
+  'priority',
+  'hidden',
+]
+
+/**
+ * Fold each index route into the item for its URL, wherever that item sits in
+ * the tree, so the result does not depend on route order. The index route's
+ * handle.command wins; it keeps its own item only when no other route has its URL.
+ */
+function mergeIndexRoutes(commands: CommandItem[], indexMeta: IndexMeta): CommandItem[] {
+  if (indexMeta.size === 0) return commands
+
+  const byHref = new Map<string | undefined, CommandItem>()
+  for (const item of commands) {
+    if (!indexMeta.has(item)) byHref.set(item.href, item)
+  }
+
+  const folded = new Set<CommandItem>()
+  for (const [item, meta] of indexMeta) {
+    const target = byHref.get(item.href)
+    if (!target) {
+      byHref.set(item.href, item)
+      continue
+    }
+    folded.add(item)
+    for (const key of COMMAND_META_KEYS) {
+      if (meta?.[key] !== undefined) Object.assign(target, { [key]: meta[key] })
+    }
+  }
+
+  return commands.filter((item) => !folded.has(item))
 }
 
 /**
