@@ -77,6 +77,16 @@
         "default": "./dist/adapters/cmdk/index.cjs"
       }
     },
+    "./adapters/base-ui": {
+      "import": {
+        "types": "./dist/adapters/base-ui/index.d.ts",
+        "default": "./dist/adapters/base-ui/index.js"
+      },
+      "require": {
+        "types": "./dist/adapters/base-ui/index.d.cts",
+        "default": "./dist/adapters/base-ui/index.cjs"
+      }
+    },
     "./adapters/react-router": {
       "import": {
         "types": "./dist/adapters/react-router/index.d.ts",
@@ -109,6 +119,9 @@
       ],
       "adapters/cmdk": [
         "./dist/adapters/cmdk/index.d.ts"
+      ],
+      "adapters/base-ui": [
+        "./dist/adapters/base-ui/index.d.ts"
       ],
       "adapters/react-router": [
         "./dist/adapters/react-router/index.d.ts"
