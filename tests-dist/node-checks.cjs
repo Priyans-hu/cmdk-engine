@@ -47,6 +47,14 @@ function checkEntries(label, { core, react, cmdk, router, matchSorter, pkg }) {
   const items = [{ id: 'billing', label: 'Billing' }]
   assert.equal(core.createFuzzySearch().search('bill', items).length, 1)
   assert.match(renderToString(quickStart(react, cmdk)), /Type a command or search/)
+  // An async source whose trigger passes renders the loading row from the first render.
+  const pending = { id: 'remote', trigger: () => true, load: () => new Promise(() => {}) }
+  const withSource = h(
+    react.CommandEngineProvider,
+    { config: { asyncSources: [pending] } },
+    h(cmdk.CommandPalette),
+  )
+  assert.match(renderToString(withSource), /Loading\.\.\./)
   assert.equal(router.scanRoutes([{ path: '/billing' }])[0]?.label, 'Billing')
   assert.equal(matchSorter.createMatchSorterSearch().search('bill', items).length, 1)
   assert.equal(pkg.name, 'cmdk-engine')

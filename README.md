@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 5.4 kB min + brotli on top of React and cmdk.
+The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.6 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -23,6 +23,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
 | First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
 | Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
+| Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
 | Framework-agnostic core | No | Yes — zero runtime deps |
 
@@ -394,6 +395,70 @@ function RecentSearches() {
 }
 ```
 
+## Async Command Sources
+
+Mix registered commands with results loaded for each query, such as a
+server-side search. The provider runs every source once per query for all
+consumers: it debounces, aborts stale requests and ignores late responses.
+
+```tsx
+import type { AsyncSource } from 'cmdk-engine'
+
+const issueSearch: AsyncSource = {
+  id: 'issues',
+  load: async (query, { signal }) => {
+    const res = await fetch(`/api/issues?q=${encodeURIComponent(query)}`, { signal })
+    const issues: { id: string; title: string }[] = await res.json()
+    return issues.map((issue) => ({
+      id: `issue-${issue.id}`,
+      label: issue.title,
+      href: `/issues/${issue.id}`,
+    }))
+  },
+  shouldFilter: false, // the server already matched the query
+  group: 'Issues',
+}
+
+<CommandEngineProvider config={{ asyncSources: [issueSearch] }}>
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `id` | required | Keys `asyncErrors`; changing the set of ids restarts loading |
+| `load(query, { signal })` | required | Returns the items; pass `signal` to `fetch` |
+| `trigger(query)` | non-empty trimmed query | Whether to load for this query |
+| `debounceMs` | `200` | Delay after the last query change |
+| `shouldFilter` | `true` | `true`: items are searched and ranked with your commands and count toward `maxResults`. `false`: the server matched them, so they are shown as returned, after the local results |
+| `maxResults` | `10` | Cap per source when `shouldFilter` is `false` |
+| `group` | each item's `group` | Group for every item from this source |
+
+- `isLoading` is true from the moment a trigger passes (debounce included)
+  until every source settles. `CommandPalette` shows a `palette.loading` row
+  meanwhile; override it with `renderLoading`.
+- `asyncErrors` maps a source id to its last error, cleared on that source's
+  next success. A failing source never breaks the palette, and nothing is
+  logged.
+- Sources load at the root level only. Loads are aborted and their items
+  cleared when the query changes, the palette closes, the user drills into a
+  command, or the provider unmounts. A palette that reopens loads again; an
+  inline palette that never opens keeps loading.
+- `when`, permissions and `hidden` apply to loaded items too. Unfiltered items
+  skip search, frecency, the context boost and `maxResults`, and their groups
+  come after the local groups, in server order.
+- Registered commands win on duplicate ids, then earlier sources. Loaded items
+  are never recorded in frecency.
+- `load`, `trigger` and `debounceMs` are read when needed, so an inline
+  `config` does not restart loads. Change a source's `id` to force a reload.
+- `trigger` runs during render (twice under StrictMode in development), so
+  keep it pure and cheap. A trigger that passes on an empty query loads as
+  soon as the provider mounts, even for a palette that has never been opened.
+
+> **Security:** loaded items are untrusted. Only relative, `http(s):`,
+> `mailto:` and `tel:` hrefs are kept; any other `href` is removed when the
+> items arrive (children included), so it never reaches `window.location` or a
+> custom `renderItem` anchor. For deep links (`myapp://...`), return an
+> `action`, or an allowed `href` that your `onNavigate` maps.
+
 ---
 
 ## CLI Tool
@@ -496,7 +561,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
 | `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | 1.9 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine/react` | 3.1 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 0.75 kB | React Router v6/v7 route scanner |
 | `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
@@ -505,7 +570,7 @@ Sizes are minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **5.4 kB** in total, without the `react`,
+`useCommandPaletteShortcut`) is **6.6 kB** in total, without the `react`,
 `react-dom` and `cmdk` peers. CI enforces size budgets about 10% above these
 figures.
 
@@ -559,6 +624,8 @@ const {
   groupedResults,  // GroupedResult[] — results grouped by group
   groups,          // CommandGroup[] — active groups
   isOpen,          // Palette visibility
+  isLoading,       // True while an async source is loading
+  asyncErrors,     // Record<sourceId, Error> — last error per async source
   open, close, toggle,
   select,          // Select a command (records frecency + runs handler + closes)
   recordUsage,     // Record frecency manually
@@ -580,6 +647,7 @@ import type {
   GroupedResult,
   GroupedResults,
   AccessControlProvider,
+  AsyncSource,
   FrecencyOptions,
   RecentCommandsConfig,
   CommandGroup,

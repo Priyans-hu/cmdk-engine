@@ -22,6 +22,7 @@ export type {
   TranslationFn,
   SearchHistoryEntry,
   SearchHistoryConfig,
+  AsyncSource,
 } from './types'
 
 // Config helper
