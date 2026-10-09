@@ -210,3 +210,32 @@ describe('createInMemoryStorage', () => {
     expect(storage.get('a')).toBeNull()
   })
 })
+
+describe('createFrecencyEngine · rank with stale usage', () => {
+  const DAY = 86_400_000
+
+  it('gives a lone stale entry its decayed share, not the full boost', () => {
+    const storage = createInMemoryStorage()
+    storage.set('stale', {
+      id: 'stale',
+      count: 1,
+      lastUsed: Date.now() - 29 * DAY,
+      halfLifeScore: 0,
+    })
+    const engine = createFrecencyEngine({ storage })
+
+    const ranked = engine.rank([scored('unused', 0.8), scored('stale', 0.6)])
+    expect(ranked.map((r) => r.item.id)).toEqual(['unused', 'stale'])
+    expect(ranked[1].score).toBeLessThan(0.5)
+  })
+
+  it('still gives the full boost to one use within the last half-life', () => {
+    const storage = createInMemoryStorage()
+    storage.set('used', { id: 'used', count: 1, lastUsed: Date.now() - 3 * DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage })
+
+    const ranked = engine.rank([scored('unused', 0.8), scored('used', 0.6)])
+    expect(ranked.map((r) => r.item.id)).toEqual(['used', 'unused'])
+    expect(ranked[0].score).toBeCloseTo(0.6 * 0.7 + 0.3, 6)
+  })
+})

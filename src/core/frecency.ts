@@ -91,11 +91,13 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
       }
     }
 
-    // Blend search score with normalized frecency
+    // Blend search score with normalized frecency. The divisor never drops below
+    // 0.5 (one use, one half-life ago), so when every used result is stale, a
+    // stale entry keeps its decayed share instead of the full boost.
     return items
       .map(({ item, score }) => {
         const rawFrecency = frecencyScores.get(item.id) ?? 0
-        const normalizedFrecency = maxFrecency > 0 ? rawFrecency / maxFrecency : 0
+        const normalizedFrecency = rawFrecency / Math.max(maxFrecency, 0.5)
 
         const blendedScore = Math.min(
           score * (1 - weight) + normalizedFrecency * weight,
