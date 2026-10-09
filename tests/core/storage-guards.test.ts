@@ -50,6 +50,29 @@ describe('createLocalStorageFrecencyStorage · malformed data', () => {
     expect(storage.get('billing')).toEqual(valid)
   })
 
+  it('keeps the first write when an array is under the key', () => {
+    localStorage.setItem(FRECENCY_KEY, '[1,2]')
+    const storage = createLocalStorageFrecencyStorage()
+    const home = { id: 'home', count: 1, lastUsed: 1, halfLifeScore: 0 }
+
+    storage.set('home', home)
+
+    expect(storage.get('home')).toEqual(home)
+    expect(JSON.parse(localStorage.getItem(FRECENCY_KEY)!)).toEqual({ home })
+  })
+
+  it.each([
+    ['id', { id: 7, count: 1, lastUsed: 1 }],
+    ['count', { id: 'x', count: '1', lastUsed: 1 }],
+    ['lastUsed', { id: 'x', count: 1, lastUsed: '1' }],
+  ])('drops an entry whose %s has the wrong type', (_, entry) => {
+    localStorage.setItem(FRECENCY_KEY, JSON.stringify({ x: entry, billing: valid }))
+    const storage = createLocalStorageFrecencyStorage()
+
+    expect(storage.get('x')).toBeNull()
+    expect(storage.getAll()).toEqual([valid])
+  })
+
   it('replaces malformed data on the next write', () => {
     localStorage.setItem(FRECENCY_KEY, JSON.stringify({ a: null, billing: valid }))
     const storage = createLocalStorageFrecencyStorage()
@@ -105,6 +128,18 @@ describe('createSearchHistory · malformed data', () => {
       HISTORY_KEY,
       JSON.stringify([null, 1, 'x', { query: 2 }, { query: 'no-numbers' }, entry]),
     )
+    const history = createSearchHistory()
+
+    expect(history.getRecent()).toEqual([entry])
+  })
+
+  it.each([
+    ['query', { query: 2, timestamp: 1, resultCount: 1 }],
+    ['timestamp', { query: 'settings', timestamp: '1', resultCount: 1 }],
+    ['resultCount', { query: 'settings', timestamp: 1, resultCount: '1' }],
+  ])('drops an entry whose %s has the wrong type', (_, bad) => {
+    const entry = { query: 'billing', timestamp: 1, resultCount: 2 }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([bad, entry]))
     const history = createSearchHistory()
 
     expect(history.getRecent()).toEqual([entry])
