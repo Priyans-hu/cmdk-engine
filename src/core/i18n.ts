@@ -6,6 +6,7 @@ const DEFAULT_STRINGS: Record<string, string> = {
   'palette.placeholder': 'Type a command or search...',
   'palette.empty': 'No results found.',
   'palette.loading': 'Loading...',
+  'palette.close': 'Close',
   'breadcrumbs.back': 'Go back',
   'group.recent': 'Recent',
   'group.other': 'Other',

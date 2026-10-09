@@ -77,6 +77,16 @@
         "default": "./dist/adapters/cmdk/index.cjs"
       }
     },
+    "./adapters/base-ui": {
+      "import": {
+        "types": "./dist/adapters/base-ui/index.d.ts",
+        "default": "./dist/adapters/base-ui/index.js"
+      },
+      "require": {
+        "types": "./dist/adapters/base-ui/index.d.cts",
+        "default": "./dist/adapters/base-ui/index.cjs"
+      }
+    },
     "./adapters/react-router": {
       "import": {
         "types": "./dist/adapters/react-router/index.d.ts",
@@ -110,6 +120,9 @@
       "adapters/cmdk": [
         "./dist/adapters/cmdk/index.d.ts"
       ],
+      "adapters/base-ui": [
+        "./dist/adapters/base-ui/index.d.ts"
+      ],
       "adapters/react-router": [
         "./dist/adapters/react-router/index.d.ts"
       ],
@@ -129,7 +142,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:dist": "node tests-dist/node-esm.mjs && node tests-dist/node-cjs.cjs && vitest run --config vitest.dist.config.ts",
+    "test:dist": "node tests-dist/node-esm.mjs && node tests-dist/node-cjs.cjs && vitest run --config vitest.dist.config.ts && vitest run --config vitest.dist.floor.config.ts",
     "lint": "eslint src/ tests/ tests-dist/",
     "lint:package": "publint --strict && attw --pack .",
     "format": "prettier --write .",
@@ -143,6 +156,7 @@
     "size": "size-limit"
   },
   "peerDependencies": {
+    "@base-ui/react": "^1.1.0",
     "cmdk": "^1.0.0",
     "match-sorter": "^7.0.0 || ^8.0.0",
     "react": "^18.0.0 || ^19.0.0",
@@ -151,6 +165,9 @@
     "react-router-dom": "^6.0.0 || ^7.0.0"
   },
   "peerDependenciesMeta": {
+    "@base-ui/react": {
+      "optional": true
+    },
     "cmdk": {
       "optional": true
     },
@@ -208,6 +225,17 @@
       "limit": "0.76 KB"
     },
     {
+      "name": "cmdk-engine/adapters/base-ui (own code)",
+      "path": "dist/adapters/base-ui/index.js",
+      "limit": "1.68 KB",
+      "ignore": [
+        "cmdk-engine",
+        "@base-ui/react",
+        "react",
+        "react-dom"
+      ]
+    },
+    {
       "name": "Quick Start stack",
       "import": {
         "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
@@ -221,6 +249,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
+    "@base-ui/react": "^1.8.0",
     "@changesets/cli": "^2.29",
     "@size-limit/preset-small-lib": "^12.0",
     "@testing-library/jest-dom": "^6.6",
@@ -231,6 +260,7 @@
     "@typescript-eslint/eslint-plugin": "^8.0",
     "@typescript-eslint/parser": "^8.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "base-ui-floor": "npm:@base-ui/react@1.1.0",
     "cmdk": "^1.1",
     "commander": "^14.0",
     "eslint": "^10.0",

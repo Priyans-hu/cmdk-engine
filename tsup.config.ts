@@ -100,6 +100,22 @@ export default defineConfig([
     external: ['react', 'react-dom', 'cmdk'],
     esbuildPlugins: [siblingEntriesExternal(['cmdk-engine', 'cmdk-engine/react'])],
   },
+  // Base UI adapter (client-only, like the cmdk adapter). The string external
+  // also covers the `@base-ui/react/*` subpaths it imports.
+  {
+    entry: { 'adapters/base-ui/index': 'src/adapters/base-ui/index.ts' },
+    format: ['esm', 'cjs'],
+    dts: true,
+    treeshake: true,
+    splitting: false,
+    sourcemap: false,
+    onSuccess: prependUseClient([
+      'dist/adapters/base-ui/index.js',
+      'dist/adapters/base-ui/index.cjs',
+    ]),
+    external: ['react', 'react-dom', '@base-ui/react'],
+    esbuildPlugins: [siblingEntriesExternal(['cmdk-engine', 'cmdk-engine/react'])],
+  },
   // React Router adapter. Keeps its core code bundled: it uses route-defaults
   // helpers that `cmdk-engine` does not export.
   {

@@ -25,6 +25,7 @@ npm install cmdk-engine
 - `cmdk-engine/adapters/cmdk` — cmdk UI integration
 - `cmdk-engine/adapters/react-router` — React Router route auto-discovery
 - `cmdk-engine/search/match-sorter` — Optional match-sorter search backend
+- `cmdk-engine/adapters/base-ui` — Base UI integration (Autocomplete + Dialog), with the cmdk adapter's props except vimBindings; optional peer `@base-ui/react` ^1.1.0
 
 ## CLI
 

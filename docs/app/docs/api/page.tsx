@@ -114,6 +114,19 @@ const expanded = keywords.expandQuery('money')
       <h3><code>CommandPalette</code> (<code>cmdk-engine/adapters/cmdk</code>)</h3>
       <p>Pre-wired cmdk component. Sets <code>shouldFilter={'{false}'}</code> automatically so cmdk-engine owns all filtering and ranking.</p>
 
+      <h3><code>CommandPalette</code> (<code>cmdk-engine/adapters/base-ui</code>)</h3>
+      <p>The same component and <code>useCommandPaletteShortcut</code> built on Base UI&apos;s Autocomplete (with <code>mode=&quot;none&quot;</code>, so cmdk-engine still owns filtering and ranking) and, with <code>dialog</code>, its Dialog. Install the optional peer <code>@base-ui/react</code> (<code>^1.1.0</code>). It takes the cmdk adapter&apos;s props except <code>vimBindings</code>, and its default markup uses the same <code>data-cmdk-engine-*</code> attributes, so switching is an import-path change.</p>
+      <CodeBlock
+        language="tsx"
+        code={`import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
+
+function CommandMenu() {
+  useCommandPaletteShortcut() // Cmd+K / Ctrl+K
+  return <CommandPalette dialog overlayClassName="backdrop" contentClassName="palette" />
+}`}
+      />
+      <p>Differences from the cmdk adapter: no vim keys; Home and End move the caret; disabled items stay reachable by the arrow keys (Enter and click do nothing); the highlighted item has <code>data-highlighted</code>; the loading row is a <code>role=&quot;status&quot;</code> region after the list; when results change while open (async sources), the highlight keeps its position rather than its item; with an IME the query updates when composition ends. Give your app root <code>isolation: isolate</code> and, for iOS 26+ Safari, a <code>position: absolute</code> backdrop plus <code>body {'{ position: relative }'}</code>, as the <a href="https://base-ui.com/react/overview/quick-start">Base UI quick start</a> explains. The dialog&apos;s visually hidden close button is labelled by the <code>palette.close</code> translation key. Base UI costs about 48 kB min + brotli (Autocomplete and Dialog) versus about 14 kB for cmdk with its Radix dialog.</p>
+
       <h3><code>scanRoutes(routes, options?)</code> (<code>cmdk-engine/adapters/react-router</code>)</h3>
       <p>Scan a React Router route tree and extract CommandItem objects. Reads <code>handle.command</code> metadata from route definitions.</p>
       <CodeBlock

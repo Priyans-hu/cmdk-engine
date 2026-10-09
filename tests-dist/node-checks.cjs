@@ -5,6 +5,7 @@ const assert = require('node:assert/strict')
 const { existsSync, readFileSync } = require('node:fs')
 const path = require('node:path')
 const { createElement: h } = require('react')
+const { useState } = require('react')
 const { renderToString } = require('react-dom/server')
 
 const DIST = path.join(__dirname, '..', 'dist')
@@ -14,6 +15,8 @@ const CLIENT_FILES = [
   'react/index.cjs',
   'adapters/cmdk/index.js',
   'adapters/cmdk/index.cjs',
+  'adapters/base-ui/index.js',
+  'adapters/base-ui/index.cjs',
 ]
 
 /** Fail with a clear message, not a resolver error, when there is no build. */
@@ -68,4 +71,42 @@ function checkEntries(label, { core, react, cmdk, router, matchSorter, pkg }) {
   console.log(`${label}: every entry loads and the Quick Start renders`)
 }
 
+/**
+ * Base UI adapter: provider from `cmdk-engine/react`, palette and shortcut from
+ * `cmdk-engine/adapters/base-ui`. The inline palette server-renders its options
+ * without warnings; the dialog renders nothing until it opens.
+ */
+function checkBaseUi(label, { react, baseUi }) {
+  // Registered during render: useCommandRegister's effect never runs on the server.
+  function Register() {
+    const { registry } = react.useEngineContext()
+    useState(() => registry.registerMany([{ id: 'billing', label: 'Billing' }]))
+    return null
+  }
+  function Shortcut() {
+    baseUi.useCommandPaletteShortcut()
+    return null
+  }
+  const errors = []
+  const consoleError = console.error
+  console.error = (...args) => errors.push(args.join(' '))
+  let inline, dialog
+  try {
+    inline = renderToString(
+      h(react.CommandEngineProvider, null, h(Register), h(Shortcut), h(baseUi.CommandPalette)),
+    )
+    dialog = renderToString(
+      h(react.CommandEngineProvider, null, h(baseUi.CommandPalette, { dialog: true })),
+    )
+  } finally {
+    console.error = consoleError
+  }
+  assert.deepEqual(errors, [])
+  assert.match(inline, /role="combobox"[^>]*placeholder="Type a command or search\.\.\."/)
+  assert.match(inline, /role="option".*Billing/)
+  assert.equal(dialog, '')
+  console.log(`${label}: the Base UI adapter loads and server-renders`)
+}
+
 module.exports = { assertBuilt, checkEntries }
+module.exports.checkBaseUi = checkBaseUi

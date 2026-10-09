@@ -91,6 +91,11 @@ export default function Home() {
                 <td className="px-4 py-3 text-[var(--text-secondary)]">1.0 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7/v8 route scanner</td>
               </tr>
+              <tr className="hover:bg-[var(--surface-hover)] transition-colors">
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/base-ui</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">1.5 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired Base UI components</td>
+              </tr>
             </tbody>
           </table>
         </div>
