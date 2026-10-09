@@ -69,7 +69,7 @@ jobs:
 
       - run: bun run build
 
-      - name: Validate and scan with the config in a path with a space and a #
+      - name: 'Validate and scan with the config in a path with a space and a #'
         shell: pwsh
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
