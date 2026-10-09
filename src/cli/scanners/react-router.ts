@@ -2,19 +2,30 @@ import { readdirSync, readFileSync, statSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
-import { SOURCE_FILE_RE, isIgnoredDir, deduplicateRoutes, toSource, stripComments } from './shared'
+import {
+  groupValue,
+  lineAt,
+  objectProps,
+  splitCommas,
+  stringValue,
+  toTree,
+  tokenize,
+  type Node,
+  type Token,
+} from '../lexer'
+import { SOURCE_FILE_RE, isIgnoredDir, deduplicateRoutes, toSource } from './shared'
 
 /**
  * Scan a directory for React Router route definitions.
  *
- * Looks for:
- * - Route objects with `path` properties
- * - `handle.command` metadata
- * - createBrowserRouter / createRoutesFromElements patterns
+ * Reads each file statically (nothing is executed) and finds:
+ * - route objects with a string `path`, as passed to createBrowserRouter,
+ *   with the `label`, `keywords` and `group` of their own `handle.command`
+ * - `<Route path="...">` elements, with a `handle={{ command: ... }}` prop
  *
  * Note: relative child paths inside nested `children` arrays are not composed
- * into full paths (a known limitation of the regex-based scanner) — declare
- * such routes with absolute `path` values to have them discovered.
+ * into full paths, so declare such routes with absolute `path` values to have
+ * them discovered.
  */
 export function scanReactRouterFiles(dir: string): SitemapRoute[] {
   const files = findSourceFiles(dir)
@@ -53,50 +64,88 @@ function findSourceFiles(dir: string, files: string[] = [], visited = new Set<st
   return files
 }
 
-/**
- * Extract route paths from a source file using regex patterns.
- * This is an AST-light approach — covers common patterns without a full parser.
- */
+/** The parts of a route's own `handle.command` that the sitemap keeps */
+interface CommandMeta {
+  label?: string
+  keywords?: string[]
+  group?: string
+}
+
+/** A route found in a file, before it becomes a sitemap entry */
+interface FoundRoute {
+  path: string
+  command?: CommandMeta
+}
+
+/** Extract the routes of one source file. */
 function extractRoutes(content: string, filePath: string): SitemapRoute[] {
-  const routes: SitemapRoute[] = []
   const source = toSource(filePath)
-  // Strip comments so commented-out route definitions aren't scanned in.
-  const cleaned = stripComments(content)
+  // JSX only exists in .js/.jsx/.tsx files; in .ts files `<` is a type or an operator
+  const { tokens, error } = tokenize(content, { jsx: !/\.[mc]?ts$/.test(filePath) })
+  if (error) {
+    console.warn(
+      `Warning: ${source}:${lineAt(content, error.offset)}: ${error.message}; ` +
+        'routes after it were not read.',
+    )
+  }
 
-  // Pattern 1: { path: '/...' } in route objects
-  const pathRegex = /path\s*:\s*['"`]([^'"`]+)['"`]/g
-  let match
+  const found: FoundRoute[] = []
+  findObjectRoutes(toTree(tokens), found)
+  findJsxRoutes(tokens, found)
 
-  while ((match = pathRegex.exec(cleaned)) !== null) {
-    const path = match[1]
-    if (!path.startsWith('/')) continue // Skip relative child paths (see note above)
-    if (path === '*' || path === '404') continue // Skip catch-all
+  return found
+    .filter(({ path }) => path.startsWith('/')) // Relative child paths: see the note above
+    .map(({ path, command }) => {
+      const route = createRoute(path, source)
+      if (command?.label) route.label = command.label
+      if (command?.keywords) route.keywords = [...route.keywords, ...command.keywords]
+      if (command?.group) route.group = command.group
+      return route
+    })
+}
 
-    const route = createRoute(path, source)
-
-    // Try to find handle.command metadata near this path
-    const metadata = extractMetadataNear(cleaned, match.index)
-    if (metadata) {
-      if (metadata.label) route.label = metadata.label
-      if (metadata.keywords) route.keywords = [...route.keywords, ...metadata.keywords]
-      if (metadata.group) route.group = metadata.group
+/** Route objects, `{ path: '/x', handle: { command: {...} } }`, anywhere in the file */
+function findObjectRoutes(nodes: Node[], found: FoundRoute[]): void {
+  for (const node of nodes) {
+    if (node.type !== 'group') continue
+    if (node.open === '{') {
+      const props = objectProps(node)
+      const path = stringValue(props.get('path'))
+      if (path !== undefined) found.push({ path, command: readCommand(props.get('handle')) })
     }
-
-    routes.push(route)
+    findObjectRoutes(node.items, found)
   }
+}
 
-  // Pattern 2: <Route path="/..." /> JSX routes
-  const jsxRouteRegex = /<Route\s[^>]*path\s*=\s*['"`]([^'"`]+)['"`]/g
-
-  while ((match = jsxRouteRegex.exec(cleaned)) !== null) {
-    const path = match[1]
-    if (!path.startsWith('/')) continue
-    if (path === '*') continue
-
-    routes.push(createRoute(path, source))
+/** `<Route path="/x">` elements and their `handle={{ command: {...} }}` */
+function findJsxRoutes(tokens: Token[], found: FoundRoute[]): void {
+  for (const token of tokens) {
+    if (token.type !== 'jsx' || token.name !== 'Route') continue
+    const { path } = token.attrs
+    if (typeof path === 'string') {
+      const handle = token.exprs.handle
+      found.push({ path, command: handle && readCommand(toTree(handle)) })
+    }
   }
+}
 
-  return routes
+/** The label, keywords and group of a `handle` value's own `command` object */
+function readCommand(handle: Node[] | undefined): CommandMeta | undefined {
+  const handleObject = groupValue(handle, '{')
+  const command = handleObject && groupValue(objectProps(handleObject).get('command'), '{')
+  if (!command) return undefined
+
+  const props = objectProps(command)
+  const keywords = groupValue(props.get('keywords'), '[')
+  return {
+    label: stringValue(props.get('label')),
+    group: stringValue(props.get('group')),
+    keywords:
+      keywords &&
+      splitCommas(keywords.items)
+        .map((item) => stringValue(item))
+        .filter((keyword): keyword is string => keyword !== undefined),
+  }
 }
 
 function createRoute(path: string, source: string): SitemapRoute {
@@ -117,37 +166,4 @@ function generateKeywords(path: string): string[] {
     .filter(Boolean)
     .filter((seg) => !seg.startsWith(':') && !seg.startsWith('*'))
     .map((seg) => seg.toLowerCase().replace(/[-_]/g, ' '))
-}
-
-/**
- * Try to extract handle.command metadata near a path definition.
- */
-function extractMetadataNear(
-  content: string,
-  pathIndex: number,
-): { label?: string; keywords?: string[]; group?: string } | null {
-  // Look for handle.command within 500 chars after path
-  const nearby = content.slice(pathIndex, pathIndex + 500)
-  const handleMatch = nearby.match(/handle\s*:\s*\{[\s\S]*?command\s*:\s*\{([\s\S]*?)\}/)
-
-  if (!handleMatch) return null
-
-  const commandBlock = handleMatch[1]
-  const result: { label?: string; keywords?: string[]; group?: string } = {}
-
-  const labelMatch = commandBlock.match(/label\s*:\s*['"`]([^'"`]+)['"`]/)
-  if (labelMatch) result.label = labelMatch[1]
-
-  const groupMatch = commandBlock.match(/group\s*:\s*['"`]([^'"`]+)['"`]/)
-  if (groupMatch) result.group = groupMatch[1]
-
-  const keywordsMatch = commandBlock.match(/keywords\s*:\s*\[([\s\S]*?)\]/)
-  if (keywordsMatch) {
-    result.keywords = keywordsMatch[1]
-      .split(',')
-      .map((s) => s.trim().replace(/['"`]/g, ''))
-      .filter(Boolean)
-  }
-
-  return Object.keys(result).length > 0 ? result : null
 }

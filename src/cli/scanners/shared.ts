@@ -62,14 +62,3 @@ export function deduplicateRoutes(routes: SitemapRoute[]): SitemapRoute[] {
 export function toSource(fullPath: string): string {
   return relative(process.cwd(), fullPath).split(sep).join('/')
 }
-
-/**
- * Strip `//` line comments and `/* *​/` block comments so commented-out route
- * definitions aren't scanned. Protocol-style `://` (URLs) is preserved by only
- * stripping `//` that isn't immediately preceded by a colon.
- */
-export function stripComments(content: string): string {
-  return content
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
-}
