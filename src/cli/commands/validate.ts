@@ -64,6 +64,16 @@ export const validateCommand = new Command('validate')
         }
       }
 
+      // Validate includeDynamic: true/false, or the :param names to keep
+      const { includeDynamic } = config
+      if (
+        includeDynamic !== undefined &&
+        typeof includeDynamic !== 'boolean' &&
+        !(Array.isArray(includeDynamic) && includeDynamic.every((n) => typeof n === 'string'))
+      ) {
+        errors.push('includeDynamic must be true, false or an array of :param names')
+      }
+
       // Validate synonyms
       if (config.synonyms) {
         for (const [key, values] of Object.entries(config.synonyms)) {

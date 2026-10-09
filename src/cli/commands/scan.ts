@@ -6,6 +6,7 @@ import { scanReactRouterFiles } from '../scanners/react-router'
 import { scanNextJsAppDir } from '../scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../scanners/nextjs-pages'
 import { generateSitemap } from '../generators/sitemap'
+import type { ScanOptions } from '../scanners/shared'
 import type { CmdkEngineConfig, Sitemap, SitemapRoute } from '../../core/types'
 import { DEFAULT_EXCLUDE, matchesExcludePattern, type ExcludePattern } from '../../core/route-defaults'
 
@@ -20,6 +21,10 @@ export const scanCommand = new Command('scan')
   .option(
     '--no-default-exclude',
     'Skip the default exclusion list (auth/error routes like /login, /signup, /404 are normally excluded)',
+  )
+  .option(
+    '--include-dynamic [names...]',
+    'Keep routes with these :param segments, e.g. locale (every :param when no name is given)',
   )
   .action(async (options, command: Command) => {
     try {
@@ -50,6 +55,18 @@ export const scanCommand = new Command('scan')
         process.exit(1)
       }
 
+      // The flag wins over the config; `--include-dynamic a,b` and `a b` both work
+      const scanOptions: ScanOptions = {
+        includeDynamic:
+          command.getOptionValueSource('includeDynamic') === 'cli'
+            ? options.includeDynamic === true ||
+              (options.includeDynamic as string[])
+                .flatMap((names) => names.split(','))
+                .map((name) => name.trim())
+                .filter(Boolean)
+            : config.includeDynamic,
+      }
+
       console.log(`Scanning ${framework} routes in ${routesDir}...`)
 
       let routes: SitemapRoute[] = []
@@ -59,10 +76,10 @@ export const scanCommand = new Command('scan')
           routes = scanReactRouterFiles(resolvedRoutesDir)
           break
         case 'nextjs-app':
-          routes = scanNextJsAppDir(resolvedRoutesDir)
+          routes = scanNextJsAppDir(resolvedRoutesDir, scanOptions)
           break
         case 'nextjs-pages':
-          routes = scanNextJsPagesDir(resolvedRoutesDir)
+          routes = scanNextJsPagesDir(resolvedRoutesDir, scanOptions)
           break
         default:
           console.error(

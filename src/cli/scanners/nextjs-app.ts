@@ -2,7 +2,13 @@ import { readdirSync, statSync, realpathSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
-import { deduplicateRoutes, isIgnoredDir, toSource } from './shared'
+import {
+  allowsDynamicPath,
+  deduplicateRoutes,
+  isIgnoredDir,
+  toSource,
+  type ScanOptions,
+} from './shared'
 
 const PAGE_FILE_RE = /^page\.(?:[mc]?[jt]s|[jt]sx|mdx?)$/
 
@@ -14,11 +20,13 @@ const PAGE_FILE_RE = /^page\.(?:[mc]?[jt]s|[jt]sx|mdx?)$/
  * - app/dashboard/page.tsx → /dashboard
  * - app/billing/overview/page.tsx → /billing/overview
  * - app/(auth)/login/page.tsx → /login (groups are stripped)
- * - app/[id]/page.tsx → /:id (dynamic segments)
+ * - app/[id]/page.tsx → /:id (dynamic: kept only with `includeDynamic`)
+ * - app/shop/[[...slug]]/page.tsx → /shop (the optional catch-all's own URL)
+ * - app/feed/(..)photo/page.tsx → skipped (an intercepting route renders another route's page)
  */
-export function scanNextJsAppDir(dir: string): SitemapRoute[] {
+export function scanNextJsAppDir(dir: string, options: ScanOptions = {}): SitemapRoute[] {
   const routes: SitemapRoute[] = []
-  walkAppDir(dir, dir, routes)
+  walkAppDir(dir, dir, routes, options)
   return deduplicateRoutes(routes)
 }
 
@@ -26,6 +34,7 @@ function walkAppDir(
   currentDir: string,
   baseDir: string,
   routes: SitemapRoute[],
+  options: ScanOptions,
   visited = new Set<string>(),
 ): void {
   let entries: string[]
@@ -45,8 +54,8 @@ function walkAppDir(
     const relativePath = relative(baseDir, currentDir)
     const routePath = dirToRoutePath(relativePath)
 
-    // Skip dynamic route segments for command palette (they need params)
-    if (!routePath.includes(':') && !routePath.includes('*')) {
+    // Dynamic routes need params: keep only those `includeDynamic` names
+    if (routePath !== null && allowsDynamicPath(routePath, options.includeDynamic)) {
       routes.push({
         id: pathToId(routePath || '/'),
         path: routePath || '/',
@@ -68,7 +77,7 @@ function walkAppDir(
     const fullPath = join(currentDir, entry)
     try {
       if (statSync(fullPath).isDirectory()) {
-        walkAppDir(fullPath, baseDir, routes, visited)
+        walkAppDir(fullPath, baseDir, routes, options, visited)
       }
     } catch {
       // Skip inaccessible directories
@@ -77,16 +86,21 @@ function walkAppDir(
 }
 
 /**
- * Convert a directory path to a route path.
- * Handles Next.js conventions: route groups (), dynamic [params], catch-all [...params].
+ * Convert a directory path to a route path, or null for a page that has no URL of
+ * its own. Handles Next.js conventions: route groups (), dynamic [params],
+ * catch-all [...params], optional catch-all [[...params]], intercepting (.)routes.
  */
-function dirToRoutePath(dirPath: string): string {
+function dirToRoutePath(dirPath: string): string | null {
   if (!dirPath) return '/'
 
   const segments = dirPath.split(sep).filter(Boolean)
   const routeSegments: string[] = []
 
   for (const segment of segments) {
+    // Intercepting routes, (.)photo, (..)shop, (...)x: they render another
+    // route's page in place, so they are not a URL of their own
+    if (/^\(\.{1,3}\)/.test(segment)) return null
+
     // Skip route groups: (auth), (marketing), etc.
     if (segment.startsWith('(') && segment.endsWith(')')) continue
 
@@ -98,17 +112,12 @@ function dirToRoutePath(dirPath: string): string {
       const param = segment.slice(1, -1)
       if (param.startsWith('...')) {
         routeSegments.push(`*${param.slice(3)}`)
-      } else if (param.startsWith('[') && param.endsWith(']')) {
-        // Optional catch-all: [[...slug]]
-        routeSegments.push(`*${param.slice(4, -1)}`)
-      } else {
+      } else if (!param.startsWith('[')) {
         routeSegments.push(`:${param}`)
       }
+      // An optional catch-all, [[...slug]], also matches its parent's URL: no segment
       continue
     }
-
-    // Intercept routes: (.)photo, (..)shop — skip these
-    if (segment.startsWith('(.)') || segment.startsWith('(..)')) continue
 
     // Parallel routes: @modal, @sidebar — skip these
     if (segment.startsWith('@')) continue
