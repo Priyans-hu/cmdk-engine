@@ -2,7 +2,7 @@ import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
-import { useEngineContext, usePaletteState } from './context'
+import { useEngine, usePaletteState } from './context'
 import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
 import { searchWithSynonyms } from './synonym-search'
 
@@ -58,8 +58,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
 export function useCommandPalette(): UseCommandPaletteReturn {
   const {
     registry, search, keywords, accessFilter, frecency,
-    groupManager, contextEngine, searchHistory, t, config,
-  } = useEngineContext('useCommandPalette')
+    groupManager, contextEngine, searchHistory, t, config, observer,
+  } = useEngine('useCommandPalette')
 
   // Shared across all consumers under the same provider (see context.tsx).
   const {
@@ -209,6 +209,10 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     [limitedResults, unfilteredResults],
   )
 
+  // For `search` events: written while rendering, so it is current before any
+  // effect of the same commit reads it.
+  observer.count = finalResults.length
+
   // Group results by group field (for consumers building custom UIs)
   const groupedResults = useMemo<GroupedResult[]>(() => {
     const grouped = groupManager.groupResults(finalResults, searchQuery)
@@ -284,6 +288,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         searchHistory.record(searchQuery, finalResults.length)
       }
 
+      observer.onSelected?.(item, searchQuery.trim())
+
       // Precedence: per-call onSelect → provider onSelect → action → href
       const handler = options?.onSelect ?? config.onSelect
       const { onSelectError } = config
@@ -317,7 +323,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
       close()
     },
-    [finalResults, frecency, searchHistory, config, searchQuery, close, drillDown],
+    [finalResults, frecency, searchHistory, config, searchQuery, close, drillDown, observer],
   )
 
   return {

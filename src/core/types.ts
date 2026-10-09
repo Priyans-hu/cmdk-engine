@@ -439,6 +439,27 @@ export interface RecentCommandsConfig {
   recentLabel?: string
 }
 
+/**
+ * A palette event reported to `useCommandPaletteEvents()` (from
+ * `cmdk-engine/react`):
+ * - `open`, `close`: the palette opened or closed.
+ * - `search`: the results for a query settled, that is every async source the
+ *   query triggered has loaded or failed. `query` is trimmed and not empty, and
+ *   `resultCount` is the number of results: the query and count search history
+ *   records. `resultCount: 0` is a query that found nothing.
+ * - `select`: a command was selected (drilling into children is not a
+ *   selection); `sourceId` is the async source of a loaded item.
+ * - `asyncError`: an async source failed or dropped items, as in `asyncErrors`.
+ *
+ * New event types may be added in minor releases: ignore types you do not know.
+ */
+export type CommandPaletteEvent =
+  | { type: 'open' }
+  | { type: 'close' }
+  | { type: 'search'; query: string; resultCount: number }
+  | { type: 'select'; item: CommandItem; query: string; sourceId?: string }
+  | { type: 'asyncError'; sourceId: string; error: Error }
+
 // ============================================================
 // Helpers
 // ============================================================

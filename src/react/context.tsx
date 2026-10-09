@@ -34,7 +34,20 @@ export interface EngineContextValue {
   config: CommandEngineConfig
 }
 
-const EngineContext = createContext<EngineContextValue | null>(null)
+/**
+ * What `useCommandPaletteEvents()` reads from the palette. One per provider and
+ * not part of the public context type.
+ */
+export interface PaletteObserver {
+  /** Result count of the latest `useCommandPalette()` render */
+  count?: number
+  /** Called by `select()` before it runs a command */
+  onSelected?: (item: CommandItem, query: string) => void
+}
+
+const EngineContext = createContext<(EngineContextValue & { observer: PaletteObserver }) | null>(
+  null,
+)
 
 /**
  * Shared palette UI state. Lives on the provider (not per-hook-call) so that
@@ -98,6 +111,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
     frecency?: FrecencyStorage
     history?: ReturnType<typeof createInMemorySearchHistory>
   }>({}).current
+  const observer = useRef<PaletteObserver>({}).current
 
   // Palette UI state is shared across all consumers under this provider.
   const [isOpen, setIsOpen] = useState(false)
@@ -155,8 +169,8 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
     config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
   ])
 
-  const value = useMemo<EngineContextValue>(
-    () => ({ registry: registryRef.current!, ...engines, config }),
+  const value = useMemo(
+    () => ({ registry: registryRef.current!, ...engines, config, observer }),
     [engines, config],
   )
 
@@ -183,6 +197,11 @@ function outsideProvider(caller: string): Error {
  * @param caller - Name the error shows (default: `useEngineContext`)
  */
 export function useEngineContext(caller = 'useEngineContext'): EngineContextValue {
+  return useEngine(caller)
+}
+
+/** The engine context with the palette observer (internal). */
+export function useEngine(caller: string): EngineContextValue & { observer: PaletteObserver } {
   const ctx = useContext(EngineContext)
   if (!ctx) {
     throw outsideProvider(caller)

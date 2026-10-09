@@ -18,6 +18,7 @@ export type {
   CommandPaletteState,
   CommandEngineConfig,
   RecentCommandsConfig,
+  CommandPaletteEvent,
   CommandContext,
   TranslationFn,
   SearchHistoryEntry,
