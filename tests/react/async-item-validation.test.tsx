@@ -5,6 +5,7 @@ import { CommandEngineProvider } from '../../src/react/context'
 import { useCommandPalette } from '../../src/react/use-command-palette'
 import type { UseCommandPaletteReturn } from '../../src/react/use-command-palette'
 import { useCommandRegister } from '../../src/react/use-command-register'
+import { createSimpleAccessProvider } from '../../src/core/access-control'
 import type { AsyncSource, CommandEngineConfig, CommandItem } from '../../src/core/types'
 
 // Loaded items are untrusted: a server can return anything.
@@ -163,5 +164,99 @@ describe('a load() that does not resolve to an array', () => {
 
     expect(message(result.current)).toBe('load() must resolve to an array')
     expect(result.current.asyncErrors.remote).toBeInstanceOf(TypeError)
+  })
+})
+
+describe('async items with malformed fields', () => {
+  const loaded = (palette: UseCommandPaletteReturn, id: string) =>
+    palette.results.find((r) => r.item.id === id)?.item
+
+  it('drops an object icon, description or group and keeps text and elements', async () => {
+    const element = <svg />
+    const load = [
+      malformed({ id: 'r1', label: 'Remote one', icon: { name: 'x' }, description: {}, group: {} }),
+      malformed({ id: 'r2', label: 'Remote two', icon: element, description: 'Text', group: 'G' }),
+    ]
+    const { result } = renderPalette({ asyncSources: [source(load, { shouldFilter: false })] })
+
+    await search(result, 'remote')
+
+    const r1 = loaded(result.current, 'r1')!
+    expect(['icon', 'description', 'group'].filter((key) => key in r1)).toEqual([])
+    expect(loaded(result.current, 'r2')).toMatchObject({
+      icon: element,
+      description: 'Text',
+      group: 'G',
+    })
+    expect(result.current.asyncErrors).toEqual({})
+  })
+
+  it('keeps only string shortcut and scope entries and drops non-arrays', async () => {
+    const load = [
+      malformed({ id: 'r1', label: 'Remote one', shortcut: 'g h', scope: { path: '/x' } }),
+      malformed({ id: 'r2', label: 'Remote two', shortcut: ['g', 1], scope: ['/a', null] }),
+    ]
+    const { result } = renderPalette({
+      asyncSources: [source(load)],
+      context: { path: '/a' },
+    })
+
+    await search(result, 'remote')
+
+    expect(ids(result.current)).toEqual(['r2', 'r1'])
+    expect('shortcut' in loaded(result.current, 'r1')!).toBe(false)
+    expect('scope' in loaded(result.current, 'r1')!).toBe(false)
+    expect(loaded(result.current, 'r2')).toMatchObject({ shortcut: ['g'], scope: ['/a'] })
+  })
+
+  it('treats null, undefined and empty permissions as no restriction', async () => {
+    const load = [
+      malformed({ id: 'r1', label: 'Remote null', permissions: null }),
+      malformed({ id: 'r2', label: 'Remote undefined', permissions: undefined }),
+      malformed({ id: 'r3', label: 'Remote empty', permissions: '' }),
+    ]
+    const { result } = renderPalette({
+      asyncSources: [source(load)],
+      accessControl: createSimpleAccessProvider([]),
+    })
+
+    await search(result, 'remote')
+
+    expect(ids(result.current)).toEqual(['r1', 'r2', 'r3'])
+  })
+
+  it('coerces string and array permissions and hides other values', async () => {
+    const load = [
+      malformed({ id: 'r1', label: 'Remote admin', permissions: 'admin' }),
+      malformed({ id: 'r2', label: 'Remote team', permissions: 'team.view' }),
+      malformed({ id: 'r3', label: 'Remote mixed', permissions: ['team.view', 5] }),
+      malformed({ id: 'r4', label: 'Remote number', permissions: 5 }),
+      malformed({ id: 'r5', label: 'Remote object', permissions: { all: true } }),
+    ]
+    const { result } = renderPalette({
+      asyncSources: [source(load)],
+      accessControl: createSimpleAccessProvider(['team.view']),
+    })
+
+    await search(result, 'remote')
+
+    expect(ids(result.current)).toEqual(['r2', 'r3'])
+    expect(loaded(result.current, 'r3')!.permissions).toEqual(['team.view', '5'])
+    expect(result.current.asyncErrors).toEqual({})
+  })
+
+  it('keeps the rest of a load when an item has non-array children', async () => {
+    const load = [
+      { id: 'good', label: 'Remote good' },
+      malformed({ id: 'bad', label: 'Remote bad', children: { a: 1 } }),
+      malformed({ id: 'five', label: 'Remote five', children: 5 }),
+    ]
+    const { result } = renderPalette({ asyncSources: [source(load)] })
+
+    await search(result, 'remote')
+
+    expect(ids(result.current)).toEqual(['good', 'bad', 'five'])
+    expect('children' in loaded(result.current, 'bad')!).toBe(false)
+    expect(result.current.asyncErrors).toEqual({})
   })
 })

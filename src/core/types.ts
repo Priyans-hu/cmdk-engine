@@ -397,7 +397,12 @@ export interface CommandEngineConfig {
  * or `tel:` is removed when the items arrive (children included). For deep
  * links, return an `action`, or an allowed `href` that `onNavigate` maps.
  * Items without a non-empty string `id` and `label` are dropped and counted in
- * `asyncErrors[id]`, and non-string `keywords` entries are removed.
+ * `asyncErrors[id]`, and non-string `keywords` entries are removed. An object
+ * `icon`, `description` or `group` that is not a React element, a non-array
+ * `shortcut`, `scope` or `children`, and non-string `shortcut` and `scope`
+ * entries are removed too. `permissions` follow the registered-command rules
+ * (null, undefined and `''` mean no restriction): a string is one permission,
+ * array entries become strings, and any other value hides the item.
  */
 export interface AsyncSource {
   /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */
