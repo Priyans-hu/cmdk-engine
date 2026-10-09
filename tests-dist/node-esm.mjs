@@ -14,3 +14,8 @@ checks.checkEntries('node ESM', {
   // JSON import attributes need Node 20.10+; engines allows any Node 20.
   pkg: createRequire(import.meta.url)('cmdk-engine/package.json'),
 })
+
+checks.checkBaseUi('node ESM', {
+  react: await import('cmdk-engine/react'),
+  baseUi: await import('cmdk-engine/adapters/base-ui'),
+})

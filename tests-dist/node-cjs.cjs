@@ -11,3 +11,8 @@ checks.checkEntries('node CJS', {
   matchSorter: require('cmdk-engine/search/match-sorter'),
   pkg: require('cmdk-engine/package.json'),
 })
+
+checks.checkBaseUi('node CJS', {
+  react: require('cmdk-engine/react'),
+  baseUi: require('cmdk-engine/adapters/base-ui'),
+})
