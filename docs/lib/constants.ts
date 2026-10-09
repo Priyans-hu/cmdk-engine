@@ -15,6 +15,7 @@ export const DOCS_NAV: NavSection[] = [
     items: [
       { label: 'API Reference', href: '/docs/api' },
       { label: 'Examples', href: '/docs/examples' },
+      { label: 'shadcn/ui', href: '/docs/shadcn' },
     ],
   },
 ]
@@ -23,6 +24,7 @@ export const DOCS_ORDER = [
   { label: 'Getting Started', href: '/docs/getting-started' },
   { label: 'API Reference', href: '/docs/api' },
   { label: 'Examples', href: '/docs/examples' },
+  { label: 'shadcn/ui', href: '/docs/shadcn' },
 ]
 
 export const FEATURES = [
