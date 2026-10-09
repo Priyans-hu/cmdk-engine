@@ -39,4 +39,4 @@ npx cmdk-engine validate  # Validate config
 - Repository: https://github.com/Priyans-hu/cmdk-engine
 - Documentation: https://priyans-hu.github.io/cmdk-engine
 - npm: https://www.npmjs.com/package/cmdk-engine
-- Built on: https://github.com/pacocoursey/cmdk
+- Built on: https://github.com/dip/cmdk

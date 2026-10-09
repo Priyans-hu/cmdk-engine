@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: 'cmdk-engine — Smart Command Palette Engine for React',
     template: '%s | cmdk-engine',
   },
-  description: 'The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.8 kB min + brotli on top of React and cmdk.',
+  description: 'The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.',
   keywords: ['command palette', 'cmdk', 'react', 'cmd-k', 'ctrl-k', 'fuzzy search', 'command menu', 'keyboard shortcuts'],
   openGraph: {
     title: 'cmdk-engine',
