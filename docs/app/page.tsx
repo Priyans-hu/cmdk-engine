@@ -73,12 +73,12 @@ export default function Home() {
             <tbody className="divide-y divide-[var(--border)]">
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">3.2 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">3.4 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Core engine (types, registry, search, keywords, access control, frecency)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/react</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">3.3 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">3.6 kB</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React hooks (provider, useCommandPalette, useCommandRegister)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
@@ -96,7 +96,7 @@ export default function Home() {
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-4">
           Minified + brotli, each entry&apos;s own code; siblings and peers excluded. The Quick
-          Start stack (provider, register hook, cmdk adapter and shortcut) is 6.8 kB in total. All
+          Start stack (provider, register hook, cmdk adapter and shortcut) is 7.2 kB in total. All
           entry points are tree-shakeable. The core has zero runtime dependencies.
         </p>
       </section>
