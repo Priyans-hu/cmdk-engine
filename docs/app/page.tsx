@@ -53,7 +53,7 @@ export default function Home() {
                                       Headless API / Hooks
                                               │
                                               ▼
-                                      UI Adapter (cmdk)`}</pre>
+                                      UI Adapter (cmdk / Base UI)`}</pre>
         </div>
       </section>
 
@@ -91,6 +91,11 @@ export default function Home() {
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/react-router</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.reactRouterAdapter}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7/v8 route scanner</td>
+              </tr>
+              <tr className="hover:bg-[var(--surface-hover)] transition-colors">
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/search/match-sorter</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.matchSorter}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">Optional match-sorter search backend</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/base-ui</td>

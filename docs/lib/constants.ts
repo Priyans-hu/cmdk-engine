@@ -127,7 +127,7 @@ export const COMPARISON: ComparisonRow[] = [
   { feature: 'First item auto-select', cmdk: 'Open upstream issue (#280)', cmdkEngine: true },
   { feature: 'Dynamic content updates', cmdk: 'Open upstream issue (#267)', cmdkEngine: true },
   { feature: 'CLI tooling', cmdk: false, cmdkEngine: true },
-  { feature: 'Framework-agnostic core', cmdk: false, cmdkEngine: true },
+  { feature: 'UI-agnostic core', cmdk: false, cmdkEngine: true },
 ]
 
 export const SITE = {
