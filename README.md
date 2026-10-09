@@ -16,7 +16,7 @@ Permission-aware command palette engine for React. Works with [cmdk](https://git
 
 | Feature | cmdk | cmdk-engine |
 |---------|------|-------------|
-| Composable UI components | Yes | Yes (via cmdk adapter) |
+| Composable UI components | Yes | Yes (via the cmdk or Base UI adapter) |
 | Route auto-discovery | No | Yes — CLI scanner + runtime adapters |
 | RBAC / permission filtering | No | Yes — any/all modes |
 | Frecency ranking | No | Yes — exponential decay algorithm |
@@ -27,7 +27,7 @@ Permission-aware command palette engine for React. Works with [cmdk](https://git
 | Dynamic content updates | [Open upstream issue (#267)](https://github.com/dip/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
-| Framework-agnostic core | No | Yes — zero runtime deps |
+| UI-agnostic core | No | Yes: one engine under cmdk or Base UI, zero runtime deps |
 
 **cmdk-engine owns all filtering** (`shouldFilter={false}`), solving the sorting and selection bugs in cmdk while keeping its composable UI primitives.
 
@@ -56,6 +56,20 @@ yarn add cmdk-engine cmdk
 > `react-router-dom` v6 or v7 (for the React Router adapter; v8 ships only
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
+
+### Requirements
+
+- **React** 18 or 19.
+- **A UI adapter:** `cmdk` ^1 for the cmdk adapter, or `@base-ui/react` ^1.1 for the
+  Base UI adapter. Or build your own UI with the hooks.
+- **Optional:** `react-router` 6, 7 or 8 for the route scanner, and `match-sorter` 7 or 8
+  for the match-sorter search backend.
+- **Node.js** 20 or later, needed by the CLI only. The library runs in the browser and
+  during SSR.
+
+**Support:** the latest minor release gets fixes. While the version is 0.x, a minor
+release can change behavior; each such change is listed as a "Behavior change" in the
+[changelog](./CHANGELOG.md). To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 
 ---
 
