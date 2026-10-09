@@ -264,6 +264,32 @@ To style per instance instead, `CommandPalette` passes `className`,
 
 ---
 
+## CommandPalette Props
+
+Both adapters export `CommandPalette` with the same props, except `vimBindings`, which
+only the cmdk adapter has. Every prop is optional.
+
+| Prop | Default | Description |
+|------|---------|-------------|
+| `dialog` | `false` | Render in a modal dialog with an overlay. When `false`, the palette is inline and always visible. Open a dialog with `useCommandPaletteShortcut()` or `toggle()` |
+| `placeholder` | `palette.placeholder` | Input placeholder |
+| `label` | `palette.label` | Accessible name of the palette and of the dialog |
+| `loop` | `true` | Wrap from the last item to the first, and back |
+| `onSelect` | none | `(item) => void`. Runs instead of the default handling (`action`, then `onNavigate` or `href`), and wins over `config.onSelect` |
+| `renderItem` | built-in row | `(item, score) => ReactNode`. The row content; the adapter still renders the selectable wrapper |
+| `renderGroupHeading` | the group label | `(group) => ReactNode` |
+| `renderEmpty` | `palette.empty` text | `() => ReactNode`, shown when nothing matches |
+| `renderLoading` | `palette.loading` text | `() => ReactNode`, shown while async sources load |
+| `renderBreadcrumbs` | built-in trail | `(crumbs, onBack) => ReactNode`, shown inside a sub-menu ([Nested Commands](#nested-commands)) |
+| `footer` | none | Node rendered below the list |
+| `container` | the page body | Portal target in dialog mode |
+| `disablePointerSelection` | `false` | The pointer no longer moves the highlight. Clicking an item still runs it |
+| `vimBindings` | `true` | cmdk adapter only. Ctrl+N, P, J and K move the highlight |
+| `className`, `inputClassName`, `listClassName`, `itemClassName`, `groupClassName`, `emptyClassName` | none | Class names for those parts ([Styling](#styling)) |
+| `overlayClassName`, `contentClassName` | none | Class names for the dialog overlay and content |
+
+---
+
 ## Base UI Adapter
 
 Prefer [Base UI](https://base-ui.com)? `cmdk-engine/adapters/base-ui` renders
