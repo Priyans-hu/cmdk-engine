@@ -151,6 +151,22 @@ const config = {
 }
 ```
 
+### Errors from commands
+
+A command's `action`, your `onSelect` or your `onNavigate` can throw or return
+a rejected promise. Set `onSelectError` to handle that; the palette still
+closes right away. Without it, errors propagate as before.
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelectError: (error: unknown, item: CommandItem) => {
+    console.error(`"${item.label}" failed`, error) // or show a toast
+  },
+}
+```
+
 ### Or build your own UI with hooks
 
 ```tsx
@@ -500,6 +516,12 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > several users can sign in on one browser, namespace both keys per user, e.g.
 > ``storageKey: `cmdk-frecency:${user.id}` ``.
 
+### Turning frecency off
+
+Set `frecency: { enabled: false }` to turn frecency off. Nothing is stored in
+or read from `localStorage`, results are not ranked by past use, and no
+"Recent" group shows, even with `showRecent`.
+
 ---
 
 ## Context / Scope Boosting
@@ -557,6 +579,35 @@ function RecentSearches() {
   return <>{getRecent(5).map((e) => <button key={e.query} onClick={() => setSearch(e.query)}>{e.query}</button>)}</>
 }
 ```
+
+## Palette Events
+
+`useCommandPaletteEvents` reports what happens in the palette, for analytics.
+Call it once, in any component inside the provider:
+
+```tsx
+import { useCommandPaletteEvents } from 'cmdk-engine/react'
+
+function PaletteAnalytics() {
+  useCommandPaletteEvents((event) => {
+    if (event.type === 'search' && event.resultCount === 0) {
+      console.log('no results for', event.query) // your analytics call
+    }
+  })
+  return null
+}
+```
+
+| Event | When | Fields |
+|---|---|---|
+| `open`, `close` | The palette opens or closes | |
+| `search` | The results for a query settle, async sources included | `query` (trimmed), `resultCount` (`0`: nothing found) |
+| `select` | A command is selected (drilling into children is not) | `item`, `query`, `sourceId` (loaded items) |
+| `asyncError` | An async source fails or drops items | `sourceId`, `error` |
+
+`search` fires for every settled query while the user types, so debounce it
+before sending it anywhere. An error thrown by your handler never breaks the
+palette. Without the hook, nothing is reported.
 
 ## Async Command Sources
 
