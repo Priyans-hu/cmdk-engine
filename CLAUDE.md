@@ -19,6 +19,7 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 | `cmdk-engine/adapters/cmdk` | cmdk UI adapter |
 | `cmdk-engine/adapters/react-router` | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | Optional match-sorter search backend |
+| `cmdk-engine/adapters/base-ui` | Base UI adapter (Autocomplete + Dialog) |
 
 ### Key Design Decisions
 
@@ -50,7 +51,7 @@ bun run typecheck # Type check
 
 - `src/core/` — Framework-agnostic engine
 - `src/react/` — React hooks and provider
-- `src/adapters/` — cmdk, react-router, nextjs adapters
+- `src/adapters/` — cmdk, base-ui, react-router, nextjs adapters
 - `src/cli/` — CLI tool (scan, init, validate commands)
 - `tests/` — Mirrors src/ structure
 - `docs/` — Next.js docs site

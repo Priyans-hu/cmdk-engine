@@ -193,6 +193,66 @@ function CustomCommandMenu() {
 
 ---
 
+## Base UI Adapter
+
+Prefer [Base UI](https://base-ui.com)? `cmdk-engine/adapters/base-ui` renders
+the palette with Base UI's
+[Autocomplete](https://base-ui.com/react/components/autocomplete) (plus its
+[Dialog](https://base-ui.com/react/components/dialog) in dialog mode) instead of
+cmdk. The engine still does all filtering, ranking and grouping.
+
+```bash
+npm install cmdk-engine @base-ui/react
+```
+
+`@base-ui/react` (`^1.1.0`) is an optional peer, like `cmdk`. The adapter
+exports `CommandPalette` and `useCommandPaletteShortcut` with the cmdk adapter's
+props, so switching adapters is an import-path change:
+
+```tsx
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
+
+// Inline: always rendered
+function SearchPanel() {
+  return <CommandPalette placeholder="Search commands..." />
+}
+
+// Dialog: opened with Cmd+K / Ctrl+K
+function CommandMenu() {
+  useCommandPaletteShortcut()
+  return <CommandPalette dialog overlayClassName="backdrop" contentClassName="palette" />
+}
+```
+
+The default renderers produce the same `data-cmdk-engine-*` markup as the cmdk
+adapter, so CSS written against those attributes carries over. cmdk's own
+`[cmdk-*]` attributes don't exist here: style the parts with the `*ClassName`
+props. Other differences:
+
+| | cmdk adapter | Base UI adapter |
+|---|---|---|
+| Vim keys | `vimBindings` (Ctrl+N/P/J/K) | None; there is no `vimBindings` prop |
+| Home / End | First / last item | Move the caret in the input |
+| Disabled items | Skipped by the arrow keys | Reachable by the arrow keys; Enter and click do nothing |
+| Highlighted item | `[cmdk-item][data-selected="true"]` | `[role="option"][data-highlighted]` |
+| Loading row | `role="progressbar"`, inside the list | `role="status"` live region, after the list |
+| Results change while open (async sources) | Keeps the highlighted item | Keeps the highlighted position |
+| IME input | The query updates while composing | The query updates when composition ends |
+
+Follow Base UI's [quick start](https://base-ui.com/react/overview/quick-start):
+give your app's root element `isolation: isolate` so the dialog stays on top,
+and for iOS 26+ Safari give the backdrop (`overlayClassName`)
+`position: absolute` and add `body { position: relative }`. Like cmdk's, the
+dialog is unstyled. Its visually hidden close button is labelled by the
+`palette.close` translation key.
+
+Base UI costs more than cmdk: about 44 kB min + brotli for Autocomplete and
+48 kB with Dialog, versus about 14 kB for cmdk with its Radix dialog. In Node,
+load the adapter with either `import` or `require`, not both, or two copies of
+`@base-ui/react` run side by side; bundlers load one.
+
+---
+
 ## React Router Integration
 
 Auto-discover routes from your React Router config:
@@ -387,6 +447,9 @@ import { getTranslationKeys } from 'cmdk-engine'
 > nothing reads yet. The heading of the ungrouped "Other" group is fixed
 > English text for now.
 
+`palette.close` (default "Close") names the visually hidden close button in the
+Base UI adapter's dialog.
+
 ## Search History
 
 Opt-in tracking of past queries (persisted to `localStorage`):
@@ -562,7 +625,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
                                       Headless API / Hooks
                                               │
                                               ▼
-                                      UI Adapter (cmdk)
+                                      UI Adapter (cmdk / Base UI)
 ```
 
 ### Package Entry Points
@@ -574,6 +637,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
+| `cmdk-engine/adapters/base-ui` | 1.5 kB | Pre-wired Base UI components |
 
 Sizes are minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
@@ -620,6 +684,8 @@ import {
 ```ts
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
+// The same CommandPalette and useCommandPaletteShortcut, built on Base UI:
+// import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 ```
 
 ### Key hook return values
