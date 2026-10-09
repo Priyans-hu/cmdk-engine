@@ -3,7 +3,7 @@
 > Permission-aware command palette engine for React. Works with cmdk or Base UI.
 
 cmdk-engine is a headless command palette engine that adds the following to cmdk or Base UI:
-- Route auto-discovery from React Router and Next.js
+- Route discovery: a runtime scanner for React Router routes, and a CLI that scans React Router and Next.js route files
 - RBAC/permission-based command filtering
 - Frecency ranking (frequency + recency based ordering)
 - Keyword synonyms and user aliases. A query equal to a synonym key or value also returns what the other terms match, after the direct matches; partial words do not expand
@@ -13,10 +13,12 @@ cmdk-engine is a headless command palette engine that adds the following to cmdk
 ## Installation
 
 ```bash
-bun add cmdk-engine
-# or
-npm install cmdk-engine
+npm install cmdk-engine cmdk
+# or: bun add cmdk-engine cmdk
+# Base UI instead of cmdk: npm install cmdk-engine @base-ui/react
 ```
+
+Peers, all optional (install what you use): react and react-dom 18 or 19, cmdk ^1, @base-ui/react ^1.1, match-sorter 7 or 8, react-router 6, 7 or 8. Node.js 20 or later is needed by the CLI only.
 
 ## Entry Points
 
@@ -34,6 +36,19 @@ npx cmdk-engine init      # Create config file
 npx cmdk-engine scan      # Scan routes, generate sitemap
 npx cmdk-engine validate  # Validate config
 ```
+
+## Docs
+
+- [Getting Started](https://priyans-hu.github.io/cmdk-engine/docs/getting-started): install, register commands, add the palette and the shortcut
+- [Styling](https://priyans-hu.github.io/cmdk-engine/docs/styling): starter CSS, Tailwind, class name props and data attributes
+- [Search](https://priyans-hu.github.io/cmdk-engine/docs/search): scoring, synonyms, match-sorter and custom engines
+- [Nested commands and groups](https://priyans-hu.github.io/cmdk-engine/docs/nested-commands): sub-menus, breadcrumbs, group headings
+- [CLI](https://priyans-hu.github.io/cmdk-engine/docs/cli): scan routes into a sitemap, config file, CI recipes
+- [API Reference](https://priyans-hu.github.io/cmdk-engine/docs/api): provider options, the command object, hooks, translations, types
+- [Core API](https://priyans-hu.github.io/cmdk-engine/docs/core): registry, frecency, groups and the other framework-agnostic parts
+- [Adapters](https://priyans-hu.github.io/cmdk-engine/docs/adapters): CommandPalette props for cmdk and Base UI, scanRoutes for React Router
+- [Examples](https://priyans-hu.github.io/cmdk-engine/docs/examples): React Router, RBAC, a custom UI, hooks and a test
+- [The README as plain text](https://priyans-hu.github.io/cmdk-engine/llms-full.txt)
 
 ## Links
 
