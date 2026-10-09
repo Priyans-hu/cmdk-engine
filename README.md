@@ -97,7 +97,8 @@ export default function App() {
 
 The palette starts closed. Cmd+K opens it, typing "invoices" narrows the list
 to Billing Overview, and Enter goes to `/billing` and closes the palette. It
-has no styles until you add some (see [Styling](#styling)).
+has no styles until you add some (see [Styling](#styling)). In a Next.js App
+Router project, put `'use client'` at the top of this file.
 
 `useCommandPaletteShortcut()` binds Cmd+K / Ctrl+K. Call it in a component
 **inside** `CommandEngineProvider`, like `Palette` above: without it nothing
