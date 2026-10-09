@@ -20,9 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Pinned to the same version in every workflow except canary.yml. Bump
+      # them together.
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - uses: actions/setup-node@v7
         with:
