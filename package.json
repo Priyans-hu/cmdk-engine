@@ -142,7 +142,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:dist": "node tests-dist/node-esm.mjs && node tests-dist/node-cjs.cjs && vitest run --config vitest.dist.config.ts",
+    "test:dist": "node tests-dist/node-esm.mjs && node tests-dist/node-cjs.cjs && vitest run --config vitest.dist.config.ts && vitest run --config vitest.dist.floor.config.ts",
     "lint": "eslint src/ tests/ tests-dist/",
     "lint:package": "publint --strict && attw --pack .",
     "format": "prettier --write .",
