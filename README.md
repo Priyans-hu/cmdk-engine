@@ -352,19 +352,40 @@ load the adapter with either `import` or `require`, not both, or two copies of
 
 ## React Router Integration
 
-Auto-discover routes from your React Router config:
+Auto-discover routes from your React Router config. Register them inside the provider,
+and navigate with the router object, since the provider sits above `RouterProvider`:
 
 ```tsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
-import { useCommandRegister } from 'cmdk-engine/react'
 
-const commands = scanRoutes(routeConfig)
+const routes = [
+  { path: '/', element: <h1>Home</h1> },
+  { path: '/billing', element: <h1>Billing</h1> },
+]
+const router = createBrowserRouter(routes)
+const commands = scanRoutes(routes)
+const config = { onNavigate: (href: string) => router.navigate(href) }
 
-function App() {
+function RegisterRoutes() {
   useCommandRegister(commands)
-  return <RouterProvider router={router} />
+  return null
+}
+
+export function App() {
+  return (
+    <CommandEngineProvider config={config}>
+      <RegisterRoutes />
+      {/* the palette from the Quick Start goes here */}
+      <RouterProvider router={router} />
+    </CommandEngineProvider>
+  )
 }
 ```
+
+On React Router 8 there is no `react-router-dom`: import `createBrowserRouter` from
+`react-router` and `RouterProvider` from `react-router/dom`.
 
 ### Smart defaults
 
@@ -424,12 +445,13 @@ Filter commands based on user permissions:
 ```tsx
 import { createSimpleAccessProvider } from 'cmdk-engine'
 
-<CommandEngineProvider
-  config={{
-    accessControl: createSimpleAccessProvider(['admin.view', 'billing.read']),
-    accessCheckMode: 'any', // user needs ANY listed permission
-  }}
->
+// Build the provider once, outside the component, or `useMemo` it per user.
+const config = {
+  accessControl: createSimpleAccessProvider(['admin.view', 'billing.read']),
+  accessCheckMode: 'any' as const, // user needs ANY listed permission
+}
+
+// <CommandEngineProvider config={config}>
 ```
 
 Commands with `permissions: ['admin.view']` will only show for users who have that permission.
@@ -655,11 +677,18 @@ localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
 ```tsx
 import { getTranslationKeys } from 'cmdk-engine'
 
-<CommandEngineProvider
-  config={{ t: (key) => myDictionary[key] ?? key }}
->
+const myDictionary: Record<string, string> = {
+  'palette.placeholder': 'Buscar comandos...',
+  'palette.empty': 'Sin resultados.',
+}
+
+// Define `t` once, outside the component: a new function on every render rebuilds the engine.
+const config = { t: (key: string) => myDictionary[key] ?? key }
+
+// <CommandEngineProvider config={config}>
 
 // getTranslationKeys() lists every key that has a default English string.
+console.log(getTranslationKeys())
 ```
 
 > `getTranslationKeys()` also lists `group.other` and `search.history`, which
@@ -671,18 +700,31 @@ Base UI adapter's dialog.
 
 ## Search History
 
-Opt-in tracking of past queries (persisted to `localStorage`):
+Opt-in tracking of past queries (persisted to `localStorage`). A query is recorded when
+the user selects a command, not on every keystroke:
 
 ```tsx
-import { useSearchHistory } from 'cmdk-engine/react'
+const config = { searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }
+```
 
-<CommandEngineProvider
-  config={{ searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }}
->
+Read it with `useSearchHistory()`, and set the search box with `setSearch` from
+`useCommandPalette()`:
+
+```tsx
+import { useCommandPalette, useSearchHistory } from 'cmdk-engine/react'
 
 function RecentSearches() {
-  const { getRecent, remove, clear } = useSearchHistory()
-  return <>{getRecent(5).map((e) => <button key={e.query} onClick={() => setSearch(e.query)}>{e.query}</button>)}</>
+  const { setSearch } = useCommandPalette()
+  const { getRecent } = useSearchHistory() // also: remove(query), clear()
+  return (
+    <>
+      {getRecent(5).map((entry) => (
+        <button key={entry.query} onClick={() => setSearch(entry.query)}>
+          {entry.query}
+        </button>
+      ))}
+    </>
+  )
 }
 ```
 
@@ -710,7 +752,9 @@ const issueSearch: AsyncSource = {
   group: 'Issues',
 }
 
-<CommandEngineProvider config={{ asyncSources: [issueSearch] }}>
+const config = { asyncSources: [issueSearch] }
+
+// <CommandEngineProvider config={config}>
 ```
 
 | Option | Default | Description |
@@ -826,14 +870,11 @@ export default defineConfig({
 
 ### Pre-commit hook
 
-```json
-{
-  "husky": {
-    "hooks": {
-      "pre-commit": "npx cmdk-engine scan && git add src/generated/command-routes.json"
-    }
-  }
-}
+With [husky](https://typicode.github.io/husky) 9, run `npx husky init`, then put the
+command in `.husky/pre-commit`:
+
+```sh
+npx cmdk-engine scan && git add src/generated/command-routes.json
 ```
 
 ### GitHub Actions
