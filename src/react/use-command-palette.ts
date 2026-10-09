@@ -58,14 +58,14 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   const {
     registry, search, keywords, accessFilter, frecency,
     groupManager, contextEngine, searchHistory, t, config,
-  } = useEngineContext()
+  } = useEngineContext('useCommandPalette')
 
   // Shared across all consumers under the same provider (see context.tsx).
   const {
     isOpen, setIsOpen,
     search: searchQuery, setSearch: setSearchQuery,
     activePath, setActivePath,
-  } = usePaletteState()
+  } = usePaletteState('useCommandPalette')
 
   // Async sources load once in the provider; every consumer reads the same state.
   const { loaded, isLoading, errors: asyncErrors } = useContext(AsyncSourcesContext)

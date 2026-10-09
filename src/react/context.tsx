@@ -171,24 +171,34 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
   )
 }
 
+function outsideProvider(caller: string): Error {
+  return new Error(
+    `${caller} must be used within a <CommandEngineProvider> (use it in a child of the provider, not in the component that renders the provider; two copies of cmdk-engine also cause this)`,
+  )
+}
+
 /**
  * Hook to access the engine context. Throws if used outside provider.
+ *
+ * @param caller - Name the error shows (default: `useEngineContext`)
  */
-export function useEngineContext(): EngineContextValue {
+export function useEngineContext(caller = 'useEngineContext'): EngineContextValue {
   const ctx = useContext(EngineContext)
   if (!ctx) {
-    throw new Error('useEngineContext must be used within a <CommandEngineProvider>')
+    throw outsideProvider(caller)
   }
   return ctx
 }
 
 /**
  * Hook to access the shared palette UI state. Throws if used outside provider.
+ *
+ * @param caller - Name the error shows (default: `usePaletteState`)
  */
-export function usePaletteState(): PaletteStateValue {
+export function usePaletteState(caller = 'usePaletteState'): PaletteStateValue {
   const ctx = useContext(PaletteStateContext)
   if (!ctx) {
-    throw new Error('usePaletteState must be used within a <CommandEngineProvider>')
+    throw outsideProvider(caller)
   }
   return ctx
 }

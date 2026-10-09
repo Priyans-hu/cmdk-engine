@@ -26,7 +26,7 @@ import { useEngineContext } from './context'
  * ```
  */
 export function useCommandRegister(commands: CommandItem[], deps?: unknown[]): void {
-  const { registry } = useEngineContext()
+  const { registry } = useEngineContext('useCommandRegister')
 
   // Always hold the latest commands so wrapped actions call fresh closures.
   const commandsRef = useRef(commands)
