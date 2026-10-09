@@ -144,12 +144,11 @@ export function createKeywordEngine(
     },
 
     /**
-     * Set the synonym dictionary (rebuilds the lookup index).
+     * Set the synonym dictionary (rebuilds the lookup index). The engine keeps
+     * its own index: neither dictionary is modified.
      */
     setSynonyms(newSynonyms: SynonymMap): void {
-      Object.keys(synonyms).forEach((k) => delete synonyms[k])
-      Object.assign(synonyms, newSynonyms)
-      rebuildIndex(synonyms)
+      rebuildIndex(newSynonyms)
     },
   }
 }
