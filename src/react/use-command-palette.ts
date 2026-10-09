@@ -28,7 +28,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   /**
    * Select a command — records frecency + search history, runs
    * onSelect/action/href, closes palette. An optional per-call `onSelect`
-   * takes priority over the provider-level `onSelect`.
+   * takes priority over the provider-level `onSelect`. A handler that throws
+   * or rejects is reported to `onSelectError` when the provider sets it.
    */
   select: (itemOrId: CommandItem | string, options?: SelectOptions) => void
   /** Flat list of all result items (ungrouped) */
@@ -266,16 +267,33 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
       // Precedence: per-call onSelect → provider onSelect → action → href
       const handler = options?.onSelect ?? config.onSelect
-      if (handler) {
-        handler(item)
-      } else if (item.action) {
-        item.action(item)
-      } else if (item.href) {
-        if (config.onNavigate) {
-          config.onNavigate(item.href, item)
-        } else if (typeof window !== 'undefined') {
-          window.location.href = item.href
+      const { onSelectError } = config
+      let result: unknown
+      try {
+        if (handler) {
+          result = handler(item)
+        } else if (item.action) {
+          result = item.action(item)
+        } else if (item.href) {
+          if (config.onNavigate) {
+            result = config.onNavigate(item.href, item)
+          } else if (typeof window !== 'undefined') {
+            window.location.href = item.href
+          }
         }
+      } catch (error) {
+        // Without onSelectError a throw propagates and the palette stays open, as before.
+        if (!onSelectError) throw error
+        onSelectError(error, item)
+      }
+      // Without onSelectError a rejection stays unhandled, as before.
+      if (
+        onSelectError &&
+        typeof (result as PromiseLike<unknown> | undefined)?.then === 'function'
+      ) {
+        ;(result as PromiseLike<unknown>).then(undefined, (error: unknown) =>
+          onSelectError(error, item),
+        )
       }
 
       close()

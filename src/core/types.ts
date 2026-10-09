@@ -376,6 +376,13 @@ export interface CommandEngineConfig {
    * search), merged into the root-level results. See `AsyncSource`.
    */
   asyncSources?: AsyncSource[]
+  /**
+   * Called when the handler `select()` runs for a command (`onSelect`, `action`
+   * or `onNavigate`) throws or returns a rejected promise. The palette still
+   * closes. Without it, a throw propagates and a rejection stays unhandled, as
+   * before. Async source failures are reported in `asyncErrors` instead.
+   */
+  onSelectError?: (error: unknown, item: CommandItem) => void
 }
 
 /**
