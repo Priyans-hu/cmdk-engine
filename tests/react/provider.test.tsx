@@ -230,7 +230,7 @@ describe('hooks outside a provider', () => {
     const message = errorOf(hook)
 
     expect(message.startsWith(`${name} must be used within a <CommandEngineProvider> (`)).toBe(true)
-    expect(message).toMatch(/not in the component that renders the provider/)
+    expect(message).toMatch(/not in the component that renders it/)
     expect(message).toMatch(/two copies of cmdk-engine/)
   })
 

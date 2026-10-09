@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef } from 'react'
 import type { CommandItem, CommandPaletteEvent } from '../core/types'
-import { useEngine, usePaletteState } from './context'
+import { useEngineContext, usePaletteState } from './context'
+import type { EngineInternals } from './context'
 import { ASYNC_SOURCE, AsyncSourcesContext } from './async-sources'
 
 type Handler = (event: CommandPaletteEvent) => void
@@ -28,16 +29,17 @@ type Handler = (event: CommandPaletteEvent) => void
  * ```
  */
 export function useCommandPaletteEvents(onEvent: Handler): void {
-  const { observer } = useEngine('useCommandPaletteEvents')
-  const { isOpen, search } = usePaletteState('useCommandPaletteEvents')
+  const { observer } = useEngineContext('useCommandPaletteEvents') as EngineInternals
+  const { isOpen, search } = usePaletteState()
   const { isLoading, errors } = useContext(AsyncSourcesContext)
   const handler = useRef(onEvent)
   handler.current = onEvent
   const seen = useRef({ isOpen, query: '', errors })
+  const emit = (event: CommandPaletteEvent) => report(handler.current, event)
 
   useEffect(() => {
     observer.onSelected = (item: CommandItem, query: string) =>
-      report(handler.current, {
+      emit({
         type: 'select',
         item,
         query,
@@ -53,24 +55,22 @@ export function useCommandPaletteEvents(onEvent: Handler): void {
     const last = seen.current
     if (last.isOpen !== isOpen) {
       last.isOpen = isOpen
-      report(handler.current, { type: isOpen ? 'open' : 'close' })
+      emit({ type: isOpen ? 'open' : 'close' })
     }
     // A query is reported once its results have settled (no source loading).
     const query = search.trim()
     if (!isLoading && last.query !== query) {
       last.query = query
       if (query) {
-        report(handler.current, { type: 'search', query, resultCount: observer.count ?? 0 })
+        emit({ type: 'search', query, resultCount: observer.count ?? 0 })
       }
     }
-    if (last.errors !== errors) {
-      for (const id in errors) {
-        if (errors[id] !== last.errors[id]) {
-          report(handler.current, { type: 'asyncError', sourceId: id, error: errors[id] })
-        }
+    for (const id in errors) {
+      if (errors[id] !== last.errors[id]) {
+        emit({ type: 'asyncError', sourceId: id, error: errors[id] })
       }
-      last.errors = errors
     }
+    last.errors = errors
   })
 }
 

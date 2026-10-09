@@ -45,9 +45,10 @@ export interface PaletteObserver {
   onSelected?: (item: CommandItem, query: string) => void
 }
 
-const EngineContext = createContext<(EngineContextValue & { observer: PaletteObserver }) | null>(
-  null,
-)
+/** The context value as the package's own hooks see it (internal) */
+export type EngineInternals = EngineContextValue & { observer: PaletteObserver }
+
+const EngineContext = createContext<EngineInternals | null>(null)
 
 /**
  * Shared palette UI state. Lives on the provider (not per-hook-call) so that
@@ -69,15 +70,16 @@ const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 // does not change on each render of the provider (each keystroke).
 const EMPTY: CommandEngineConfig = {}
 
-// `frecency.enabled: false`: nothing is stored, read or ranked.
-const NO_FRECENCY: FrecencyStorage = { get: () => null, set() {}, getAll: () => [], clear() {} }
+// `frecency.enabled: false`: an empty storage that ignores writes, so nothing
+// is stored, read or ranked.
+const NO_FRECENCY: FrecencyStorage = { ...createInMemoryStorage(), set() {} }
 
 // Reading `window.localStorage` throws in sandboxed iframes and when the
 // browser blocks cookies, it is missing during SSR and can be null, and writes
 // can throw. Full storage still reads, so a quota error with data counts as
 // available.
 function canUseLocalStorage(): boolean {
-  const probe = '__cmdk_engine_probe__'
+  const probe = 'cmdk-engine-probe'
   let storage: Storage | null = null
   try {
     storage = window.localStorage
@@ -187,7 +189,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
 
 function outsideProvider(caller: string): Error {
   return new Error(
-    `${caller} must be used within a <CommandEngineProvider> (use it in a child of the provider, not in the component that renders the provider; two copies of cmdk-engine also cause this)`,
+    `${caller} must be used within a <CommandEngineProvider> (not in the component that renders it; two copies of cmdk-engine also cause this)`,
   )
 }
 
@@ -197,11 +199,6 @@ function outsideProvider(caller: string): Error {
  * @param caller - Name the error shows (default: `useEngineContext`)
  */
 export function useEngineContext(caller = 'useEngineContext'): EngineContextValue {
-  return useEngine(caller)
-}
-
-/** The engine context with the palette observer (internal). */
-export function useEngine(caller: string): EngineContextValue & { observer: PaletteObserver } {
   const ctx = useContext(EngineContext)
   if (!ctx) {
     throw outsideProvider(caller)

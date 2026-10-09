@@ -2,7 +2,8 @@ import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
-import { useEngine, usePaletteState } from './context'
+import { useEngineContext, usePaletteState } from './context'
+import type { EngineInternals } from './context'
 import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
 import { searchWithSynonyms } from './synonym-search'
 
@@ -59,14 +60,14 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   const {
     registry, search, keywords, accessFilter, frecency,
     groupManager, contextEngine, searchHistory, t, config, observer,
-  } = useEngine('useCommandPalette')
+  } = useEngineContext('useCommandPalette') as EngineInternals
 
   // Shared across all consumers under the same provider (see context.tsx).
   const {
     isOpen, setIsOpen,
     search: searchQuery, setSearch: setSearchQuery,
     activePath, setActivePath,
-  } = usePaletteState('useCommandPalette')
+  } = usePaletteState()
 
   // Async sources load once in the provider; every consumer reads the same state.
   const { loaded, isLoading, errors: asyncErrors } = useContext(AsyncSourcesContext)
