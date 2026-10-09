@@ -21,14 +21,14 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 const routes = [
   {
     path: '/dashboard',
-    element: <Dashboard />,
+    element: <h1>Dashboard</h1>,
     handle: {
       command: { label: 'Dashboard', group: 'Navigation' }
     }
   },
   {
     path: '/billing',
-    element: <Billing />,
+    element: <h1>Billing</h1>,
     handle: {
       command: {
         label: 'Billing',
@@ -79,30 +79,36 @@ function CommandMenu() {
       <CodeBlock
         language="tsx"
         code={`import { createSimpleAccessProvider } from 'cmdk-engine'
-import { CommandEngineProvider } from 'cmdk-engine/react'
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
 
-// User permissions from your auth system
+// User permissions from your auth system. Build the provider once, outside
+// the component (or useMemo it per user): a new object on every render
+// rebuilds the engine.
 const userPermissions = ['billing.read', 'settings.read']
-
-function App() {
-  return (
-    <CommandEngineProvider config={{
-      accessControl: createSimpleAccessProvider(userPermissions),
-      accessCheckMode: 'any',
-    }}>
-      <YourApp />
-    </CommandEngineProvider>
-  )
+const config = {
+  accessControl: createSimpleAccessProvider(userPermissions),
+  accessCheckMode: 'any' as const,
 }
 
-// Register a command that requires admin permission
-useCommandRegister([{
-  id: 'admin-panel',
-  label: 'Admin Panel',
-  permissions: ['admin.access'], // hidden from non-admin users
-  href: '/admin',
-}])`}
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <CommandEngineProvider config={config}>{children}</CommandEngineProvider>
+}
+
+// A command that requires admin permission
+export function AdminCommands() {
+  useCommandRegister([{
+    id: 'admin-panel',
+    label: 'Admin Panel',
+    permissions: ['admin.access'], // hidden from non-admin users
+    href: '/admin',
+  }])
+  return null
+}`}
       />
+      <p>
+        Hiding a command is a UI concern, not a security boundary. Always enforce permissions on the
+        server.
+      </p>
 
       <h2>Custom UI (without cmdk)</h2>
       <p>Build a fully custom command palette UI using only the headless hooks. Use <code>groupedResults</code> for pre-grouped items and <code>select()</code> as a one-call handler.</p>
@@ -151,28 +157,77 @@ function CustomPalette() {
       />
 
       <h2>CLI: Pre-commit Hook</h2>
-      <p>Auto-scan routes on every commit to keep your command sitemap up to date.</p>
+      <p>Auto-scan routes on every commit to keep your command sitemap up to date. With husky 9, run <code>npx husky init</code>, then put the command in <code>.husky/pre-commit</code>:</p>
       <CodeBlock
         language="bash"
-        code={`# Install husky
-npx husky install
-
-# Add pre-commit hook
-npx husky add .husky/pre-commit "npx cmdk-engine scan && git add src/generated/command-routes.json"`}
+        filename=".husky/pre-commit"
+        code={`npx cmdk-engine scan && git add src/generated/command-routes.json`}
       />
-      <p>Or with lint-staged in <code>package.json</code>:</p>
+      <p>Or with lint-staged. Use a function task: a plain command string would get the staged file names appended, and <code>scan</code> takes no file arguments.</p>
       <CodeBlock
-        language="json"
-        filename="package.json"
-        code={`{
-  "lint-staged": {
-    "src/routes/**/*.{ts,tsx}": [
-      "npx cmdk-engine scan",
-      "git add src/generated/command-routes.json"
-    ]
-  }
+        language="js"
+        filename="lint-staged.config.mjs"
+        code={`export default {
+  'src/routes/**/*.{ts,tsx}': () => [
+    'npx cmdk-engine scan',
+    'git add src/generated/command-routes.json',
+  ],
 }`}
       />
+
+      <h2>Testing</h2>
+      <p>
+        jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need stubs.
+        Without them the first render throws <code>ResizeObserver is not defined</code>. The Base UI
+        adapter needs no stubs.
+      </p>
+      <CodeBlock
+        language="tsx"
+        filename="palette.test.tsx"
+        code={`import { beforeAll, expect, test } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
+
+// jsdom lacks these two browser APIs, which cmdk uses
+beforeAll(() => {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Element.prototype.scrollIntoView = () => {}
+})
+
+function Commands() {
+  useCommandRegister([{ id: 'billing', label: 'Billing Overview', href: '/billing' }])
+  return null
+}
+
+function Palette() {
+  useCommandPaletteShortcut()
+  return <CommandPalette dialog />
+}
+
+test('Cmd+K opens the palette', async () => {
+  render(
+    <CommandEngineProvider>
+      <Commands />
+      <Palette />
+    </CommandEngineProvider>,
+  )
+  expect(screen.queryByText('Billing Overview')).toBeNull()
+  fireEvent.keyDown(document, { key: 'k', metaKey: true })
+  expect(await screen.findByText('Billing Overview')).toBeTruthy()
+})`}
+      />
+      <p>
+        Frecency and search history persist to <code>localStorage</code> (<code>cmdk-frecency</code> and{' '}
+        <code>cmdk-search-history</code>). Clear them between tests, or pass <code>frecency.storage</code>,
+        so one test&apos;s selections do not rank the next test&apos;s results. The Base UI dialog stays
+        in the DOM for a moment after Escape, so use <code>waitFor</code> before asserting that it is
+        gone.
+      </p>
     </>
   )
 }
