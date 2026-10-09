@@ -107,6 +107,71 @@ function CommandMenu() {
 }`}
       />
 
+      <h2>5. Style the Palette</h2>
+      <p>
+        <code>CommandPalette</code> ships no styles. Style cmdk&apos;s <code>[cmdk-*]</code> parts and the
+        adapter&apos;s <code>data-cmdk-engine-*</code> attributes from any global stylesheet:
+      </p>
+      <CodeBlock
+        language="css"
+        filename="palette.css"
+        code={`[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); }
+[cmdk-dialog] {
+  position: fixed; top: 15vh; left: 50%; z-index: 50; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+}
+[cmdk-root] {
+  overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #fff; color: #111827; font: 14px/1.4 system-ui, sans-serif;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.2);
+}
+[cmdk-input] {
+  box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
+  border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
+}
+[cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
+[cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
+[cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
+[cmdk-item][data-selected='true'] { background: #f3f4f6; }
+[cmdk-item][data-disabled='true'] { opacity: 0.5; cursor: default; }
+[data-cmdk-engine-item] { display: flex; align-items: center; gap: 8px; }
+[data-cmdk-engine-item-content] { display: flex; flex: 1; flex-direction: column; }
+[data-cmdk-engine-item-description] { font-size: 12px; color: #6b7280; }
+[data-cmdk-engine-item-shortcut] kbd {
+  margin-left: 4px; padding: 0 6px; border: 1px solid #e5e7eb; border-radius: 4px;
+  font: inherit; font-size: 12px;
+}
+[data-cmdk-engine-empty],
+[data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }`}
+      />
+      <p>
+        With Tailwind (v3 or v4), <code>@apply</code> the same utilities to the same selectors in your
+        main CSS file:
+      </p>
+      <CodeBlock
+        language="css"
+        code={`[cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
+[cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
+[cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
+[cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
+[cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
+[data-cmdk-engine-item] { @apply flex items-center gap-2; }
+[data-cmdk-engine-item-content] { @apply flex flex-1 flex-col; }
+[data-cmdk-engine-item-description] { @apply text-xs text-gray-500; }
+[data-cmdk-engine-item-shortcut] kbd { @apply ml-1 rounded border border-gray-200 px-1.5 font-sans text-xs; }
+[data-cmdk-engine-empty], [data-cmdk-engine-loading] { @apply p-4 text-center text-gray-500; }`}
+      />
+      <p>
+        To style per instance instead, <code>CommandPalette</code> passes <code>className</code>,{' '}
+        <code>overlayClassName</code>, <code>contentClassName</code>, <code>inputClassName</code>,{' '}
+        <code>listClassName</code>, <code>groupClassName</code>, <code>itemClassName</code> and{' '}
+        <code>emptyClassName</code> to those parts. cmdk documents its parts in{' '}
+        <a href="https://github.com/dip/cmdk#parts-and-styling">Parts and styling</a> and has{' '}
+        <a href="https://github.com/dip/cmdk/tree/main/website/styles/cmdk">drop-in stylesheets</a>.
+      </p>
+
       <h2>Next Steps</h2>
       <ul>
         <li>Read the <a href="/docs/api">API Reference</a> for all exports</li>
