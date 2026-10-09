@@ -518,8 +518,9 @@ Show a "Recent" group at the top of the palette when the search is empty:
 
 ## Context / Scope Boosting
 
-Commands with a `scope` are boosted when they match the current app context —
-so on `/billing`, billing commands rank higher:
+Commands with a `scope` are boosted when they match the current app context, so on
+`/billing`, billing commands rank higher while you search. The empty-query browse
+list is not boosted.
 
 ```tsx
 <CommandEngineProvider
@@ -532,6 +533,93 @@ so on `/billing`, billing commands rank higher:
 // A command relevant to the billing area:
 { id: 'add-card', label: 'Add Card', scope: ['/billing', '/billing/*'] }
 ```
+
+A `scope` entry matches when it equals the current `context.path` or is a parent of it
+(`/billing` matches `/billing/overview`), when a glob such as `/billing/*` covers it (the
+glob matches below `/billing`, not `/billing` itself), or when it equals one of the
+`context.tags`.
+
+## Nested Commands
+
+Give a command `children` to make a sub-menu. Selecting it opens its children instead
+of running it:
+
+```tsx
+import { useCommandRegister } from 'cmdk-engine/react'
+
+const setTheme = (theme: string) => document.documentElement.setAttribute('data-theme', theme)
+
+function ThemeCommands() {
+  useCommandRegister([
+    {
+      id: 'theme',
+      label: 'Change theme',
+      children: [
+        { id: 'theme-light', label: 'Light', action: () => setTheme('light') },
+        { id: 'theme-dark', label: 'Dark', action: () => setTheme('dark') },
+      ],
+    },
+  ])
+  return null
+}
+```
+
+- A command with children never runs its own `action` or `href`. An empty `children`
+  array counts as a leaf.
+- The palette lists only the children, and search covers only that level. `when`,
+  `permissions` and `hidden` apply to them as at the root.
+- Backspace in an empty input, or the back button in the breadcrumbs, goes up one level.
+  Closing the palette returns to the root.
+- Opening a sub-menu is not recorded in frecency or search history; running a child is.
+- Async sources load at the root level only.
+- In a custom UI, `useCommandPalette()` returns `breadcrumbs`, `depth`,
+  `drillDown(item)`, `drillUp()` and `resetPath()`. Both adapters take
+  `renderBreadcrumbs(crumbs, onBack)` and mark the chevron and the trail with
+  `data-cmdk-engine-item-chevron` and `data-cmdk-engine-breadcrumbs` (see
+  [Styling](#styling)).
+
+## Groups
+
+A command's `group` string puts it under a heading. Without any config, each distinct
+`group` becomes a heading with the same text, and commands without a `group` go under
+"Other", always last. Set `groups` in the provider config to choose labels and order:
+
+```tsx
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+
+const config = {
+  groups: [
+    { id: 'navigation', label: 'Go to', priority: 10 },
+    { id: 'actions', label: 'Actions', priority: 5 },
+  ],
+}
+
+function Commands() {
+  useCommandRegister([
+    { id: 'home', label: 'Home', href: '/', group: 'navigation' },
+    { id: 'invite', label: 'Invite teammate', action: () => {}, group: 'actions' },
+  ])
+  return null
+}
+
+export function Root({ children }: { children: React.ReactNode }) {
+  return (
+    <CommandEngineProvider config={config}>
+      <Commands />
+      {children}
+    </CommandEngineProvider>
+  )
+}
+```
+
+- A command's `group` matches a group's `id`. A `group` you did not define still shows,
+  labelled with the `group` string.
+- With an empty query, defined groups are listed by `priority` (higher first), then the
+  other groups in the order their first command appears. While searching, groups are
+  ordered by their best match instead.
+- A group's `icon` is not rendered by the built-in components; `renderGroupHeading(group)`
+  receives it.
+- `maxResults` (default 50) caps the total number of results across groups.
 
 ## Internationalization (i18n)
 
