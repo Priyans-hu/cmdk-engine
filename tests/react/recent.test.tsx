@@ -73,3 +73,29 @@ describe('Recent group with configured groups', () => {
     expect(headings(result.current)).toEqual(['Actions'])
   })
 })
+
+describe('Recent group with page-scoped commands', () => {
+  it('fills recentCount from commands available here', async () => {
+    // Minutes old, well inside the frecency maxAge (30 days)
+    const used = (id: string, minutesAgo: number) => ({
+      id,
+      count: 1,
+      lastUsed: Date.now() - minutesAgo * 60_000,
+      halfLifeScore: 0,
+    })
+    localStorage.setItem(
+      'cmdk-frecency',
+      JSON.stringify({
+        elsewhere1: used('elsewhere1', 1),
+        elsewhere2: used('elsewhere2', 2),
+        help: used('help', 3),
+        billing: used('billing', 4),
+      }),
+    )
+    const { result } = renderPalette({ frecency: { showRecent: true, recentCount: 2 } })
+    await flush()
+
+    const recent = result.current.results.filter((r) => r.item.group === 'Recent')
+    expect(recent.map((r) => r.item.id)).toEqual(['help', 'billing'])
+  })
+})

@@ -127,8 +127,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
     // 5. Inject "Recent" group when search is empty
     if (recentLabel) {
-      const recentCount = config.frecency?.recentCount ?? 5
-      const recentIds = frecency.getRecent(recentCount)
+      // Only commands available here count toward recentCount.
+      const available = new Set(searched.map((s) => s.item.id))
+      const recentIds = frecency
+        .getRecent(Infinity)
+        .filter((id) => available.has(id))
+        .slice(0, config.frecency?.recentCount ?? 5)
 
       if (recentIds.length > 0) {
         const recentItems: ScoredItem[] = []
