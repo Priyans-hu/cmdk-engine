@@ -129,13 +129,14 @@ const expanded = keywords.expandQuery('money')
       <h2>Provider Config</h2>
 
       <h3><code>onSelect</code></h3>
-      <p>Centralized handler called when any command is selected. Replaces per-component <code>onSelect</code> props.</p>
+      <p>Centralized handler called when any command is selected. Replaces per-component <code>onSelect</code> props. It also replaces the default handling: commands no longer run their <code>action</code> or reach <code>onNavigate</code> on their own. If you only need to route <code>href</code> commands, set <code>onNavigate</code> instead.</p>
       <CodeBlock
         language="tsx"
-        code={`<CommandEngineProvider config={{
+        code={`// router is your React Router data router (createBrowserRouter)
+<CommandEngineProvider config={{
   onSelect: (item) => {
-    if (item.href) navigate(item.href)
     if (item.action) item.action(item)
+    else if (item.href) router.navigate(item.href)
   },
 }}>`}
       />
@@ -169,7 +170,7 @@ const expanded = keywords.expandQuery('money')
   }],
 }}>`}
       />
-      <p>With the default <code>shouldFilter: true</code>, loaded items are searched and ranked with your commands and count toward <code>maxResults</code>. With <code>false</code>, they are shown as returned after the local results. Only relative, <code>http(s)</code>, <code>mailto</code> and <code>tel</code> hrefs are kept on loaded items; use <code>action</code> for deep links.</p>
+      <p>With the default <code>shouldFilter: true</code>, loaded items are searched and ranked with your commands and count toward <code>maxResults</code>. With <code>false</code>, they are shown as returned after the local results. Only relative, <code>http(s)</code>, <code>mailto</code> and <code>tel</code> hrefs are kept on loaded items; use <code>action</code> for deep links. Items without a non-empty string <code>id</code> and <code>label</code> are dropped, and <code>asyncErrors</code> reports how many, for example &quot;2 items dropped: missing label&quot;.</p>
     </>
   )
 }
