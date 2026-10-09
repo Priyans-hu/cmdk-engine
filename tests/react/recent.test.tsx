@@ -99,3 +99,16 @@ describe('Recent group with page-scoped commands', () => {
     expect(recent.map((r) => r.item.id)).toEqual(['help', 'billing'])
   })
 })
+
+describe('Recent group after a pick from the browse list', () => {
+  it('shows the picked command on the next open, without typing', async () => {
+    const { result } = renderPalette({ frecency: { showRecent: true } })
+    await flush()
+
+    act(() => result.current.open())
+    act(() => result.current.select('help'))
+    act(() => result.current.open())
+
+    expect(result.current.results[0].item).toMatchObject({ id: 'help', group: 'Recent' })
+  })
+})

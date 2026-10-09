@@ -164,8 +164,10 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // float to the top on empty query (README: frecency > priority > registration order).
     return frecency.rank(searched, 0.3)
   }, [
+    // activePath: close() always sets a fresh [], so the next open shows the
+    // usage recorded by a pick made without typing.
     enrichedCommands, searchQuery, search, keywords, accessFilter, frecency,
-    contextEngine, recentLabel, config.context, config.frecency,
+    contextEngine, recentLabel, config.context, config.frecency, activePath,
   ])
 
   // Limit results
