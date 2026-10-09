@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { CodeBlock } from '@/components/code-block'
 
 export const metadata = { title: 'Getting Started' }
@@ -174,8 +175,8 @@ function CommandMenu() {
 
       <h2>Next Steps</h2>
       <ul>
-        <li>Read the <a href="/docs/api">API Reference</a> for all exports</li>
-        <li>See <a href="/docs/examples">Examples</a> for common patterns</li>
+        <li>Read the <Link href="/docs/api">API Reference</Link> for all exports</li>
+        <li>See <Link href="/docs/examples">Examples</Link> for common patterns</li>
         <li>Explore the <a href="https://github.com/Priyans-hu/cmdk-engine">source code on GitHub</a></li>
       </ul>
     </>
