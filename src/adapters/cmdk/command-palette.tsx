@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { Command as Cmdk } from 'cmdk'
 import { useCommandPalette } from '../../react/use-command-palette'
 import { useEngineContext } from '../../react/context'
@@ -10,15 +11,15 @@ import type { CommandItem, ScoredItem, CommandGroup } from '../../core/types'
 
 export interface CommandPaletteProps {
   /** Render function for each command item */
-  renderItem?: (item: CommandItem, score: number) => React.ReactNode
+  renderItem?: (item: CommandItem, score: number) => ReactNode
   /** Render function for empty state */
-  renderEmpty?: () => React.ReactNode
+  renderEmpty?: () => ReactNode
   /** Render function for the loading state while async sources load (default: `palette.loading`) */
-  renderLoading?: () => React.ReactNode
+  renderLoading?: () => ReactNode
   /** Render function for group heading */
-  renderGroupHeading?: (group: CommandGroup) => React.ReactNode
+  renderGroupHeading?: (group: CommandGroup) => ReactNode
   /** Render function for breadcrumbs (nested commands) */
-  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => React.ReactNode
+  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => ReactNode
   /** Callback when a command is selected */
   onSelect?: (item: CommandItem) => void
   /** Enable keyboard loop navigation */
@@ -52,7 +53,7 @@ export interface CommandPaletteProps {
   /** Enable vim-style keybindings (ctrl+n/p/j/k) */
   vimBindings?: boolean
   /** Footer content rendered below the list */
-  footer?: React.ReactNode
+  footer?: ReactNode
 }
 
 // ============================================================
@@ -185,7 +186,7 @@ export function CommandPalette({
 
   // Handle backspace for nested navigation
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: ReactKeyboardEvent) => {
       if (e.key === 'Backspace' && search === '' && depth > 0) {
         e.preventDefault()
         drillUp()

@@ -1,4 +1,5 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Autocomplete } from '@base-ui/react/autocomplete'
 import { Dialog } from '@base-ui/react/dialog'
 import { useCommandPalette } from '../../react/use-command-palette'
@@ -16,15 +17,15 @@ import type { GroupedResult } from '../../core/grouping'
  */
 export interface CommandPaletteProps {
   /** Render function for each command item */
-  renderItem?: (item: CommandItem, score: number) => React.ReactNode
+  renderItem?: (item: CommandItem, score: number) => ReactNode
   /** Render function for empty state */
-  renderEmpty?: () => React.ReactNode
+  renderEmpty?: () => ReactNode
   /** Render function for the loading state while async sources load (default: `palette.loading`) */
-  renderLoading?: () => React.ReactNode
+  renderLoading?: () => ReactNode
   /** Render function for group heading */
-  renderGroupHeading?: (group: CommandGroup) => React.ReactNode
+  renderGroupHeading?: (group: CommandGroup) => ReactNode
   /** Render function for breadcrumbs (nested commands) */
-  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => React.ReactNode
+  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => ReactNode
   /** Callback when a command is selected */
   onSelect?: (item: CommandItem) => void
   /** Enable keyboard loop navigation */
@@ -56,7 +57,7 @@ export interface CommandPaletteProps {
   /** Disable pointer-based selection */
   disablePointerSelection?: boolean
   /** Footer content rendered below the list */
-  footer?: React.ReactNode
+  footer?: ReactNode
 }
 
 // ============================================================
@@ -128,7 +129,7 @@ function DefaultBreadcrumbs({
 // Layout effects warn during server rendering on React 18; they never run there.
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
-const visuallyHidden: React.CSSProperties = {
+const visuallyHidden: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,
