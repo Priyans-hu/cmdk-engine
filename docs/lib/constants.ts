@@ -70,9 +70,9 @@ export const COMPARISON: ComparisonRow[] = [
   { feature: 'RBAC / permissions', cmdk: false, cmdkEngine: true },
   { feature: 'Frecency ranking', cmdk: false, cmdkEngine: true },
   { feature: 'Keyword synonyms', cmdk: false, cmdkEngine: true },
-  { feature: 'Deterministic sorting', cmdk: 'Broken (#264, #375)', cmdkEngine: true },
-  { feature: 'First item auto-select', cmdk: 'Broken (#280)', cmdkEngine: true },
-  { feature: 'Dynamic content updates', cmdk: 'Broken (#267)', cmdkEngine: true },
+  { feature: 'Deterministic sorting', cmdk: 'Open upstream issues (#264, #375)', cmdkEngine: true },
+  { feature: 'First item auto-select', cmdk: 'Open upstream issue (#280)', cmdkEngine: true },
+  { feature: 'Dynamic content updates', cmdk: 'Open upstream issue (#267)', cmdkEngine: true },
   { feature: 'CLI tooling', cmdk: false, cmdkEngine: true },
   { feature: 'Framework-agnostic core', cmdk: false, cmdkEngine: true },
 ]

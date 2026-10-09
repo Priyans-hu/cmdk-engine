@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
+The smart command palette engine for React. Built on [cmdk](https://github.com/dip/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -22,9 +22,9 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
-| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
-| First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
-| Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
+| Deterministic sorting | [Open upstream issues (#264, #375)](https://github.com/dip/cmdk/issues/264) | Yes — frecency > priority > registration order |
+| First item auto-select | [Open upstream issue (#280)](https://github.com/dip/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
+| Dynamic content updates | [Open upstream issue (#267)](https://github.com/dip/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
 | Framework-agnostic core | No | Yes — zero runtime deps |
@@ -760,10 +760,10 @@ import type {
 
 | Issue | Description | How We Fix It |
 |-------|-------------|---------------|
-| [#264](https://github.com/pacocoursey/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
-| [#280](https://github.com/pacocoursey/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
-| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
-| [#267](https://github.com/pacocoursey/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
+| [#264](https://github.com/dip/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
+| [#280](https://github.com/dip/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
+| [#375](https://github.com/dip/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
+| [#267](https://github.com/dip/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
 
 ---
 
