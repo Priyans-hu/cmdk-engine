@@ -29,6 +29,21 @@ export const DOCS_NAV: NavSection[] = [
     ],
   },
   {
+    title: 'Guides',
+    items: [
+      {
+        label: 'Search',
+        href: '/docs/search',
+        description: 'How results are found and ranked, synonyms, match-sorter and custom engines.',
+      },
+      {
+        label: 'Nesting and groups',
+        href: '/docs/nested-commands',
+        description: 'Sub-menus with breadcrumbs, and headings for long command lists.',
+      },
+    ],
+  },
+  {
     title: 'Reference',
     items: [
       {
