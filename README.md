@@ -8,6 +8,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/d
 
 ![The cmdk adapter's palette opened with Cmd+K, styled with the CSS from the Styling section](https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/.github/assets/palette.png)
 
+**Live demo:** press Cmd+K (Ctrl+K) on the [docs site](https://priyans-hu.github.io/cmdk-engine/). Runnable apps are in [Examples](#examples).
+
 ---
 
 ## Why cmdk-engine?
@@ -255,6 +257,36 @@ your main CSS file:
 To style per instance instead, `CommandPalette` passes `className`,
 `overlayClassName`, `contentClassName`, `inputClassName`, `listClassName`,
 `groupClassName`, `itemClassName` and `emptyClassName` to those parts.
+
+### shadcn/ui
+
+If your app uses [shadcn/ui](https://ui.shadcn.com), install the palette from
+this project's shadcn registry instead:
+
+```bash
+npx shadcn@latest add https://priyans-hu.github.io/cmdk-engine/r/command-palette.json
+```
+
+It writes `components/command-palette.tsx`, the cmdk adapter's palette styled
+with your theme's tokens, so it follows light and dark mode and is yours to
+edit. Render `<CommandPalette />` once inside `CommandEngineProvider`. For Base
+UI instead of cmdk, add `.../r/command-palette-base-ui.json`. Both need
+cmdk-engine 0.6.0 or later. See the
+[shadcn/ui page](https://priyans-hu.github.io/cmdk-engine/docs/shadcn).
+
+---
+
+## Examples
+
+Runnable apps in [`examples/`](examples). CI builds each one against this
+repo, and each installs `cmdk-engine` from npm, so you can copy one out.
+
+| Example | What it shows | Try it |
+|---|---|---|
+| [Vite + React Router](examples/vite-react-router) | Commands from the route tree with `scanRoutes`, the provider inside the router, this Styling CSS, and the same palette on Base UI with `?adapter=base-ui` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/vite-react-router?file=src/layout.tsx) |
+| [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
+
+The docs site is a live demo too: Cmd+K there searches its own pages.
 
 ---
 
