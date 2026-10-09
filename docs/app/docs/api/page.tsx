@@ -1,4 +1,5 @@
 import { CodeBlock } from '@/components/code-block'
+import { SIZES } from '@/lib/sizes'
 
 export const metadata = { title: 'API Reference' }
 
@@ -21,7 +22,7 @@ unregister() // cleanup`}
       />
 
       <h3><code>createFuzzySearch()</code></h3>
-      <p>Built-in lightweight fuzzy search engine. Scores by exact match, prefix, substring, word boundary, and character matching. Under 1 kB minified + brotli.</p>
+      <p>Built-in lightweight fuzzy search engine. Scores by exact match, prefix, substring, word boundary, and character matching. Under {SIZES.fuzzySearch} minified + brotli.</p>
 
       <h3><code>createKeywordEngine(synonyms, userAliases?)</code></h3>
       <p>Creates a keyword engine with bidirectional synonym lookup.</p>
@@ -125,7 +126,7 @@ function CommandMenu() {
   return <CommandPalette dialog overlayClassName="backdrop" contentClassName="palette" />
 }`}
       />
-      <p>Differences from the cmdk adapter: no vim keys; Home and End move the caret; disabled items stay reachable by the arrow keys (Enter and click do nothing); the highlighted item has <code>data-highlighted</code>; the loading row is a <code>role=&quot;status&quot;</code> region after the list; when results change while open (async sources), the highlight keeps its position rather than its item; with an IME the query updates when composition ends. Give your app root <code>isolation: isolate</code> and, for iOS 26+ Safari, a <code>position: absolute</code> backdrop plus <code>body {'{ position: relative }'}</code>, as the <a href="https://base-ui.com/react/overview/quick-start">Base UI quick start</a> explains. The dialog&apos;s visually hidden close button is labelled by the <code>palette.close</code> translation key. Base UI costs about 48 kB min + brotli (Autocomplete and Dialog) versus about 14 kB for cmdk with its Radix dialog.</p>
+      <p>Differences from the cmdk adapter: no vim keys; Home and End move the caret; disabled items stay reachable by the arrow keys (Enter and click do nothing); the highlighted item has <code>data-highlighted</code>; the loading row is a <code>role=&quot;status&quot;</code> region after the list; when results change while open (async sources), the highlight keeps its position rather than its item; with an IME the query updates when composition ends. Give your app root <code>isolation: isolate</code> and, for iOS 26+ Safari, a <code>position: absolute</code> backdrop plus <code>body {'{ position: relative }'}</code>, as the <a href="https://base-ui.com/react/overview/quick-start">Base UI quick start</a> explains. The dialog&apos;s visually hidden close button is labelled by the <code>palette.close</code> translation key. Base UI costs about {SIZES.baseUiWithDialog} min + brotli (Autocomplete and Dialog) versus about {SIZES.cmdkWithRadixDialog} for cmdk with its Radix dialog.</p>
 
       <h3><code>scanRoutes(routes, options?)</code> (<code>cmdk-engine/adapters/react-router</code>)</h3>
       <p>Scan a React Router route tree and extract CommandItem objects. Reads <code>handle.command</code> metadata from route definitions.</p>

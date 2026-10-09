@@ -1,3 +1,5 @@
+import { SIZES } from './sizes'
+
 export interface NavSection {
   title: string
   items: { label: string; href: string }[]
@@ -53,8 +55,8 @@ export const FEATURES = [
   },
   {
     icon: '📦',
-    title: '3.4 kB Core',
-    description: 'Tree-shakeable, zero runtime dependencies. Core engine is 3.4 kB minified + brotli; the Quick Start stack (provider, register hook, cmdk adapter and shortcut) is 7.2 kB.',
+    title: `${SIZES.core} Core`,
+    description: `Tree-shakeable, zero runtime dependencies. Core engine is ${SIZES.core} minified + brotli; the Quick Start stack (provider, register hook, cmdk adapter and shortcut) is ${SIZES.quickStartStack}.`,
   },
 ]
 
@@ -79,6 +81,7 @@ export const COMPARISON: ComparisonRow[] = [
 
 export const SITE = {
   name: 'cmdk-engine',
+  url: 'https://priyans-hu.github.io/cmdk-engine',
   description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI.',
   github: 'https://github.com/Priyans-hu/cmdk-engine',
   npm: 'https://www.npmjs.com/package/cmdk-engine',

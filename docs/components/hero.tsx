@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SITE } from '@/lib/constants'
+import { STACK_SENTENCE } from '@/lib/sizes'
 
 export function Hero() {
   return (
@@ -27,8 +28,7 @@ export function Hero() {
         {/* Subtitle */}
         <p className="text-lg sm:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-8 text-balance animate-fade-in" style={{ animationDelay: '0.2s' }}>
           Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms,
-          RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register
-          hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
+          RBAC filtering, frecency ranking, CLI tooling. {STACK_SENTENCE}
         </p>
 
         {/* CTAs */}

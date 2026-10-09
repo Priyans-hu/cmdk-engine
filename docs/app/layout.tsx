@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
+import { STACK_SENTENCE } from '@/lib/sizes'
 import './globals.css'
 
 const inter = Inter({
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     default: 'cmdk-engine: Permission-aware command palette engine for React',
     template: '%s | cmdk-engine',
   },
-  description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.',
+  description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. ' + STACK_SENTENCE,
   keywords: ['command palette', 'cmdk', 'react', 'cmd-k', 'ctrl-k', 'fuzzy search', 'command menu', 'keyboard shortcuts'],
   openGraph: {
     title: 'cmdk-engine',

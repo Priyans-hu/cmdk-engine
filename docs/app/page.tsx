@@ -2,6 +2,7 @@ import { Hero } from '@/components/hero'
 import { FeatureCard } from '@/components/feature-card'
 import { ComparisonTable } from '@/components/comparison-table'
 import { FEATURES, COMPARISON } from '@/lib/constants'
+import { SIZES } from '@/lib/sizes'
 
 export default function Home() {
   return (
@@ -73,27 +74,27 @@ export default function Home() {
             <tbody className="divide-y divide-[var(--border)]">
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">3.4 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.core}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Core engine (types, registry, search, keywords, access control, frecency)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/react</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">3.6 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.react}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React hooks (provider, useCommandPalette, useCommandRegister)</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/cmdk</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">1.4 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.cmdkAdapter}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired cmdk components</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/react-router</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">1.0 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.reactRouterAdapter}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7/v8 route scanner</td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
                 <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/base-ui</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">1.5 kB</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.baseUiAdapter}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired Base UI components</td>
               </tr>
             </tbody>
@@ -101,7 +102,7 @@ export default function Home() {
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-4">
           Minified + brotli, each entry&apos;s own code; siblings and peers excluded. The Quick
-          Start stack (provider, register hook, cmdk adapter and shortcut) is 7.2 kB in total. All
+          Start stack (provider, register hook, cmdk adapter and shortcut) is {SIZES.quickStartStack} in total. All
           entry points are tree-shakeable. The core has zero runtime dependencies.
         </p>
       </section>
