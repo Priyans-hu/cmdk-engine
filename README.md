@@ -362,7 +362,9 @@ Show a "Recent" group at the top of the palette when the search is empty:
 ```
 
 > Frecency (and search history, below) persist to `localStorage` by default and
-> degrade to in-memory automatically during SSR. Override the backend via
+> fall back to memory where it is unavailable: during SSR, in sandboxed iframes
+> and when the browser blocks cookies. Malformed data under their keys is
+> ignored and replaced on the next write. Override the backend via
 > `config.frecency.storage`.
 
 > `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`

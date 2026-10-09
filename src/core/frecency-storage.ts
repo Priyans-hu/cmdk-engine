@@ -1,5 +1,15 @@
 import type { FrecencyEntry, FrecencyStorage } from './types'
 
+function isEntry(value: unknown): value is FrecencyEntry {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Partial<FrecencyEntry>
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.count === 'number' &&
+    typeof entry.lastUsed === 'number'
+  )
+}
+
 /**
  * Create a localStorage-backed frecency storage.
  * Falls back gracefully in SSR or when localStorage is unavailable.
@@ -17,11 +27,19 @@ export function createLocalStorageFrecencyStorage(
     }
   }
 
+  // The key is shared by every app on the origin, so it can hold anything.
+  // Malformed data is ignored, and the next write replaces it.
   function readAll(): Record<string, FrecencyEntry> {
     if (!isAvailable()) return {}
     try {
       const raw = localStorage.getItem(storageKey)
-      return raw ? JSON.parse(raw) : {}
+      const data: unknown = raw ? JSON.parse(raw) : {}
+      if (typeof data !== 'object' || data === null || Array.isArray(data)) return {}
+      const entries = data as Record<string, unknown>
+      for (const key of Object.keys(entries)) {
+        if (!isEntry(entries[key])) delete entries[key]
+      }
+      return entries as Record<string, FrecencyEntry>
     } catch {
       return {}
     }
