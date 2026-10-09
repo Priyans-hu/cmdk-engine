@@ -130,6 +130,25 @@ root layout route, for example) and `useMemo` the config there. A command's
 `action` runs instead of `onNavigate`, and an `onSelect` on the provider
 config or on `CommandPalette` replaces both.
 
+### `onSelect` replaces the default handling
+
+`config.onSelect` runs for every selected command instead of its `action` and
+instead of `onNavigate`. The `onSelect` prop of `CommandPalette` does the same,
+and wins over the config. To track selections, call the default yourself, or
+leave `onSelect` unset and track inside `onNavigate` and your actions:
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelect: (item: CommandItem) => {
+    console.log('command selected', item.id) // your analytics call
+    if (item.action) item.action(item)
+    else if (item.href) window.location.assign(item.href)
+  },
+}
+```
+
 ### Or build your own UI with hooks
 
 ```tsx
