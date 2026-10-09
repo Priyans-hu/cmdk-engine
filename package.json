@@ -225,6 +225,17 @@
       "limit": "0.76 KB"
     },
     {
+      "name": "cmdk-engine/adapters/base-ui (own code)",
+      "path": "dist/adapters/base-ui/index.js",
+      "limit": "1.68 KB",
+      "ignore": [
+        "cmdk-engine",
+        "@base-ui/react",
+        "react",
+        "react-dom"
+      ]
+    },
+    {
       "name": "Quick Start stack",
       "import": {
         "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
