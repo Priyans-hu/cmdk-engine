@@ -407,7 +407,8 @@ export function toTree(tokens: Token[]): Node[] {
   return root
 }
 
-const isName = (node: Node | undefined, value: string): boolean =>
+/** Whether a node is the name (identifier or keyword) `value` */
+export const isName = (node: Node | undefined, value: string): boolean =>
   node?.type === 'name' && node.value === value
 
 /**
@@ -432,14 +433,10 @@ export function splitCommas(items: Node[]): Node[][] {
   return parts
 }
 
-/** A value without a trailing TS `as T`, `satisfies T` or `!` */
+/** A value without a trailing TS `as T` or `satisfies T` */
 export function stripTypeSuffix(value: Node[]): Node[] {
   const end = value.findIndex(
-    (node, k) =>
-      k > 0 &&
-      (isName(node, 'as') ||
-        isName(node, 'satisfies') ||
-        (node.type === 'punct' && node.value === '!')),
+    (node, k) => k > 0 && (isName(node, 'as') || isName(node, 'satisfies')),
   )
   return end === -1 ? value : value.slice(0, end)
 }
