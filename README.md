@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.6 kB min + brotli on top of React and cmdk.
+The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.8 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -92,6 +92,27 @@ function App() {
   )
 }
 ```
+
+### Synonyms
+
+Synonyms work both ways. With the config above, typing "money" or "payment"
+finds the "Billing Overview" command registered below.
+
+- **Query:** when the whole query (trimmed, any case) equals a key or a value,
+  the other terms are searched too: a key brings its values, a value its key.
+  Commands found only this way are listed after the direct matches and never
+  score above the weakest one. Frecency and context boosts apply afterwards,
+  so a command you use often can still move up.
+- **Commands:** with the built-in fuzzy search, a command whose keyword or
+  whole label equals a key or a value also matches the other terms, at a lower
+  weight.
+- **Not expanded:** the query, while it is a partial word ("mon" is searched
+  as typed until "money" is complete) or a longer phrase that contains a
+  synonym ("money transfer").
+
+match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
+matches, so only the query side works with it. When the query expands, a
+custom `searchEngine` is called once more for each extra term.
 
 ### 2. Register commands
 
@@ -570,7 +591,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
 | `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | 3.1 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine/react` | 3.3 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
@@ -579,9 +600,9 @@ Sizes are minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **6.6 kB** in total, without the `react`,
-`react-dom` and `cmdk` peers. CI enforces size budgets about 10% above these
-figures.
+`useCommandPaletteShortcut`) is **6.8 kB** in total, without the `react`,
+`react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
+slightly above these figures.
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 

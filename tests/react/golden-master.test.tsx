@@ -284,9 +284,18 @@ const ROOT_EXPECTED: Record<string, unknown> = {
     isLoading: false,
   },
   '"money"': {
-    results: ['usage|insights|0.385'],
-    grouped: ['insights:insights=usage'],
-    groups: ['insights'],
+    // A synonym of "billing": its matches follow usage, then frecency and context boosts apply.
+    results: [
+      'billing-history|billing|0.66575',
+      'billing-overview|billing|0.56575',
+      'usage|insights|0.385',
+      'billing-plans|billing|0.2156',
+    ],
+    grouped: [
+      'billing:Billing=billing-history,billing-overview,billing-plans',
+      'insights:insights=usage',
+    ],
+    groups: ['billing', 'insights'],
     depth: 0,
     breadcrumbs: [],
     isLoading: false,

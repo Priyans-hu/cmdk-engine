@@ -6,7 +6,7 @@ cmdk-engine is a headless command palette engine that extends cmdk with:
 - Route auto-discovery from React Router and Next.js
 - RBAC/permission-based command filtering
 - Frecency ranking (frequency + recency based ordering)
-- Keyword synonyms and user aliases
+- Keyword synonyms and user aliases. A query equal to a synonym key or value also returns what the other terms match, after the direct matches; partial words do not expand
 - Async command sources (e.g. server-side search) loaded per query with debounce, abort and per-source errors. A source's `trigger` runs during render (twice under StrictMode), so it must be pure and cheap; one that passes on an empty query loads at mount, even before the palette is opened
 - CLI tool for route scanning in CI/CD pipelines
 
