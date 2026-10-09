@@ -1,5 +1,25 @@
 # cmdk-engine
 
+## 0.6.0
+
+### Minor Changes
+
+- 8873b92: Add `config.asyncSources`: commands loaded for each query (such as a server-side search), debounced, aborted when stale, and loaded once in the provider for every consumer. `isLoading` and `asyncErrors` report progress and per-source failures; `shouldFilter: false` shows server-matched items as returned; remote hrefs are limited to relative, http(s), mailto and tel.
+- 499993a: React Router adapter: support `react-router` 8 (peer range `^6 || ^7 || ^8`). `scanRoutes` now accepts React Router 6, 7 and 8 route types and your own route interfaces without a cast, and discovers index routes: they resolve to their parent's URL (`/` for a pathless root), and their `handle.command` is merged over the parent's command.
+
+### Patch Changes
+
+- 579fbd2: Fix malformed items crashing the palette. Items from an async source without a non-empty string `id` and `label` (children included) are now dropped when they load, the rest still show, and `asyncErrors[id]` reports them, for example "2 items dropped: missing label". Non-string `keywords` entries on loaded items are removed.
+  Search and keyword enrichment now skip a missing or non-string `label`, `description` or keyword, so a registered command without a label, or with `keywords: ['a', null]`, no longer throws.
+- 2e9ae66: The cmdk adapter's `CommandPalette` dialog now opens on the first enabled item in display order instead of the item highlighted when it last closed, and the palette never highlights a disabled item or, when groups reorder the results, an item lower in the list.
+  With frecency on, a command you just ran still ranks first, so it is also the first item on the next open.
+- 586f51a: Fix `CommandPalette` and `useCommandPaletteShortcut` from `cmdk-engine/adapters/cmdk` throwing "useEngineContext must be used within a <CommandEngineProvider>" under a provider from `cmdk-engine/react`, as in the README Quick Start.
+  The react and cmdk adapter entries now import the entries they build on instead of bundling private copies, so they share one set of React contexts and ship less code.
+- 6f65438: Fix `CommandEngineProvider` crashing the app when reading `window.localStorage` throws, as in sandboxed iframes and browsers that block cookies: frecency and search history now fall back to memory there.
+  Malformed data under the frecency or search-history `localStorage` keys (such as another app's data) is now ignored and replaced on the next write instead of throwing.
+- 688c08d: Fix `synonyms` not expanding the query: when the whole query equals a synonym key or value (for example "money" with `synonyms: { billing: ['money'] }`), the palette now also returns what the other terms match, after the direct matches and scored below them.
+  This works with the fuzzy, match-sorter and custom search engines (a custom engine is called once more per extra term). Partial words do not expand, and match-sorter still ignores the command-side synonym keywords.
+
 ## 0.5.1
 
 ### Patch Changes
