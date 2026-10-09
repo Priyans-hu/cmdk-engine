@@ -54,6 +54,8 @@ function press(init: KeyboardEventInit) {
   return event
 }
 
+const slash = (e: KeyboardEvent) => e.key === '/'
+
 describe.each([
   ['cmdk', cmdkAdapter],
   ['Base UI', baseUiAdapter],
@@ -165,6 +167,16 @@ describe.each([
   it('still matches a named key exactly', () => {
     renderApp('Enter')
     press({ key: 'Enter', code: 'Enter', metaKey: true })
+    expect(state().isOpen).toBe(true)
+  })
+
+  it('takes a function that decides the match, with the same repeat guard', () => {
+    renderApp(slash)
+    expect(press({ key: '/', code: 'Slash' }).defaultPrevented).toBe(true)
+    expect(state().isOpen).toBe(true)
+    expect(press({ key: '/', code: 'Slash', repeat: true }).defaultPrevented).toBe(true)
+    expect(state().isOpen).toBe(true)
+    expect(press({ key: 'k', code: 'KeyK', ctrlKey: true }).defaultPrevented).toBe(false)
     expect(state().isOpen).toBe(true)
   })
 

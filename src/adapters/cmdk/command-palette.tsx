@@ -337,12 +337,16 @@ function matchesShortcut(e: KeyboardEvent, key: string) {
  * Binds Cmd+K / Ctrl+K to toggle it.
  *
  * `shortcut` is the key pressed with Cmd or Ctrl (default `'k'`). It also works
- * with Caps Lock on and on non-Latin keyboard layouts, and holding the keys
- * toggles only once.
+ * with Caps Lock on and on non-Latin keyboard layouts. Or pass a function that
+ * decides the match itself, modifiers included, such as `(e) => e.key === '/'`.
+ * Define it outside the component: a new function re-binds the listener. Either
+ * way, holding the keys toggles only once.
  *
  * Must be used within a `<CommandEngineProvider>`.
  */
-export function useCommandPaletteShortcut(shortcut = 'k') {
+export function useCommandPaletteShortcut(
+  shortcut: string | ((event: KeyboardEvent) => boolean) = 'k',
+) {
   // Palette state only: the results pipeline runs once, in the palette.
   const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } = usePaletteState()
   // The same toggle as useCommandPalette()'s.
@@ -357,7 +361,7 @@ export function useCommandPaletteShortcut(shortcut = 'k') {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (matchesShortcut(e, shortcut)) {
+      if (typeof shortcut === 'function' ? shortcut(e) : matchesShortcut(e, shortcut)) {
         // Repeats too, or a held Ctrl+K reaches the browser's own shortcut
         e.preventDefault()
         if (!e.repeat) toggle()
