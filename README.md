@@ -292,6 +292,8 @@ only the cmdk adapter has. Every prop is optional.
 
 ## Base UI Adapter
 
+*New in 0.6.*
+
 Prefer [Base UI](https://base-ui.com)? `cmdk-engine/adapters/base-ui` renders
 the palette with Base UI's
 [Autocomplete](https://base-ui.com/react/components/autocomplete) (plus its
@@ -431,6 +433,8 @@ Routes with `handle.command` are always included, even if they have dynamic segm
 A `handle` returned from `lazy()` is not read, because the scanner never calls `lazy()`. Put `handle.command` on the route object itself.
 
 ### Index routes
+
+*New in 0.6.*
 
 An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
 
@@ -729,6 +733,8 @@ function RecentSearches() {
 ```
 
 ## Async Command Sources
+
+*New in 0.6.*
 
 Mix registered commands with results loaded for each query, such as a
 server-side search. The provider runs every source once per query for all
