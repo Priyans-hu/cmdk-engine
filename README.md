@@ -93,6 +93,27 @@ function App() {
 }
 ```
 
+### Synonyms
+
+Synonyms work both ways. With the config above, typing "money" or "payment"
+finds the "Billing Overview" command registered below.
+
+- **Query:** when the whole query (trimmed, any case) equals a key or a value,
+  the other terms are searched too: a key brings its values, a value its key.
+  Commands found only this way are listed after the direct matches and never
+  score above the weakest one. Frecency and context boosts apply afterwards,
+  so a command you use often can still move up.
+- **Commands:** with the built-in fuzzy search, a command whose keyword or
+  whole label equals a key or a value also matches the other terms, at a lower
+  weight.
+- **Not expanded:** the query, while it is a partial word ("mon" is searched
+  as typed until "money" is complete) or a longer phrase that contains a
+  synonym ("money transfer").
+
+match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
+matches, so only the query side works with it. When the query expands, a
+custom `searchEngine` is called once more for each extra term.
+
 ### 2. Register commands
 
 ```tsx
