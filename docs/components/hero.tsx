@@ -19,14 +19,14 @@ export function Hero() {
 
         {/* Title */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          The smart{' '}
+          Permission-aware{' '}
           <span className="gradient-text">command palette</span>
           {' '}engine
         </h1>
 
         {/* Subtitle */}
         <p className="text-lg sm:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-8 text-balance animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Built on cmdk. Auto-discover routes, fuzzy search with synonyms,
+          Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms,
           RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register
           hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
         </p>

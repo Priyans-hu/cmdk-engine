@@ -1,8 +1,8 @@
 # cmdk-engine
 
-> The smart command palette engine for React. Built on cmdk.
+> Permission-aware command palette engine for React. Works with cmdk or Base UI.
 
-cmdk-engine is a headless command palette engine that extends cmdk with:
+cmdk-engine is a headless command palette engine that adds the following to cmdk or Base UI:
 - Route auto-discovery from React Router and Next.js
 - RBAC/permission-based command filtering
 - Frecency ranking (frequency + recency based ordering)

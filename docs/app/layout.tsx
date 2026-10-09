@@ -19,14 +19,14 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'cmdk-engine — Smart Command Palette Engine for React',
+    default: 'cmdk-engine: Permission-aware command palette engine for React',
     template: '%s | cmdk-engine',
   },
-  description: 'The smart command palette engine for React. Built on cmdk. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.',
+  description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.',
   keywords: ['command palette', 'cmdk', 'react', 'cmd-k', 'ctrl-k', 'fuzzy search', 'command menu', 'keyboard shortcuts'],
   openGraph: {
     title: 'cmdk-engine',
-    description: 'The smart command palette engine for React',
+    description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI.',
     url: 'https://priyans-hu.github.io/cmdk-engine',
     siteName: 'cmdk-engine',
     type: 'website',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'cmdk-engine',
-    description: 'The smart command palette engine for React',
+    description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI.',
   },
 }
 

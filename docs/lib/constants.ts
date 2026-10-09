@@ -79,7 +79,7 @@ export const COMPARISON: ComparisonRow[] = [
 
 export const SITE = {
   name: 'cmdk-engine',
-  description: 'The smart command palette engine for React',
+  description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI.',
   github: 'https://github.com/Priyans-hu/cmdk-engine',
   npm: 'https://www.npmjs.com/package/cmdk-engine',
 }
