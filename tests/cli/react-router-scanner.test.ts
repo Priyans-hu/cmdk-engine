@@ -210,3 +210,95 @@ describe('React Router CLI scan: dynamic routes, like the runtime scanner', () =
     expect(paths({ includeDynamic: true })).not.toContain('/docs/*')
   })
 })
+
+describe('React Router CLI scan: relative child paths', () => {
+  it('joins children paths to their parent route, through pathless layouts', () => {
+    const routes = scan(`
+      export const router = createBrowserRouter([
+        {
+          path: '/',
+          element: <Root />,
+          children: [
+            { index: true, element: <Home /> },
+            { path: 'dashboard', element: <Dashboard /> },
+            { path: 'billing', children: [{ path: 'overview' }, { path: '/absolute' }] },
+            { element: <Layout />, children: [{ path: 'settings' }] },
+            { path: '/teams/', children: [{ path: 'members' }] },
+          ],
+        },
+      ])
+    `)
+
+    expect(routes.map((r) => r.path)).toEqual([
+      '/',
+      '/dashboard',
+      '/billing',
+      '/billing/overview',
+      '/absolute',
+      '/settings',
+      '/teams/',
+      '/teams/members',
+    ])
+    expect(byPath(routes)['/billing/overview']).toMatchObject({
+      label: 'Overview',
+      group: 'Billing',
+    })
+  })
+
+  it('joins nested <Route> paths to their parent element', () => {
+    const routes = scan(`
+      const router = createBrowserRouter(
+        createRoutesFromElements(
+          <Route path="/" element={<Root />}>
+            <Route index element={<Home />} />
+            <Route path="reports" element={<Reports />}>
+              <Route path="weekly" element={<Weekly />} />
+            </Route>
+            <Route element={<Layout />}>
+              <Route path="profile" element={<Profile />} />
+            </Route>
+          </Route>,
+        ),
+      )
+    `)
+
+    expect(routes.map((r) => r.path)).toEqual(['/', '/reports', '/reports/weekly', '/profile'])
+  })
+
+  it('skips relative paths whose parent is not in the same route tree', () => {
+    const routes = scan(`
+      const orphans = [{ path: 'orphan' }]
+      export const routes = [{ path: '/admin', children: adminRoutes }]
+      export function Admin() {
+        return (
+          <Routes>
+            <Route path="descendant" element={<Page />} />
+          </Routes>
+        )
+      }
+    `)
+
+    expect(routes.map((r) => r.path)).toEqual(['/admin'])
+  })
+
+  it('applies the dynamic-route rule to the joined path', () => {
+    const source = `
+      export const routes = [
+        {
+          path: '/:org',
+          children: [
+            { path: 'settings' },
+            { path: 'users/:id', handle: { command: { label: 'User' } } },
+          ],
+        },
+      ]
+    `
+
+    expect(scan(source).map((r) => r.path)).toEqual(['/:org/users/:id'])
+    expect(scan(source, 'routes.tsx', { includeDynamic: ['org'] }).map((r) => r.path)).toEqual([
+      '/:org',
+      '/:org/settings',
+      '/:org/users/:id',
+    ])
+  })
+})

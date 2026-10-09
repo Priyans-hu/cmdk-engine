@@ -8,8 +8,10 @@ import {
   objectProps,
   splitCommas,
   stringValue,
+  stripTypeSuffix,
   toTree,
   tokenize,
+  type Group,
   type Node,
   type Token,
 } from '../lexer'
@@ -30,13 +32,13 @@ import {
  *   with the `label`, `keywords` and `group` of their own `handle.command`
  * - `<Route path="...">` elements, with a `handle={{ command: ... }}` prop
  *
+ * A relative path is joined to its parent route's full path when it sits in that
+ * route's `children` array, or in its `<Route>` element. Without a parent in the
+ * same file (routes split across files, descendant `<Routes>`), it is skipped.
+ *
  * Like the runtime `scanRoutes`, a route with a `:param` is skipped unless
  * `includeDynamic` names its params or it declares its own `handle.command`.
  * Catch-all routes (`/docs/*`) are always skipped.
- *
- * Note: relative child paths inside nested `children` arrays are not composed
- * into full paths, so declare such routes with absolute `path` values to have
- * them discovered.
  */
 export function scanReactRouterFiles(dir: string, options: ScanOptions = {}): SitemapRoute[] {
   const files = findSourceFiles(dir)
@@ -109,8 +111,7 @@ function extractRoutes(content: string, filePath: string, options: ScanOptions):
   return found
     .filter(
       ({ path, hasCommand }) =>
-        path.startsWith('/') && // Relative child paths: see the note above
-        (allowsDynamicPath(path, options.includeDynamic) || (hasCommand && !path.includes('*'))),
+        allowsDynamicPath(path, options.includeDynamic) || (hasCommand && !path.includes('*')),
     )
     .map(({ path, command }) => {
       const route = createRoute(path, source)
@@ -125,25 +126,63 @@ function extractRoutes(content: string, filePath: string, options: ScanOptions):
 function findObjectRoutes(nodes: Node[], found: FoundRoute[]): void {
   for (const node of nodes) {
     if (node.type !== 'group') continue
-    if (node.open === '{') {
-      const props = objectProps(node)
-      const path = stringValue(props.get('path'))
-      if (path !== undefined) found.push({ path, ...readHandle(props.get('handle')) })
+    if (node.open === '{' && stringValue(objectProps(node).get('path')) !== undefined) {
+      visitRoute(node, null, found)
+    } else {
+      findObjectRoutes(node.items, found)
     }
-    findObjectRoutes(node.items, found)
+  }
+}
+
+/** A route object whose parent's full path is `parentPath` (null when unknown) */
+function visitRoute(route: Group, parentPath: string | null, found: FoundRoute[]): void {
+  const props = objectProps(route)
+  const path = stringValue(props.get('path'))
+  // A pathless (layout or index) route renders at its parent's URL
+  const fullPath = path ? joinPath(parentPath, path) : parentPath
+  if (path && fullPath !== null) found.push({ path: fullPath, ...readHandle(props.get('handle')) })
+
+  const children = groupValue(props.get('children'), '[')
+  for (const item of route.items) {
+    if (item !== children) {
+      findObjectRoutes([item], found)
+      continue
+    }
+    for (const child of splitCommas(children.items)) {
+      const [object, extra] = stripTypeSuffix(child)
+      if (object?.type === 'group' && object.open === '{' && !extra) {
+        visitRoute(object, fullPath, found)
+      } else {
+        findObjectRoutes(child, found)
+      }
+    }
   }
 }
 
 /** `<Route path="/x">` elements and their `handle={{ command: {...} }}` */
 function findJsxRoutes(tokens: Token[], found: FoundRoute[]): void {
+  // The full path of each open <Route> (null when unknown), for its children
+  const open: (string | null)[] = []
   for (const token of tokens) {
+    if (token.type === 'jsxEnd' && token.name === 'Route') open.pop()
     if (token.type !== 'jsx' || token.name !== 'Route') continue
+
     const { path } = token.attrs
-    if (typeof path === 'string') {
+    const parentPath = open.length > 0 ? open[open.length - 1] : null
+    const fullPath = typeof path === 'string' && path ? joinPath(parentPath, path) : parentPath
+    if (typeof path === 'string' && path && fullPath !== null) {
       const handle = token.exprs.handle
-      found.push({ path, ...readHandle(handle && toTree(handle)) })
+      found.push({ path: fullPath, ...readHandle(handle && toTree(handle)) })
     }
+    if (!token.selfClosing) open.push(fullPath)
   }
+}
+
+/** Join a relative path to its parent's full path, as React Router does; null without a parent */
+function joinPath(parentPath: string | null, path: string): string | null {
+  if (path.startsWith('/')) return path
+  if (parentPath === null) return null
+  return (parentPath.endsWith('/') ? parentPath : parentPath + '/') + path
 }
 
 /** Whether a `handle` value declares a `command`, and that command's label, keywords and group */
