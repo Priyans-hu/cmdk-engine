@@ -601,8 +601,8 @@ adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
 `useCommandPaletteShortcut`) is **6.8 kB** in total, without the `react`,
-`react-dom` and `cmdk` peers. CI enforces size budgets about 10% above these
-figures.
+`react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
+slightly above these figures.
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
