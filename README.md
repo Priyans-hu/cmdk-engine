@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.8 kB min + brotli on top of React and cmdk.
+The smart command palette engine for React. Built on [cmdk](https://github.com/dip/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -22,9 +22,9 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
-| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
-| First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
-| Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
+| Deterministic sorting | [Open upstream issues (#264, #375)](https://github.com/dip/cmdk/issues/264) | Yes — frecency > priority > registration order |
+| First item auto-select | [Open upstream issue (#280)](https://github.com/dip/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
+| Dynamic content updates | [Open upstream issue (#267)](https://github.com/dip/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
 | Framework-agnostic core | No | Yes — zero runtime deps |
@@ -97,7 +97,8 @@ export default function App() {
 
 The palette starts closed. Cmd+K opens it, typing "invoices" narrows the list
 to Billing Overview, and Enter goes to `/billing` and closes the palette. It
-has no styles until you add some (see [Styling](#styling)).
+has no styles until you add some (see [Styling](#styling)). In a Next.js App
+Router project, put `'use client'` at the top of this file.
 
 `useCommandPaletteShortcut()` binds Cmd+K / Ctrl+K. Call it in a component
 **inside** `CommandEngineProvider`, like `Palette` above: without it nothing
@@ -129,6 +130,25 @@ To use `useNavigate()` instead, render the provider inside the router (in a
 root layout route, for example) and `useMemo` the config there. A command's
 `action` runs instead of `onNavigate`, and an `onSelect` on the provider
 config or on `CommandPalette` replaces both.
+
+### `onSelect` replaces the default handling
+
+`config.onSelect` runs for every selected command instead of its `action` and
+instead of `onNavigate`. The `onSelect` prop of `CommandPalette` does the same,
+and wins over the config. To track selections, call the default yourself, or
+leave `onSelect` unset and track inside `onNavigate` and your actions:
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelect: (item: CommandItem) => {
+    console.log('command selected', item.id) // your analytics call
+    if (item.action) item.action(item)
+    else if (item.href) window.location.assign(item.href)
+  },
+}
+```
 
 ### Or build your own UI with hooks
 
@@ -655,17 +675,17 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 
 | Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
-| `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | 3.3 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine` | 3.4 kB | Core engine (types, registry, search, keywords, access control, frecency) |
+| `cmdk-engine/react` | 3.6 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
-| `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
+| `cmdk-engine/search/match-sorter` | 0.72 kB | Optional match-sorter search backend |
 
 Sizes are minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **6.8 kB** in total, without the `react`,
+`useCommandPaletteShortcut`) is **7.2 kB** in total, without the `react`,
 `react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
 slightly above these figures.
 
@@ -760,10 +780,10 @@ import type {
 
 | Issue | Description | How We Fix It |
 |-------|-------------|---------------|
-| [#264](https://github.com/pacocoursey/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
-| [#280](https://github.com/pacocoursey/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
-| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
-| [#267](https://github.com/pacocoursey/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
+| [#264](https://github.com/dip/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
+| [#280](https://github.com/dip/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
+| [#375](https://github.com/dip/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
+| [#267](https://github.com/dip/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
 
 ---
 

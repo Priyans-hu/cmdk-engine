@@ -53,8 +53,8 @@ export const FEATURES = [
   },
   {
     icon: '📦',
-    title: '3.2 kB Core',
-    description: 'Tree-shakeable, zero runtime dependencies. Core engine is 3.2 kB minified + brotli; the Quick Start stack (provider, register hook, cmdk adapter and shortcut) is 6.8 kB.',
+    title: '3.4 kB Core',
+    description: 'Tree-shakeable, zero runtime dependencies. Core engine is 3.4 kB minified + brotli; the Quick Start stack (provider, register hook, cmdk adapter and shortcut) is 7.2 kB.',
   },
 ]
 
@@ -70,9 +70,9 @@ export const COMPARISON: ComparisonRow[] = [
   { feature: 'RBAC / permissions', cmdk: false, cmdkEngine: true },
   { feature: 'Frecency ranking', cmdk: false, cmdkEngine: true },
   { feature: 'Keyword synonyms', cmdk: false, cmdkEngine: true },
-  { feature: 'Deterministic sorting', cmdk: 'Broken (#264, #375)', cmdkEngine: true },
-  { feature: 'First item auto-select', cmdk: 'Broken (#280)', cmdkEngine: true },
-  { feature: 'Dynamic content updates', cmdk: 'Broken (#267)', cmdkEngine: true },
+  { feature: 'Deterministic sorting', cmdk: 'Open upstream issues (#264, #375)', cmdkEngine: true },
+  { feature: 'First item auto-select', cmdk: 'Open upstream issue (#280)', cmdkEngine: true },
+  { feature: 'Dynamic content updates', cmdk: 'Open upstream issue (#267)', cmdkEngine: true },
   { feature: 'CLI tooling', cmdk: false, cmdkEngine: true },
   { feature: 'Framework-agnostic core', cmdk: false, cmdkEngine: true },
 ]
