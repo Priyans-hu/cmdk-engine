@@ -154,7 +154,7 @@ const expanded = keywords.expandQuery('money')
       />
 
       <h3><code>asyncSources</code></h3>
-      <p>Commands loaded for each query, such as a server-side search. The provider loads every source once per query for all consumers, at the root level only: it debounces (<code>debounceMs</code>, default 200), aborts stale requests on query change, close, drill-down and unmount, and reports failures per source in <code>asyncErrors</code>. <code>trigger(query)</code> decides whether to load (default: a non-empty query).</p>
+      <p>Commands loaded for each query, such as a server-side search. The provider loads every source once per query for all consumers, at the root level only: it debounces (<code>debounceMs</code>, default 200), aborts stale requests on query change, close, drill-down and unmount, and reports failures per source in <code>asyncErrors</code>. <code>trigger(query)</code> decides whether to load (default: a non-empty query). It runs during render (twice under StrictMode in development), so keep it pure and cheap; a trigger that passes on an empty query loads as soon as the provider mounts, even if the palette has never been opened.</p>
       <CodeBlock
         language="tsx"
         code={`<CommandEngineProvider config={{

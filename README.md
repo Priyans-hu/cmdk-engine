@@ -449,6 +449,9 @@ const issueSearch: AsyncSource = {
   are never recorded in frecency.
 - `load`, `trigger` and `debounceMs` are read when needed, so an inline
   `config` does not restart loads. Change a source's `id` to force a reload.
+- `trigger` runs during render (twice under StrictMode in development), so
+  keep it pure and cheap. A trigger that passes on an empty query loads as
+  soon as the provider mounts, even for a palette that has never been opened.
 
 > **Security:** loaded items are untrusted. Only relative, `http(s):`,
 > `mailto:` and `tel:` hrefs are kept; any other `href` is removed when the

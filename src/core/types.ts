@@ -387,7 +387,11 @@ export interface AsyncSource {
   id: string
   /** Load the commands for `query`. Pass `signal` to `fetch` so stale requests are cancelled. */
   load: (query: string, options: { signal: AbortSignal }) => Promise<CommandItem[]>
-  /** Whether to load for this query (default: the trimmed query is non-empty) */
+  /**
+   * Whether to load for this query (default: the trimmed query is non-empty).
+   * Runs during render (twice under StrictMode), so keep it pure and cheap.
+   * Passing on an empty query loads at mount, even for a never-opened palette.
+   */
   trigger?: (query: string) => boolean
   /** Delay in ms between the last query change and `load` (default: 200) */
   debounceMs?: number

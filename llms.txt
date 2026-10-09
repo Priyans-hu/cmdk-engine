@@ -7,7 +7,7 @@ cmdk-engine is a headless command palette engine that extends cmdk with:
 - RBAC/permission-based command filtering
 - Frecency ranking (frequency + recency based ordering)
 - Keyword synonyms and user aliases
-- Async command sources (e.g. server-side search) loaded per query with debounce, abort and per-source errors
+- Async command sources (e.g. server-side search) loaded per query with debounce, abort and per-source errors. A source's `trigger` runs during render (twice under StrictMode), so it must be pure and cheap; one that passes on an empty query loads at mount, even before the palette is opened
 - CLI tool for route scanning in CI/CD pipelines
 
 ## Installation
