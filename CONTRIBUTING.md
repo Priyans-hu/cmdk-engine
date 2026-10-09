@@ -7,6 +7,7 @@ Thanks for your interest in contributing! This guide will help you get started.
 - [Code of Conduct](#code-of-conduct)
 - [How Can I Contribute?](#how-can-i-contribute)
 - [Development Setup](#development-setup)
+- [Changesets](#changesets)
 - [Project Structure](#project-structure)
 - [Style Guidelines](#style-guidelines)
 - [Commit Messages](#commit-messages)
@@ -46,8 +47,8 @@ Look for issues labeled:
 
 1. Fork the repo and create your branch from `main`
 2. If you've added code, add tests
-3. Ensure the test suite passes (`bun test`)
-4. Make sure your code passes lint and typecheck (`bun run lint && bun run typecheck`)
+3. Add a [changeset](#changesets) if the change is user-facing
+4. Run the checks CI runs (see [Before you push](#before-you-push))
 5. Write a clear PR description
 
 ## Development Setup
@@ -70,8 +71,8 @@ bun install
 # Build
 bun run build
 
-# Run tests
-bun test
+# Run tests (not `bun test`: that is Bun's own runner, and it cannot run this suite)
+bun run test
 
 # Run tests in watch mode
 bun run test:watch
@@ -82,9 +83,40 @@ bun run lint
 # Type check
 bun run typecheck
 
-# Format
-bun run format
+# Format the files you changed (config in .prettierrc)
+bunx prettier --write <files>
 ```
+
+### Before you push
+
+CI runs these on Node 20 and 22. Run them in this order:
+
+```bash
+bun install --frozen-lockfile
+bun run lint
+bun run typecheck
+bun run test
+bun run build
+bun run test:dist      # the tests again, against the built package
+bun run lint:package   # publint and are-the-types-wrong
+bun run size           # size budgets for each entry
+```
+
+### Docs site
+
+The docs site in `docs/` is a Next.js static export with its own lockfile. Build it with Node 20:
+
+```bash
+cd docs
+bun install --frozen-lockfile
+bun run build
+```
+
+## Changesets
+
+Every user-facing change needs a changeset, which becomes a line in `CHANGELOG.md` at release time. Run `bun run changeset`, pick the bump (patch for fixes, minor for features) and write one to three lines for users. If the change alters existing behavior, start the summary with "Behavior change:" and say what to do about it. Do not edit `CHANGELOG.md` yourself. Docs-only and CI-only changes need none.
+
+Maintainers: see [RELEASING.md](RELEASING.md) for how a release is cut.
 
 ## Project Structure
 
@@ -99,11 +131,13 @@ cmdk-engine/
 │   │   ├── access-control.ts # RBAC filter
 │   │   ├── frecency.ts # Frecency ranking
 │   │   └── grouping.ts # Command groups
-│   ├── react/         # React hooks
-│   ├── adapters/      # Framework adapters (cmdk, react-router, next.js)
+│   ├── react/         # Provider and hooks
+│   ├── adapters/      # UI and route adapters, one folder each
 │   └── cli/           # CLI tool (scan, init, validate)
-├── tests/             # Test files (mirrors src/ structure)
-└── docs/              # Next.js docs site
+├── tests/             # Unit tests (mirrors src/ structure)
+├── tests-dist/        # Tests of the built package (`bun run test:dist`)
+├── docs/              # Next.js docs site
+└── .changeset/        # One file per user-facing change
 ```
 
 ## Style Guidelines

@@ -2,12 +2,12 @@
 
 ## What This Is
 
-A headless command palette engine for React, built on top of [cmdk](https://github.com/pacocoursey/cmdk). It adds the "brain" layer that cmdk doesn't provide: route auto-discovery, RBAC filtering, fuzzy search with synonyms, frecency ranking, and a CLI tool for route scanning.
+A headless command palette engine for React that works with [cmdk](https://github.com/dip/cmdk) or Base UI. It adds the "brain" layer that cmdk doesn't provide: route auto-discovery, RBAC filtering, fuzzy search with synonyms, frecency ranking, and a CLI tool for route scanning.
 
 ## Architecture
 
 ```
-Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access Control -> Search + Ranking -> Headless API/Hooks -> UI Adapter (cmdk)
+Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access Control -> Search + Ranking -> Headless API/Hooks -> UI Adapter (cmdk or Base UI)
 ```
 
 ### Entry Points
@@ -31,7 +31,7 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 
 ## Tech Stack
 
-- TypeScript 5.x strict mode
+- TypeScript 6.x strict mode
 - tsup for building (ESM + CJS dual publish)
 - Vitest for testing
 - Bun as package manager
@@ -41,17 +41,19 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 
 ```bash
 bun install
-bun run build    # Build all entry points
-bun test         # Run tests
-bun run lint     # Lint
+bun run build     # Build all entry points
+bun run test      # Run tests (not `bun test`: that is Bun's own runner and fails)
+bun run test:dist # Run tests against the built package (after build)
+bun run lint      # Lint
 bun run typecheck # Type check
+bun run size      # Size budgets (after build)
 ```
 
 ## File Structure
 
 - `src/core/` — Framework-agnostic engine
 - `src/react/` — React hooks and provider
-- `src/adapters/` — cmdk, base-ui, react-router, nextjs adapters
+- `src/adapters/` — cmdk, base-ui and react-router adapters
 - `src/cli/` — CLI tool (scan, init, validate commands)
 - `tests/` — Mirrors src/ structure
 - `docs/` — Next.js docs site
