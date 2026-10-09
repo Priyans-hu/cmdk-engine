@@ -242,9 +242,6 @@ export function CommandPalette({
         onKeyDown={handleKeyDown}
       />
       <Cmdk.List className={listClassName}>
-        {isLoading && (
-          <Cmdk.Loading label={t('palette.loading')}>{resolvedRenderLoading()}</Cmdk.Loading>
-        )}
         {results.length === 0 && !isLoading && (
           <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
         )}
@@ -259,6 +256,10 @@ export function CommandPalette({
             {renderItems(items)}
           </Cmdk.Group>
         ))}
+        {/* After the groups, so results don't shift while sources load */}
+        {isLoading && (
+          <Cmdk.Loading label={t('palette.loading')}>{resolvedRenderLoading()}</Cmdk.Loading>
+        )}
       </Cmdk.List>
       {footer}
     </>
