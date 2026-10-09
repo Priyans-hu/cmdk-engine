@@ -20,9 +20,9 @@ updates:
       - dependency-name: "react-router-v7"
         update-types: ["version-update:semver-major"]
       # These majors need Node 22, and CI and `engines` still support Node 20:
-      # commander 15 (>=22.12), jsdom 30 (^22.22.2), size-limit 14 and its preset
-      # (^22.19), @testing-library/jest-dom 7 (>=22), @changesets/cli 3 (^22.11),
-      # vitest 5 and @vitest/coverage-v8 5 (^22.12).
+      # commander 15 (>=22.12), jsdom 30 (^22.22.2), size-limit 13 and 14 with
+      # their preset (^22.18, ^22.19), @testing-library/jest-dom 7 (>=22),
+      # @changesets/cli 3 (^22.11), vitest 5 and @vitest/coverage-v8 5 (^22.12).
       - dependency-name: "commander"
         update-types: ["version-update:semver-major"]
       - dependency-name: "jsdom"
