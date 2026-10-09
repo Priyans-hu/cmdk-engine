@@ -54,12 +54,18 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
         const q = query.toLowerCase()
         const ranked: ScoredItem[] = []
         for (const item of items) {
-          const label = item.label.toLowerCase()
+          // Fields that are not strings (plain JS or JSON input) are skipped.
+          const label = typeof item.label === 'string' ? item.label.toLowerCase() : ''
           let score = 0
           if (label === q) score = 1
           else if (label.startsWith(q)) score = 0.9
           else if (label.includes(q)) score = 0.7
-          else if (item.keywords?.some((k) => k.toLowerCase().includes(q))) score = 0.5
+          else if (
+            Array.isArray(item.keywords) &&
+            item.keywords.some((k) => typeof k === 'string' && k.toLowerCase().includes(q))
+          ) {
+            score = 0.5
+          }
           if (score > 0) ranked.push({ item, score })
         }
         ranked.sort((a, b) => {

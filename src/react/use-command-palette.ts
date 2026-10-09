@@ -41,7 +41,10 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   drillUp: () => void
   /** Reset to root level */
   resetPath: () => void
-  /** Last error per async source id; an entry clears on that source's next successful load */
+  /**
+   * Last error per async source id: a failed load, or the items a load dropped.
+   * An entry clears on that source's next load that succeeds and drops nothing.
+   */
   asyncErrors: Readonly<Record<string, Error>>
 }
 
