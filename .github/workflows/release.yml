@@ -67,7 +67,8 @@ jobs:
           # and uses this token only when that fails.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # Build standalone binaries after npm publish
+  # Build the standalone binaries as workflow artifacts. The release job
+  # attaches them once all three have built.
   binaries:
     needs: publish
     strategy:
@@ -84,7 +85,7 @@ jobs:
             binary_name: cmdk-engine-linux-x64
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -99,53 +100,77 @@ jobs:
       - name: Compile standalone binary
         run: bun build dist/cli/index.cjs --compile --outfile dist/${{ matrix.binary_name }}
 
+      - name: Run the binary
+        run: dist/${{ matrix.binary_name }} --version
+
       - name: Generate checksum
         run: shasum -a 256 dist/${{ matrix.binary_name }} > dist/${{ matrix.binary_name }}.sha256
 
-      - name: Upload binary to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ needs.publish.outputs.tag }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binary-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.binary_name }}
+            dist/${{ matrix.binary_name }}.sha256
+          if-no-files-found: error
 
-          # Create release if it doesn't exist
-          gh release create "${TAG}" --title "${TAG}" --generate-notes 2>/dev/null || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: checksum-${{ matrix.target }}
+          path: dist/${{ matrix.binary_name }}.sha256
+          if-no-files-found: error
 
-          # Upload binary and checksum
-          gh release upload "${TAG}" \
-            "dist/${{ matrix.binary_name }}" \
-            "dist/${{ matrix.binary_name }}.sha256" \
-            --clobber
-
-  # Update Homebrew tap formula after binaries are uploaded
-  update-homebrew:
+  # One GitHub release with every binary, only after all three built. With
+  # assets, `gh release create` makes a draft, uploads them, then publishes it,
+  # so install.sh (which reads releases/latest) never sees a release without
+  # binaries.
+  release:
     needs: [publish, binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.publish.outputs.tag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create the release, or replace the binaries of an existing one
+        run: |
+          ls -l dist
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --generate-notes --verify-tag
+          fi
+
+  # Update the Homebrew tap formula once the release has its binaries.
+  update-homebrew:
+    needs: [publish, binaries, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: checksum-*
+          merge-multiple: true
+          path: checksums
 
       - name: Get version and checksums
         id: meta
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ needs.publish.outputs.tag }}"
-          VERSION="${{ needs.publish.outputs.version }}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
-          # Download checksums
-          gh release download "${TAG}" -p "*.sha256" -D /tmp/checksums
-
-          DARWIN_ARM64=$(cat /tmp/checksums/cmdk-engine-darwin-arm64.sha256 | awk '{print $1}')
-          DARWIN_X64=$(cat /tmp/checksums/cmdk-engine-darwin-x64.sha256 | awk '{print $1}')
-          LINUX_X64=$(cat /tmp/checksums/cmdk-engine-linux-x64.sha256 | awk '{print $1}')
-
-          echo "darwin_arm64_sha=${DARWIN_ARM64}" >> "$GITHUB_OUTPUT"
-          echo "darwin_x64_sha=${DARWIN_X64}" >> "$GITHUB_OUTPUT"
-          echo "linux_x64_sha=${LINUX_X64}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.publish.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ needs.publish.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          for target in darwin-arm64 darwin-x64 linux-x64; do
+            sha=$(awk '{print $1}' "checksums/cmdk-engine-${target}.sha256")
+            echo "${target//-/_}_sha=${sha}" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Update Homebrew tap
         env:
@@ -193,5 +218,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/cmdk-engine.rb
-          git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}" || true
-          git push || true
+          # A failed commit or push fails the job.
+          if git diff --cached --quiet; then
+            echo "Formula/cmdk-engine.rb is already up to date."
+          else
+            git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}"
+          fi
+          git push
