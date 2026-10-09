@@ -46,6 +46,10 @@ export interface PaletteStateValue {
 
 const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 
+// One object for every provider without a `config` prop, so the context value
+// does not change on each render of the provider (each keystroke).
+const EMPTY: CommandEngineConfig = {}
+
 // The same guard as the core storage helpers (which `cmdk-engine` does not
 // export): reading `window.localStorage` throws in sandboxed iframes and when
 // the browser blocks cookies, and it is missing during SSR.
@@ -66,7 +70,7 @@ export interface CommandEngineProviderProps {
  * Provider that initializes the command engine and makes it available
  * to all child hooks (useCommandPalette, useCommandRegister).
  */
-export function CommandEngineProvider({ children, config = {} }: CommandEngineProviderProps) {
+export function CommandEngineProvider({ children, config = EMPTY }: CommandEngineProviderProps) {
   const registryRef = useRef<CommandRegistry | null>(null)
   if (!registryRef.current) {
     registryRef.current = createRegistry()
