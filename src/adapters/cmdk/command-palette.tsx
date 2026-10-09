@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { Command as Cmdk } from 'cmdk'
 import { useCommandPalette } from '../../react/use-command-palette'
-import { useEngineContext } from '../../react/context'
+import { useEngineContext, usePaletteState } from '../../react/context'
 import type { CommandItem, ScoredItem, CommandGroup } from '../../core/types'
 
 // ============================================================
@@ -319,20 +319,48 @@ export function CommandPalette({
   )
 }
 
+// Cmd or Ctrl plus `key`. A letter also matches with Caps Lock on (no Shift) and,
+// on non-Latin layouts (a non-ASCII key), by its physical key, but not with Alt:
+// AltGr+key types a character on some layouts.
+function matchesShortcut(e: KeyboardEvent, key: string) {
+  return (
+    (e.metaKey || e.ctrlKey) &&
+    (e.key === key ||
+      (!e.shiftKey &&
+        (e.key.toLowerCase() === key ||
+          (!e.altKey && e.key > '~' && e.code === 'Key' + key.toUpperCase()))))
+  )
+}
+
 /**
  * Hook to control the command palette open/close state.
- * Provides keyboard shortcut binding (Cmd+K / Ctrl+K).
+ * Binds Cmd+K / Ctrl+K to toggle it.
+ *
+ * `shortcut` is the key pressed with Cmd or Ctrl (default `'k'`). It also works
+ * with Caps Lock on and on non-Latin keyboard layouts, and holding the keys
+ * toggles only once.
  *
  * Must be used within a `<CommandEngineProvider>`.
  */
 export function useCommandPaletteShortcut(shortcut = 'k') {
-  const { isOpen, toggle } = useCommandPalette()
+  // Palette state only: the results pipeline runs once, in the palette.
+  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } = usePaletteState()
+  // The same toggle as useCommandPalette()'s.
+  const toggle = useCallback(() => {
+    // Clear query/path when closing; keep setState updaters side-effect free.
+    if (isOpen) {
+      setSearchQuery('')
+      setActivePath([])
+    }
+    setIsOpen((prev) => !prev)
+  }, [isOpen, setIsOpen, setSearchQuery, setActivePath])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === shortcut && (e.metaKey || e.ctrlKey)) {
+      if (matchesShortcut(e, shortcut)) {
+        // Repeats too, or a held Ctrl+K reaches the browser's own shortcut
         e.preventDefault()
-        toggle()
+        if (!e.repeat) toggle()
       }
     }
 
