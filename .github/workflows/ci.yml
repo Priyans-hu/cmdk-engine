@@ -15,8 +15,11 @@ jobs:
   lint-test-build:
     runs-on: ubuntu-latest
     strategy:
+      # The ruleset requires the 20 and 22 jobs. Node 24 is not required, and a
+      # failure there must not cancel them.
+      fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
     steps:
       - uses: actions/checkout@v7
 
