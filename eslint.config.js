@@ -3,7 +3,15 @@ import tsparser from '@typescript-eslint/parser'
 
 export default [
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'tests/**/*.ts', 'tests/**/*.tsx'],
+    files: [
+      'src/**/*.ts',
+      'src/**/*.tsx',
+      'tests/**/*.ts',
+      'tests/**/*.tsx',
+      'tests-dist/**/*.tsx',
+      'tests-dist/**/*.mjs',
+      'tests-dist/**/*.cjs',
+    ],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -20,6 +28,13 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
+    // The native CommonJS consumer of the built package has to require() it.
+    files: ['tests-dist/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

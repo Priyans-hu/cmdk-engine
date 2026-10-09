@@ -122,7 +122,7 @@ describe('createRegistry', () => {
     registry.register(makeCommand({ id: 'cmd-1' }))
 
     // Notification is batched via microtask
-    await new Promise((r) => queueMicrotask(r))
+    await new Promise<void>((r) => queueMicrotask(r))
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
@@ -134,7 +134,7 @@ describe('createRegistry', () => {
     registry.subscribe(listener)
 
     registry.unregister('cmd-1')
-    await new Promise((r) => queueMicrotask(r))
+    await new Promise<void>((r) => queueMicrotask(r))
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
@@ -146,7 +146,7 @@ describe('createRegistry', () => {
     registry.subscribe(listener)
 
     registry.update('cmd-1', { label: 'New Label' })
-    await new Promise((r) => queueMicrotask(r))
+    await new Promise<void>((r) => queueMicrotask(r))
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
@@ -159,7 +159,7 @@ describe('createRegistry', () => {
     registry.register(makeCommand({ id: 'b' }))
     registry.register(makeCommand({ id: 'c' }))
 
-    await new Promise((r) => queueMicrotask(r))
+    await new Promise<void>((r) => queueMicrotask(r))
     // Should only fire once despite 3 register calls
     expect(listener).toHaveBeenCalledTimes(1)
   })
@@ -172,7 +172,7 @@ describe('createRegistry', () => {
     unsub()
     registry.register(makeCommand({ id: 'cmd-1' }))
 
-    await new Promise((r) => queueMicrotask(r))
+    await new Promise<void>((r) => queueMicrotask(r))
     expect(listener).not.toHaveBeenCalled()
   })
 

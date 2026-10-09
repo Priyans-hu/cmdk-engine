@@ -97,13 +97,19 @@ function CommandMenu() {
       />
 
       <h2>4. Add Keyboard Shortcut</h2>
+      <p>
+        Call <code>useCommandPaletteShortcut</code> in a component inside the provider, such as
+        the <code>CommandMenu</code> from step 3. Calling it in the <code>App</code> that renders
+        the provider throws, because that component sits outside it.
+      </p>
       <CodeBlock
         language="tsx"
-        code={`import { useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
+        filename="CommandMenu.tsx"
+        code={`import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 
-function App() {
+function CommandMenu() {
   useCommandPaletteShortcut('k') // Cmd+K / Ctrl+K
-  return <YourApp />
+  return <CommandPalette dialog placeholder="Search commands..." />
 }`}
       />
 
