@@ -61,13 +61,29 @@ export interface CommandItem {
 
 /** Command registry — the central store for all commands */
 export interface CommandRegistry {
-  /** Register a single command. Returns an unregister function. */
+  /**
+   * Register a single command. Returns an unregister function.
+   *
+   * If the id is already registered, the newest registration is the visible
+   * one. The returned function removes only this registration, so the one it
+   * replaced comes back. To change a registered command, use `update()`.
+   */
   register(command: CommandItem): () => void
-  /** Register multiple commands. Returns an unregister function for all. */
+  /**
+   * Register multiple commands. Returns an unregister function for all of them.
+   *
+   * Same rules as `register()`: the newest registration of an id is visible, and
+   * the returned function removes only this call's registrations. Calling it
+   * again does nothing.
+   */
   registerMany(commands: CommandItem[]): () => void
-  /** Update a command by ID with partial fields (the `id` itself is immutable) */
+  /**
+   * Update the visible command for an id with partial fields (the `id` itself
+   * is immutable). The update belongs to that registration: if it is removed,
+   * the command it replaced comes back without the update.
+   */
   update(id: string, partial: Partial<Omit<CommandItem, 'id'>>): void
-  /** Remove a command by ID */
+  /** Remove a command by ID, including every registration of that id */
   unregister(id: string): void
   /** Get all registered commands */
   getAll(): CommandItem[]
