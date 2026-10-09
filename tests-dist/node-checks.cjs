@@ -46,7 +46,7 @@ function quickStart(react, cmdk) {
  * Load-and-call check of every export path. Calls at least one function per entry,
  * because a CJS bundle that requires a missing name only fails once it is called.
  */
-function checkEntries(label, { core, react, cmdk, router, matchSorter, pkg }) {
+function checkEntries(label, { core, react, cmdk, router, matchSorter, sitemap, pkg }) {
   const items = [{ id: 'billing', label: 'Billing' }]
   assert.equal(core.createFuzzySearch().search('bill', items).length, 1)
   assert.match(renderToString(quickStart(react, cmdk)), /Type a command or search/)
@@ -60,6 +60,7 @@ function checkEntries(label, { core, react, cmdk, router, matchSorter, pkg }) {
   assert.match(renderToString(withSource), /Loading\.\.\./)
   assert.equal(router.scanRoutes([{ path: '/billing' }])[0]?.label, 'Billing')
   assert.equal(matchSorter.createMatchSorterSearch().search('bill', items).length, 1)
+  assert.equal(sitemap.sitemapToCommands([{ id: 'b', path: '/b', label: 'B', keywords: [] }])[0]?.href, '/b')
   assert.equal(pkg.name, 'cmdk-engine')
 
   // Next.js App Router only honours the directive as the first statement.

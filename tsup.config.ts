@@ -152,4 +152,16 @@ export default defineConfig([
     noExternal: ['commander'],
     external: [],
   },
+  // Sitemap helper: turns the CLI's command-routes.json into commands. It imports
+  // only types from core, so nothing is bundled from it. Its d.ts inlines
+  // CommandItem, whose `icon` is a ReactNode: the banner keeps that react import
+  // from failing in projects without React types (react is an optional peer).
+  {
+    entry: { 'adapters/sitemap/index': 'src/adapters/sitemap/index.ts' },
+    format: ['esm', 'cjs'],
+    dts: { banner: '// @ts-ignore react is an optional peer; without it, ReactNode is any' },
+    treeshake: true,
+    splitting: false,
+    sourcemap: false,
+  },
 ])
