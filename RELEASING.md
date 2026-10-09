@@ -15,7 +15,7 @@ With trusted publishing, the workflow publishes with a short-lived OIDC token fr
    - Allowed actions: tick **direct publishing** (`npm publish`). The workflow publishes with `npm publish`, and a new configuration allows only `npm stage publish` until you tick it.
 3. After a release has published this way, delete the `NPM_TOKEN` repository secret. In **Settings** > **Publishing access**, you can then choose "Require two-factor authentication and disallow tokens".
 
-Until then, the workflow passes the `NPM_TOKEN` secret as a fallback: npm tries OIDC first and uses the token only when that fails. Classic tokens no longer work, so the fallback needs a granular access token with read and write access to `cmdk-engine` (90 days at most).
+Until then, the workflow passes the `NPM_TOKEN` secret as a fallback: npm tries OIDC first and uses the token only when that fails. Classic tokens no longer work, so the fallback needs a granular access token with read and write access to `cmdk-engine` and **Bypass two-factor authentication** ticked (90 days at most).
 
 The publish job runs on Node 22 and installs npm 11.5.1 or later, which trusted publishing requires (with Node 22.14 or later).
 
@@ -36,7 +36,13 @@ The rehearsal:
 
 It publishes nothing to npm, creates no GitHub release and pushes nothing to the tap. Rehearse after the version PR merges and before you tag, so the publish dry run covers the new version.
 
-A manual run with dry_run unchecked still never publishes to npm. It creates (or updates) the GitHub release for the version in `package.json`, whose tag must already exist, and pushes the formula. Use it to backfill a release, such as the missing v0.5.1.
+A manual run with dry_run unchecked still never publishes to npm. It creates (or updates, replacing the binaries) the GitHub release for the version in `package.json` and pushes the formula. It stops at once unless it runs on that version's tag, so release binaries always come from the tagged commit. Use it to retry the release steps of a tag:
+
+```bash
+gh workflow run release.yml -R Priyans-hu/cmdk-engine --ref v0.6.0 -f dry_run=false
+```
+
+It cannot backfill the missing v0.5.1 release: a run on that tag uses the `release.yml` from that commit, which predates this workflow. Leave v0.5.1 without a release (0.6.0 replaces it as the latest), and never create a release by hand without its binaries, because `install.sh` reads the latest release.
 
 ## Release
 
