@@ -3,10 +3,11 @@
 // into a temp dir (not a repo dependency) and the installed Google Chrome.
 //
 //   node scripts/browser-check.mjs docs <out dir>
-//     Serves the docs export under /cmdk-engine, loads every page and fails on any
-//     console error or uncaught error (hydration mismatches included). Then opens the
-//     palette with the keyboard and the navbar button, navigates with it, and fetches
-//     the shadcn registry items.
+//     Serves the docs export under /cmdk-engine like GitHub Pages, loads every page and
+//     fails on any console error, uncaught error (hydration mismatches included) or
+//     failed request. Requests every internal link and the shadcn registry items. Then
+//     opens the palette with the keyboard and the navbar button, and fails if
+//     navigating with it loads the page in full.
 //
 //   node scripts/browser-check.mjs screenshot <vite example dist> <png>
 //     Writes the README screenshot from the built vite-react-router example.
@@ -83,20 +84,16 @@ function serve(root, base, spa) {
   )
 }
 
-/** Every exported page as a URL path: index.html -> /, docs/api.html -> /docs/api. */
+/** Every exported page as its URL: index.html -> /, a/index.html -> /a/, a.html -> /a. */
 function exportedPages(root, dir = root) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(dir, entry.name)
-    if (entry.isDirectory()) return entry.name.startsWith('_') ? [] : exportedPages(root, file)
+    if (entry.isDirectory()) {
+      return entry.name.startsWith('_') || entry.name === '404' ? [] : exportedPages(root, file)
+    }
     if (!entry.name.endsWith('.html') || entry.name === '404.html') return []
-    const page =
-      '/' +
-      path
-        .relative(root, file)
-        .split(path.sep)
-        .join('/')
-        .replace(/\.html$/, '')
-    return [page.replace(/(^|\/)index$/, '') || '/']
+    const page = path.relative(root, file).split(path.sep).join('/')
+    return ['/' + page.replace(/(^|\/)index\.html$/, '$1').replace(/\.html$/, '')]
   })
 }
 
@@ -135,24 +132,48 @@ async function checkDocs(outDir) {
     const page = await browser.newPage()
     const errors = trackErrors(page)
     const pages = exportedPages(root)
+    const links = new Set()
     for (const url of pages) {
       errors.length = 0
       await page.goto(origin + base + url, { waitUntil: 'networkidle' })
       await page.waitForTimeout(200)
       problems.push(...errors.map((e) => `${url}: ${e}`))
+      for (const href of await page.$$eval('a[href]', (anchors) => anchors.map((a) => a.href))) {
+        const link = new URL(href)
+        if (link.origin === origin) links.add(link.pathname)
+      }
     }
     console.log(`browser-check: loaded ${pages.length} pages: ${pages.join(', ')}`)
 
-    // Keyboard: open, filter, and navigate with the site's own routes.
+    // Every link to this site, and the registry items, must resolve.
+    const registry = [`${base}/r/command-palette.json`, `${base}/r/command-palette-base-ui.json`]
+    for (const link of [...links, ...registry]) {
+      const res = await page.request.get(origin + link)
+      if (!res.ok()) problems.push(`${link}: ${res.status()}`)
+    }
+    console.log(`browser-check: requested ${links.size} internal links and the registry items`)
+
+    // Keyboard: open, filter, and navigate with the site's own routes, in place: a
+    // full page load means Next could not fetch the route's payload.
     errors.length = 0
     await page.goto(origin + base + '/', { waitUntil: 'networkidle' })
-    await page.keyboard.press(`${MOD}+KeyK`)
-    await page.locator('[cmdk-dialog]').waitFor()
-    await page.keyboard.type('api reference')
-    await page.locator('[cmdk-item][data-selected="true"]', { hasText: 'API Reference' }).waitFor()
-    await page.keyboard.press('Enter')
-    await page.waitForURL(`**${base}/docs/api`)
-    await page.locator('[cmdk-dialog]').waitFor({ state: 'detached' })
+    for (const [query, label, to] of [
+      ['api reference', 'API Reference', '/docs/api'],
+      ['home', 'Home', '/'],
+    ]) {
+      await page.evaluate(() => (window.__sameDocument = true))
+      await page.keyboard.press(`${MOD}+KeyK`)
+      await page.locator('[cmdk-dialog]').waitFor()
+      await page.keyboard.type(query)
+      await page.locator('[cmdk-item][data-selected="true"]', { hasText: label }).waitFor()
+      await page.keyboard.press('Enter')
+      const target = (base + to).replace(/\/$/, '')
+      await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === target)
+      await page.waitForLoadState('networkidle')
+      const sameDocument = await page.evaluate(() => window.__sameDocument).catch(() => false)
+      if (!sameDocument) problems.push(`palette: going to ${to} loaded the page in full`)
+      await page.locator('[cmdk-dialog]').waitFor({ state: 'detached' })
+    }
 
     // The navbar button opens it too (the only way in on touch devices).
     await page.getByTestId('docs-search-open-btn').click()
@@ -173,16 +194,8 @@ async function checkDocs(outDir) {
     await browser.close()
     server.close()
   }
-  // Known Next.js export issue, also on the live site: with a basePath, the client
-  // fetches the home page's RSC payload from /cmdk-engine.txt, but the export writes
-  // index.txt. Next then loads the page in full. Reported, not failed.
-  const known = `404: ${origin}${base}.txt?_rsc=`
-  if (problems.some((p) => p.includes(known))) {
-    console.warn(`browser-check: warning: ${base}.txt (the home page's RSC payload) is a 404`)
-  }
-  const failures = problems.filter((p) => !p.includes(known))
-  if (failures.length > 0) fail(`\n  ${failures.join('\n  ')}`)
-  console.log('browser-check: no console errors, registry items served')
+  if (problems.length > 0) fail(`\n  ${problems.join('\n  ')}`)
+  console.log('browser-check: no console errors; every link and registry item resolves')
 }
 
 async function screenshot(distDir, png) {
