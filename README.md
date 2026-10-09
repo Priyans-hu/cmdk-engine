@@ -51,8 +51,9 @@ yarn add cmdk-engine cmdk
 
 > **Peer dependencies (all optional — install only what you use):** `react`,
 > `react-dom`, `cmdk` (for the cmdk adapter), `match-sorter` (for the
-> match-sorter search backend), and `react-router` / `react-router-dom` (for
-> the React Router adapter). The core engine (`cmdk-engine`) has zero runtime
+> match-sorter search backend), and `react-router` v6, v7 or v8 /
+> `react-router-dom` v6 or v7 (for the React Router adapter; v8 ships only
+> `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
 
 ### Standalone CLI (no Node project required)
@@ -248,6 +249,14 @@ Enrich routes with metadata using the `handle` convention:
 ```
 
 Routes with `handle.command` are always included, even if they have dynamic segments. The scanner also falls back to `route.title` and `route.icon` if `handle.command` doesn't define them.
+
+A `handle` returned from `lazy()` is not read, because the scanner never calls `lazy()`. Put `handle.command` on the route object itself.
+
+### Index routes
+
+An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
+
+The CLI scanner (`npx cmdk-engine scan`) is regex-based and unchanged, so it does not resolve index routes.
 
 ---
 
@@ -563,7 +572,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
 | `cmdk-engine/react` | 3.1 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
-| `cmdk-engine/adapters/react-router` | 0.75 kB | React Router v6/v7 route scanner |
+| `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
 
 Sizes are minified + brotli. Entries import the siblings they use (the cmdk
