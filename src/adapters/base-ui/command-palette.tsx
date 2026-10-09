@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Autocomplete } from '@base-ui/react/autocomplete'
 import { Dialog } from '@base-ui/react/dialog'
 import { useCommandPalette } from '../../react/use-command-palette'
 import { useEngineContext, usePaletteState } from '../../react/context'
-import type { CommandItem, ScoredItem, CommandGroup } from '../../core/types'
-import type { GroupedResult } from '../../core/grouping'
+import type { CommandItem, CommandGroup } from '../../core/types'
 
 // ============================================================
 // Types
@@ -204,6 +203,15 @@ export function CommandPalette({
     renderLoading ?? (() => <div data-cmdk-engine-loading="">{t('palette.loading')}</div>)
   const showEmpty = results.length === 0 && !isLoading
 
+  // Base UI highlights its first item and lets the arrow keys reach every item,
+  // with no way to skip disabled ones. So it only gets the enabled items, and
+  // disabled ones render as inert rows: never highlighted, skipped by the arrows,
+  // as with cmdk.
+  const enabledResults = useMemo(
+    () => groupedResults.map((g) => ({ ...g, items: g.items.filter((r) => !r.item.disabled) })),
+    [groupedResults],
+  )
+
   // Base UI keeps the highlighted index when the items change, so each depth gets
   // a fresh Autocomplete (key={depth}) that starts on its first item. The remount
   // replaces the input: refocus the new one after a real depth change (not on
@@ -228,7 +236,7 @@ export function CommandPalette({
         ))}
       <Autocomplete.Root
         key={depth}
-        items={groupedResults}
+        items={enabledResults}
         value={search}
         // Only typing writes the query; item presses, Escape and clears never do.
         onValueChange={(value, { reason }) => {
@@ -262,35 +270,48 @@ export function CommandPalette({
           {showEmpty && resolvedRenderEmpty()}
         </Autocomplete.Empty>
         <Autocomplete.List className={listClassName} aria-label={resolvedListLabel}>
-          {({ group, items }: GroupedResult) => (
-            <Autocomplete.Group key={group.id} items={items} className={groupClassName}>
+          {groupedResults.map(({ group, items }) => (
+            <Autocomplete.Group key={group.id} className={groupClassName}>
               <Autocomplete.GroupLabel>
                 {renderGroupHeading ? renderGroupHeading(group) : group.label}
               </Autocomplete.GroupLabel>
-              <Autocomplete.Collection>
-                {(scored: ScoredItem) => (
+              {items.map((scored) => {
+                const { item } = scored
+                const content = renderItem ? (
+                  renderItem(item, scored.score)
+                ) : (
+                  <DefaultItem item={item} />
+                )
+                return item.disabled ? (
+                  <div
+                    key={item.id}
+                    role="option"
+                    aria-disabled="true"
+                    data-disabled=""
+                    className={itemClassName}
+                    // Keep focus in the input, as Base UI's own items do
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {content}
+                  </div>
+                ) : (
                   <Autocomplete.Item
-                    key={scored.item.id}
+                    key={item.id}
                     value={scored}
-                    disabled={scored.item.disabled}
                     className={itemClassName}
                     onClick={(e) => {
                       // The hook's select() drills down or runs the command and
                       // closes; skip Base UI's own item press.
                       e.preventBaseUIHandler()
-                      select(scored.item, { onSelect })
+                      select(item, { onSelect })
                     }}
                   >
-                    {renderItem ? (
-                      renderItem(scored.item, scored.score)
-                    ) : (
-                      <DefaultItem item={scored.item} />
-                    )}
+                    {content}
                   </Autocomplete.Item>
-                )}
-              </Autocomplete.Collection>
+                )
+              })}
             </Autocomplete.Group>
-          )}
+          ))}
         </Autocomplete.List>
         {/* After the list, so results don't shift while sources load */}
         <Autocomplete.Status>{isLoading && resolvedRenderLoading()}</Autocomplete.Status>

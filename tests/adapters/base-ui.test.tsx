@@ -156,7 +156,8 @@ describe('CommandPalette (Base UI adapter)', () => {
   it('wraps around by default and stops at the ends with loop={false}', async () => {
     const { unmount } = render(<Palette />)
     input().focus()
-    await pressTimes('ArrowDown', 5)
+    // Four enabled items: the arrows skip the disabled Reports.
+    await pressTimes('ArrowDown', 4)
     expect(highlighted()).toBe('Dashboard')
     unmount()
 
@@ -189,13 +190,12 @@ describe('CommandPalette (Base UI adapter)', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'team' }))
   })
 
-  it('disabled items stay reachable by arrows but never run', async () => {
+  it('disabled items are skipped by the arrows and never run', async () => {
     const onSelect = vi.fn()
     render(<Palette props={{ onSelect }} />)
     input().focus()
     await pressTimes('ArrowDown', 3)
-    expect(highlighted()).toBe('Reports')
-    await press('Enter')
+    expect(highlighted()).toBe('Team')
     await act(async () => {
       fireEvent.click(screen.getByText('Reports'))
     })
