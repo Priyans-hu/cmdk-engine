@@ -197,6 +197,7 @@ export function CommandPalette({
     renderEmpty ?? (() => <div data-cmdk-engine-empty="">{t('palette.empty')}</div>)
   const resolvedRenderLoading =
     renderLoading ?? (() => <div data-cmdk-engine-loading="">{t('palette.loading')}</div>)
+  const showEmpty = results.length === 0 && !isLoading
 
   // Base UI keeps the highlighted index when the items change, so each depth gets
   // a fresh Autocomplete (key={depth}) that starts on its first item. The remount
@@ -250,9 +251,10 @@ export function CommandPalette({
             }
           }}
         />
-        {/* Live regions: Empty and Status stay mounted, only their content changes */}
-        <Autocomplete.Empty className={emptyClassName}>
-          {results.length === 0 && !isLoading && resolvedRenderEmpty()}
+        {/* Live regions: Empty and Status stay mounted, only their content changes.
+            emptyClassName follows the content, as on the cmdk adapter's Empty. */}
+        <Autocomplete.Empty className={showEmpty ? emptyClassName : undefined}>
+          {showEmpty && resolvedRenderEmpty()}
         </Autocomplete.Empty>
         <Autocomplete.List className={listClassName}>
           {({ group, items }: GroupedResult) => (
