@@ -21,7 +21,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
 | Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
-| First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
+| First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
 | Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |

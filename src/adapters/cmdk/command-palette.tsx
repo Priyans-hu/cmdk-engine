@@ -194,21 +194,34 @@ export function CommandPalette({
     [search, depth, drillUp],
   )
 
-  // Auto-select first item when results change (solves cmdk #280)
-  // Controlled value: snap to firstItemId when results change, but allow
-  // arrow-key / pointer navigation to update it.
-  const firstItemId = results[0]?.item.id
-  const [activeValue, setActiveValue] = useState<string | undefined>(firstItemId)
+  // Auto-select the first enabled item in rendered (grouped) order (solves
+  // cmdk #280). Controlled value: snap to firstEnabledId when results change,
+  // but allow arrow-key / pointer navigation to update it.
+  const rendered = groupedResults.flatMap((g) => g.items)
+  const firstEnabledId = rendered.find((r) => !r.item.disabled)?.item.id
+  const [activeValue, setActiveValue] = useState<string | undefined>(firstEnabledId)
 
-  // Fall back to the first item whenever the active id is no longer rendered
-  // (e.g. the previously-highlighted item was filtered out mid-list). Computed
-  // during render so cmdk always receives a value that exists.
-  const activeValueValid = activeValue !== undefined && results.some((r) => r.item.id === activeValue)
-  const effectiveValue = activeValueValid ? activeValue : firstItemId
+  // A dialog that (re)opens starts on the first enabled item, not on the last
+  // highlight. Adjusted during render (not in an effect) so the old highlight
+  // never shows.
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (dialog && isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) setActiveValue(firstEnabledId)
+  }
+
+  // Fall back to the first enabled item whenever the active id is no longer
+  // rendered (e.g. the previously-highlighted item was filtered out mid-list)
+  // or is disabled. Computed during render so cmdk always receives a value
+  // that exists, or '' when no item is enabled (an undefined value would let
+  // cmdk keep its own stale highlight).
+  const activeValueValid =
+    activeValue !== undefined && results.some((r) => r.item.id === activeValue && !r.item.disabled)
+  const effectiveValue = (activeValueValid ? activeValue : firstEnabledId) ?? ''
 
   useEffect(() => {
-    if (!activeValueValid) setActiveValue(firstItemId)
-  }, [activeValueValid, firstItemId])
+    if (!activeValueValid) setActiveValue(firstEnabledId)
+  }, [activeValueValid, firstEnabledId])
 
   // groupedResults comes memoized from the hook (was recomputed here on every
   // keystroke / arrow-key render).
