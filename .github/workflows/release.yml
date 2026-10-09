@@ -1,33 +1,67 @@
 name: Release
 
+# A pushed v* tag publishes to npm, creates the GitHub release with the
+# standalone binaries, and updates the Homebrew tap. A manual run never
+# publishes to npm. See RELEASING.md.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Rehearsal: no GitHub release, no tap push. Unchecked, the run must be on the release tag (--ref vX.Y.Z). npm is never published from a manual run.'
+        type: boolean
+        default: true
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  # 'true' only for a manual run with dry_run checked (the default)
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
-      id-token: write
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
 
+      # A manual run that creates a release must run on the release tag itself,
+      # so the release never gets (or, with --clobber, swaps in) binaries built
+      # from other code. A tag push always runs on its own tag.
+      - name: Check that a non-dry manual run is on the release tag
+        if: github.event_name == 'workflow_dispatch' && !inputs.dry_run
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          if ! git fetch --no-tags --depth=1 origin "+refs/tags/${TAG}:refs/tags/${TAG}"; then
+            echo "::error::Tag ${TAG} does not exist. A manual run with dry_run unchecked only re-releases an existing tag."
+            exit 1
+          fi
+          TAG_SHA=$(git rev-parse "${TAG}^{commit}")
+          if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::${TAG} is commit ${TAG_SHA}, but this run is on ${GITHUB_SHA}. Run it on the tag: gh workflow run release.yml --ref ${TAG} -f dry_run=false"
+            exit 1
+          fi
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      # npm trusted publishing needs Node 22.14+ and npm 11.5.1+.
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org/
+
+      - name: Use npm 11.5.1 or later
+        run: |
+          npm install -g npm@^11.5.1
+          echo "node $(node --version), npm $(npm --version)"
 
       - run: bun install --frozen-lockfile
 
@@ -43,6 +77,11 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "$(npm view "cmdk-engine@${VERSION}" version 2>/dev/null)" = "${VERSION}" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Verify pushed tag matches package.json version
         if: github.event_name == 'push'
@@ -52,16 +91,35 @@ jobs:
             exit 1
           fi
 
-      # Use the package.json `release` script so Changesets consumes any
-      # pending entries in .changeset/ and updates CHANGELOG.md. This keeps
-      # the tag-push flow consistent with `bun run release` locally.
+      # `changeset publish` runs `npm publish` here (it only switches to pnpm in
+      # pnpm repos) for versions not yet on npm. It does not consume changesets;
+      # `changeset version` did that in the version PR.
       - name: Publish to npm via Changesets
-        run: bun run release
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ steps.meta.outputs.published }}" = "true" ]; then
+            echo "::warning::cmdk-engine@${{ steps.meta.outputs.version }} is already on npm, so this run publishes nothing (and adds no provenance)."
+          fi
+          bun run release
         env:
+          # Fallback when trusted publishing is not set up: npm tries OIDC first
+          # and uses this token only when that fails.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # Build standalone binaries after npm publish
+      # npm 11 refuses a publish dry run over a version that is already on npm,
+      # so that case is packed instead.
+      - name: Rehearse the npm publish
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ steps.meta.outputs.published }}" = "true" ]; then
+            echo "::notice::cmdk-engine@${{ steps.meta.outputs.version }} is already on npm. Packing instead of a publish dry run."
+            npm pack --dry-run
+          else
+            npm publish --dry-run
+          fi
+
+  # Build the standalone binaries as workflow artifacts. The release job
+  # attaches them once all three have built.
   binaries:
     needs: publish
     strategy:
@@ -78,7 +136,7 @@ jobs:
             binary_name: cmdk-engine-linux-x64
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -93,53 +151,83 @@ jobs:
       - name: Compile standalone binary
         run: bun build dist/cli/index.cjs --compile --outfile dist/${{ matrix.binary_name }}
 
+      - name: Run the binary
+        run: dist/${{ matrix.binary_name }} --version
+
       - name: Generate checksum
         run: shasum -a 256 dist/${{ matrix.binary_name }} > dist/${{ matrix.binary_name }}.sha256
 
-      - name: Upload binary to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ needs.publish.outputs.tag }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binary-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.binary_name }}
+            dist/${{ matrix.binary_name }}.sha256
+          if-no-files-found: error
+          overwrite: true
 
-          # Create release if it doesn't exist
-          gh release create "${TAG}" --title "${TAG}" --generate-notes 2>/dev/null || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: checksum-${{ matrix.target }}
+          path: dist/${{ matrix.binary_name }}.sha256
+          if-no-files-found: error
+          overwrite: true
 
-          # Upload binary and checksum
-          gh release upload "${TAG}" \
-            "dist/${{ matrix.binary_name }}" \
-            "dist/${{ matrix.binary_name }}.sha256" \
-            --clobber
-
-  # Update Homebrew tap formula after binaries are uploaded
-  update-homebrew:
+  # One GitHub release with every binary, only after all three built. With
+  # assets, `gh release create` makes a draft, uploads them, then publishes it,
+  # so install.sh (which reads releases/latest) never sees a release without
+  # binaries. Skipped in a rehearsal.
+  release:
     needs: [publish, binaries]
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.publish.outputs.tag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create the release, or replace the binaries of an existing one
+        run: |
+          ls -l dist
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --generate-notes --verify-tag
+          fi
+
+  # Update the Homebrew tap formula. A rehearsal stops at `git push --dry-run`,
+  # which still checks that HOMEBREW_TAP_TOKEN can push to the tap.
+  update-homebrew:
+    needs: [publish, binaries, release]
+    # Runs after the release, or after the binaries when a rehearsal skips it.
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: checksum-*
+          merge-multiple: true
+          path: checksums
 
       - name: Get version and checksums
         id: meta
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ needs.publish.outputs.tag }}"
-          VERSION="${{ needs.publish.outputs.version }}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
-          # Download checksums
-          gh release download "${TAG}" -p "*.sha256" -D /tmp/checksums
-
-          DARWIN_ARM64=$(cat /tmp/checksums/cmdk-engine-darwin-arm64.sha256 | awk '{print $1}')
-          DARWIN_X64=$(cat /tmp/checksums/cmdk-engine-darwin-x64.sha256 | awk '{print $1}')
-          LINUX_X64=$(cat /tmp/checksums/cmdk-engine-linux-x64.sha256 | awk '{print $1}')
-
-          echo "darwin_arm64_sha=${DARWIN_ARM64}" >> "$GITHUB_OUTPUT"
-          echo "darwin_x64_sha=${DARWIN_X64}" >> "$GITHUB_OUTPUT"
-          echo "linux_x64_sha=${LINUX_X64}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.publish.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ needs.publish.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          for target in darwin-arm64 darwin-x64 linux-x64; do
+            sha=$(awk '{print $1}' "checksums/cmdk-engine-${target}.sha256")
+            echo "${target//-/_}_sha=${sha}" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Update Homebrew tap
         env:
@@ -187,5 +275,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/cmdk-engine.rb
-          git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}" || true
-          git push || true
+          # A failed commit or push fails the job.
+          if git diff --cached --quiet; then
+            echo "Formula/cmdk-engine.rb is already up to date."
+          else
+            git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}"
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            git push --dry-run
+          else
+            git push
+          fi
