@@ -77,11 +77,16 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   // Loaded async items join the root level (registered ids win, then source order).
   const asyncItems = useMemo(() => mergeAsyncItems(commands, loaded), [commands, loaded])
 
-  // Determine which commands to search: root or nested children
+  // Determine which commands to search: root or nested children. Each parent
+  // on the path is looked up in the live commands, so registry updates show
+  // while drilled in; a parent that is gone (async items only load at the
+  // root) keeps the children it had.
   const activeCommands = useMemo(() => {
-    if (activePath.length === 0) return asyncItems.commands
-    const parent = activePath[activePath.length - 1]
-    return parent.children ?? []
+    let level = asyncItems.commands
+    for (const parent of activePath) {
+      level = (level.find((c) => c.id === parent.id) ?? parent).children ?? []
+    }
+    return level
   }, [asyncItems.commands, activePath])
 
   // Enrichment is query-independent and the most expensive stage, so memoize
