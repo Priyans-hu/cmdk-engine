@@ -1,8 +1,11 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
 import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from '../core/types'
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext, usePaletteState } from './context'
+import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
+
+const NO_RESULTS: ScoredItem[] = []
 
 /** Options for a single `select()` call */
 export interface SelectOptions {
@@ -37,6 +40,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   drillUp: () => void
   /** Reset to root level */
   resetPath: () => void
+  /** Last error per async source id; an entry clears on that source's next successful load */
+  asyncErrors: Readonly<Record<string, Error>>
 }
 
 /**
@@ -58,15 +63,21 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     activePath, setActivePath,
   } = usePaletteState()
 
+  // Async sources load once in the provider; every consumer reads the same state.
+  const { loaded, isLoading, errors: asyncErrors } = useContext(AsyncSourcesContext)
+
   // Subscribe to registry changes
   const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
 
+  // Loaded async items join the root level (registered ids win, then source order).
+  const asyncItems = useMemo(() => mergeAsyncItems(commands, loaded), [commands, loaded])
+
   // Determine which commands to search: root or nested children
   const activeCommands = useMemo(() => {
-    if (activePath.length === 0) return commands
+    if (activePath.length === 0) return asyncItems.commands
     const parent = activePath[activePath.length - 1]
     return parent.children ?? []
-  }, [commands, activePath])
+  }, [asyncItems.commands, activePath])
 
   // Enrichment is query-independent and the most expensive stage, so memoize
   // it on its own — it only re-runs when the command set or synonyms change,
@@ -136,7 +147,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }
 
     // No "Recent" group: still apply frecency so frequently-used commands
-    // float to the top on empty query (README: frecency > priority > alpha).
+    // float to the top on empty query (README: frecency > priority > registration order).
     return frecency.rank(searched, 0.3)
   }, [
     enrichedCommands, searchQuery, search, accessFilter, frecency,
@@ -149,10 +160,38 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return results.slice(0, max)
   }, [results, config.maxResults])
 
+  // Unfiltered async items (`shouldFilter: false`) were matched by their source:
+  // they skip enrichment, search, frecency, context boost and `maxResults`, but
+  // still pass `when`, access control and `hidden` (empty query only). Each
+  // source keeps its order and its own cap; score 0 groups them after local
+  // groups. They are appended after the local results.
+  const unfilteredResults = useMemo<ScoredItem[]>(() => {
+    if (asyncItems.unfiltered.length === 0) return NO_RESULTS
+    const browsing = !searchQuery.trim()
+    const out: ScoredItem[] = []
+    for (const { items, max } of asyncItems.unfiltered) {
+      const visible = filterVisible(items)
+      const accessible = accessFilter ? accessFilter(visible) : visible
+      let count = 0
+      for (const item of accessible) {
+        if (count >= max) break
+        if (browsing && item.hidden) continue
+        out.push({ item, score: 0 })
+        count++
+      }
+    }
+    return out
+  }, [asyncItems.unfiltered, searchQuery, accessFilter])
+
+  const finalResults = useMemo(
+    () => (unfilteredResults.length ? limitedResults.concat(unfilteredResults) : limitedResults),
+    [limitedResults, unfilteredResults],
+  )
+
   // Group results by group field (for consumers building custom UIs)
   const groupedResults = useMemo<GroupedResult[]>(() => {
-    return groupManager.groupResults(limitedResults, searchQuery)
-  }, [limitedResults, groupManager, searchQuery])
+    return groupManager.groupResults(finalResults, searchQuery)
+  }, [finalResults, groupManager, searchQuery])
 
   // Extract active groups
   const groups = useMemo<CommandGroup[]>(() => {
@@ -202,7 +241,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     (itemOrId: CommandItem | string, options?: SelectOptions) => {
       const item =
         typeof itemOrId === 'string'
-          ? limitedResults.find((r) => r.item.id === itemOrId)?.item
+          ? finalResults.find((r) => r.item.id === itemOrId)?.item
           : itemOrId
       if (!item) return
 
@@ -212,11 +251,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         return
       }
 
-      frecency.recordUsage(item.id)
+      // Async items are never recorded: their ids may not exist on the next load.
+      if (!(ASYNC_SOURCE in item)) frecency.recordUsage(item.id)
 
       // Record search history if enabled
       if (config.searchHistory?.enabled && searchQuery.trim()) {
-        searchHistory.record(searchQuery, limitedResults.length)
+        searchHistory.record(searchQuery, finalResults.length)
       }
 
       // Precedence: per-call onSelect → provider onSelect → action → href
@@ -235,18 +275,19 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
       close()
     },
-    [limitedResults, frecency, searchHistory, config, searchQuery, close, drillDown],
+    [finalResults, frecency, searchHistory, config, searchQuery, close, drillDown],
   )
 
   return {
     search: searchQuery,
     setSearch: setSearchQuery,
-    results: limitedResults,
-    flatResults: limitedResults,
+    results: finalResults,
+    flatResults: finalResults,
     groupedResults,
     groups,
     isOpen,
-    isLoading: false,
+    isLoading,
+    asyncErrors,
     breadcrumbs: activePath,
     depth: activePath.length,
     open,
