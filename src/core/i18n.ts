@@ -7,6 +7,7 @@ const DEFAULT_STRINGS: Record<string, string> = {
   'palette.empty': 'No results found.',
   'palette.loading': 'Loading...',
   'palette.close': 'Close',
+  'palette.list': 'Suggestions',
   'breadcrumbs.back': 'Go back',
   'group.recent': 'Recent',
   'group.other': 'Other',
