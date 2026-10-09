@@ -40,7 +40,7 @@ export interface AsyncSourcesValue {
   loaded: (LoadedSource | undefined)[]
   /** Whether a source whose trigger passed for the current request has not settled */
   isLoading: boolean
-  /** Last error per source id; an entry clears on that source's next success */
+  /** Last error per source id (a failed load, or dropped items); clears on its next clean load */
   errors: Record<string, Error>
 }
 
@@ -145,13 +145,17 @@ export function useAsyncSources(
           new Promise<Iterable<CommandItem>>((resolve) =>
             resolve(source.load(search, { signal: controller.signal })),
           )
-            .then((items) => ({
-              items: toAsyncItems(items, id, source.group),
-              filter: source.shouldFilter !== false,
-              max: source.maxResults ?? DEFAULT_MAX_RESULTS,
-            }))
+            .then((items) => {
+              const dropped: Dropped = { id: 0, label: 0 }
+              const loaded: LoadedSource = {
+                items: toAsyncItems(items, id, source.group, dropped),
+                filter: source.shouldFilter !== false,
+                max: source.maxResults ?? DEFAULT_MAX_RESULTS,
+              }
+              return { loaded, error: droppedError(dropped) }
+            })
             .then(
-              (loaded) => finish(i, id, loaded),
+              ({ loaded, error }) => finish(i, id, loaded, error),
               (reason) =>
                 finish(i, id, undefined, isAbortError(reason) ? undefined : toError(reason)),
             )
@@ -205,17 +209,18 @@ function hasQuery(query: string): boolean {
   return query.trim() !== ''
 }
 
+/** A load can succeed and still report an error: the items it had to drop. */
 function settle(prev: State, i: number, id: string, result?: LoadedSource, error?: Error): State {
   let { loaded, errors } = prev
   if (result) {
     loaded = loaded.slice()
     loaded[i] = result
-    if (id in errors) {
-      errors = { ...errors }
-      delete errors[id]
-    }
-  } else if (error) {
+  }
+  if (error) {
     errors = { ...errors, [id]: error }
+  } else if (result && id in errors) {
+    errors = { ...errors }
+    delete errors[id]
   }
   return { ...prev, loaded, settled: prev.settled + 1, errors }
 }
@@ -239,28 +244,69 @@ function keepErrors(
   return changed ? next : errors
 }
 
-/** Copies tagged with their source id, so the hook can tell them from registered commands. */
+/** Items left out of a load, by the field they lacked */
+interface Dropped {
+  id: number
+  label: number
+}
+
+/**
+ * Copies tagged with their source id, so the hook can tell them from registered
+ * commands. Items (children included) without a non-empty string `id` and
+ * `label` are left out and counted in `dropped`.
+ */
 function toAsyncItems(
   items: Iterable<CommandItem>,
   sourceId: string,
   group: string | undefined,
+  dropped: Dropped,
 ): CommandItem[] {
   const out: CommandItem[] = []
   for (const item of items) {
-    const copy = toAsyncItem(item, sourceId)
+    const copy = toAsyncItem(item, sourceId, dropped)
+    if (!copy) continue
     if (group !== undefined) copy.group = group
     out.push(copy)
   }
   return out
 }
 
-function toAsyncItem(item: CommandItem, sourceId: string): CommandItem {
+function toAsyncItem(item: CommandItem, sourceId: string, dropped: Dropped): CommandItem | null {
+  if (!isText((item as Partial<CommandItem> | null)?.id)) {
+    dropped.id++
+    return null
+  }
+  if (!isText(item.label)) {
+    dropped.label++
+    return null
+  }
   const copy: AsyncItem = { ...item, [ASYNC_SOURCE]: sourceId }
   // Remote hrefs reach window.location and custom renderItem anchors, so the
   // check happens here, once, for every consumer: anything else is stripped.
   if ('href' in copy && !isSafeHref(copy.href)) delete copy.href
-  if (item.children) copy.children = item.children.map((child) => toAsyncItem(child, sourceId))
+  // cmdk trims every keyword, and unfiltered items skip the keyword engine.
+  if ('keywords' in copy) {
+    copy.keywords = Array.isArray(copy.keywords)
+      ? copy.keywords.filter((kw) => typeof kw === 'string')
+      : []
+  }
+  if (item.children) {
+    copy.children = toAsyncItems(item.children, sourceId, undefined, dropped)
+  }
   return copy
+}
+
+function isText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
+/** "2 items dropped: missing label", or undefined when nothing was dropped */
+function droppedError({ id, label }: Dropped): Error | undefined {
+  const total = id + label
+  if (!total) return undefined
+  const reasons =
+    id && label ? `missing id (${id}), missing label (${label})` : `missing ${id ? 'id' : 'label'}`
+  return new Error(`${total} item${total > 1 ? 's' : ''} dropped: ${reasons}`)
 }
 
 /** Allowlist: relative, http(s), mailto and tel. Unparsable input is rejected. */
