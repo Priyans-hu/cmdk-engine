@@ -221,10 +221,9 @@ function applyOverrides(
 }
 
 /**
- * Filter out routes matching user-supplied exclude patterns. Uses the shared
- * matcher so globs boundary-check correctly (`/admin*` won't match
- * `/administration`) and RegExp patterns are supported, matching the runtime
- * React Router adapter.
+ * Filter out routes matching user-supplied exclude patterns, with the matcher the
+ * runtime React Router adapter shares: exact strings, globs (`*` within a path
+ * segment, `**` across segments) and RegExp.
  */
 function applyExclusions(routes: SitemapRoute[], exclude: ExcludePattern[]): SitemapRoute[] {
   return routes.filter((route) => !exclude.some((pattern) => matchesExcludePattern(route.path, pattern)))
