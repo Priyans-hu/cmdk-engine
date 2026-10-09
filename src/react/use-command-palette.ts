@@ -41,7 +41,7 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   /** Reset to root level */
   resetPath: () => void
   /** Last error per async source id; an entry clears on that source's next successful load */
-  asyncErrors: Record<string, Error>
+  asyncErrors: Readonly<Record<string, Error>>
 }
 
 /**

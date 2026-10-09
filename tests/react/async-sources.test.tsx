@@ -196,6 +196,23 @@ describe('async sources · surface and compatibility', () => {
     expect(empty.result.current.results).toBe(before)
   })
 
+  it('the empty asyncErrors cannot be mutated into another provider', () => {
+    const first = renderPalette({ asyncSources: [{ id: 'remote', load: async () => [] }] })
+    const second = renderPalette({})
+    const errors = first.result.current.asyncErrors as Record<string, Error>
+
+    let threw = false
+    try {
+      errors.leaked = new Error('leak') // test files run in strict mode
+    } catch {
+      threw = true
+    }
+
+    expect(threw).toBe(true)
+    expect(Object.keys(second.result.current.asyncErrors)).toEqual([])
+    expect(Object.keys(first.result.current.asyncErrors)).toEqual([])
+  })
+
   it('results keep their identity when inputs are unchanged', async () => {
     const config: CommandEngineConfig = {
       asyncSources: [

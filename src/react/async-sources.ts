@@ -48,7 +48,8 @@ interface State {
 
 const NONE: (LoadedSource | undefined)[] = []
 const NO_UNFILTERED: AsyncItems['unfiltered'] = []
-const NO_ERRORS: Record<string, Error> = {}
+// Frozen: consumers receive it as `asyncErrors`, and it is shared by every provider.
+const NO_ERRORS: Record<string, Error> = Object.freeze({})
 const IDLE: State = { run: null, key: null, loaded: NONE, settled: 0, errors: NO_ERRORS }
 
 export const AsyncSourcesContext = createContext<AsyncSourcesValue>({
