@@ -133,3 +133,37 @@ describe('CommandEngineProvider · storage that cannot be written', () => {
     expect(recent(result)).toEqual(['billing'])
   })
 })
+
+describe('CommandEngineProvider · in-memory fallback', () => {
+  it('survives an engine rebuild from an inline config', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('writes are blocked')
+    })
+    let palette!: UseCommandPaletteReturn
+    let history!: ReturnType<typeof useSearchHistory>
+    function Palette() {
+      useCommandRegister(COMMANDS)
+      palette = useCommandPalette()
+      history = useSearchHistory()
+      return null
+    }
+    // A new config object (and new frecency/searchHistory objects) on every render
+    function App(_: { n: number }) {
+      return (
+        <CommandEngineProvider
+          config={{ frecency: { showRecent: true }, searchHistory: { enabled: true } }}
+        >
+          <Palette />
+        </CommandEngineProvider>
+      )
+    }
+    const { rerender } = render(<App n={1} />)
+    act(() => palette.setSearch('bill'))
+    act(() => palette.select('billing'))
+
+    rerender(<App n={2} />)
+
+    expect(palette.results[0].item).toMatchObject({ id: 'billing', group: 'Recent' })
+    expect(history.getRecent().map((e) => e.query)).toEqual(['bill'])
+  })
+})

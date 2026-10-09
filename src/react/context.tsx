@@ -1,6 +1,12 @@
 import { createContext, useContext, useRef, useMemo, useState } from 'react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
-import type { CommandEngineConfig, CommandItem, CommandRegistry, TranslationFn } from '../core/types'
+import type {
+  CommandEngineConfig,
+  CommandItem,
+  CommandRegistry,
+  FrecencyStorage,
+  TranslationFn,
+} from '../core/types'
 import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
 import { createKeywordEngine } from '../core/keywords'
@@ -82,6 +88,14 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
     registryRef.current = createRegistry()
   }
 
+  // In-memory fallbacks outlive engine rebuilds, so an inline config does not
+  // wipe frecency and search history where storage is unavailable. (The search
+  // history fallback keeps the options it was created with.)
+  const memory = useRef<{
+    frecency?: FrecencyStorage
+    history?: ReturnType<typeof createInMemorySearchHistory>
+  }>({}).current
+
   // Palette UI state is shared across all consumers under this provider.
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -119,7 +133,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
               ...config.frecency,
               storage: persist
                 ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
-                : createInMemoryStorage(),
+                : (memory.frecency ??= createInMemoryStorage()),
             },
       ),
       groupManager: createGroupManager(config.groups),
@@ -129,7 +143,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
       // works, as documented); fall back to in-memory where it is unavailable.
       searchHistory: persist
         ? createSearchHistory(config.searchHistory)
-        : createInMemorySearchHistory(config.searchHistory),
+        : (memory.history ??= createInMemorySearchHistory(config.searchHistory)),
     }
   }, [
     config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
