@@ -146,6 +146,10 @@ export function useAsyncSources(
             resolve(source.load(search, { signal: controller.signal })),
           )
             .then((items) => {
+              // Otherwise a plain object or null fails as a minified "e is not iterable".
+              if (typeof Object(items)[Symbol.iterator] !== 'function') {
+                throw new TypeError('load() must resolve to an array')
+              }
               const dropped: Dropped = { id: 0, label: 0 }
               const loaded: LoadedSource = {
                 items: toAsyncItems(items, id, source.group, dropped),

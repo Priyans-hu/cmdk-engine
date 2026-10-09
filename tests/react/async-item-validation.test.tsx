@@ -149,3 +149,19 @@ describe('async item validation · errors and valid items', () => {
     expect(result.current.results[0].item.keywords).toEqual([])
   })
 })
+
+describe('a load() that does not resolve to an array', () => {
+  it.each([
+    ['an object', { items: [] }],
+    ['null', null],
+  ])('reports %s by name instead of a minified "is not iterable"', async (_, response) => {
+    const { result } = renderPalette({
+      asyncSources: [{ id: 'remote', load: async () => response as unknown as CommandItem[] }],
+    })
+
+    await search(result, 'remote')
+
+    expect(message(result.current)).toBe('load() must resolve to an array')
+    expect(result.current.asyncErrors.remote).toBeInstanceOf(TypeError)
+  })
+})
