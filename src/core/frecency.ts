@@ -21,9 +21,10 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
   const storage = options.storage ?? createInMemoryStorage()
 
   /**
-   * Record that a command was used.
+   * Record that a command was used. Also removes entries older than `maxAge`.
    */
   function recordUsage(commandId: string): void {
+    cleanup()
     const now = Date.now()
     const existing = storage.get(commandId)
 
@@ -111,11 +112,13 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
 
   /**
    * Get the most recently used command IDs, sorted by last use (newest first).
+   * Entries older than `maxAge` are skipped.
    */
   function getRecent(count = 5): string[] {
+    const cutoff = Date.now() - maxAge * MS_PER_DAY
     return storage
       .getAll()
-      .filter((e) => e.count > 0)
+      .filter((e) => e.count > 0 && e.lastUsed >= cutoff)
       .sort((a, b) => b.lastUsed - a.lastUsed)
       .slice(0, count)
       .map((e) => e.id)

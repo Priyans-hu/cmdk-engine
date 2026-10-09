@@ -239,3 +239,25 @@ describe('createFrecencyEngine · rank with stale usage', () => {
     expect(ranked[0].score).toBeCloseTo(0.6 * 0.7 + 0.3, 6)
   })
 })
+
+describe('createFrecencyEngine · maxAge', () => {
+  const DAY = 86_400_000
+
+  it('leaves entries older than maxAge out of getRecent', () => {
+    const storage = createInMemoryStorage()
+    storage.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    storage.set('fresh', { id: 'fresh', count: 1, lastUsed: Date.now() - DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage, maxAge: 30 })
+
+    expect(engine.getRecent()).toEqual(['fresh'])
+  })
+
+  it('removes entries older than maxAge from storage on the next recordUsage', () => {
+    const storage = createInMemoryStorage()
+    storage.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage, maxAge: 30 })
+
+    engine.recordUsage('new')
+    expect(storage.getAll().map((e) => e.id)).toEqual(['new'])
+  })
+})
