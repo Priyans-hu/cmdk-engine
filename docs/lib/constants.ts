@@ -1,31 +1,52 @@
 import { SIZES } from './sizes'
 
+export interface NavItem {
+  label: string
+  href: string
+  /** One line for the /docs index */
+  description?: string
+}
+
 export interface NavSection {
   title: string
-  items: { label: string; href: string }[]
+  items: NavItem[]
 }
 
 export const DOCS_NAV: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Getting Started', href: '/docs/getting-started' },
+      {
+        label: 'Getting Started',
+        href: '/docs/getting-started',
+        description: 'Install, register commands, add the palette and the shortcut.',
+      },
+      {
+        label: 'Styling',
+        href: '/docs/styling',
+        description: 'Starter CSS and Tailwind, class name props and the attributes you can target.',
+      },
     ],
   },
   {
     title: 'Reference',
     items: [
-      { label: 'API Reference', href: '/docs/api' },
-      { label: 'Examples', href: '/docs/examples' },
+      {
+        label: 'API Reference',
+        href: '/docs/api',
+        description: 'Every export, option and hook.',
+      },
+      {
+        label: 'Examples',
+        href: '/docs/examples',
+        description: 'React Router, RBAC, a custom UI and a pre-commit hook.',
+      },
     ],
   },
 ]
 
-export const DOCS_ORDER = [
-  { label: 'Getting Started', href: '/docs/getting-started' },
-  { label: 'API Reference', href: '/docs/api' },
-  { label: 'Examples', href: '/docs/examples' },
-]
+/** Every docs page in reading order. The sidebar, previous/next links and the /docs index follow DOCS_NAV. */
+export const DOCS_ORDER: NavItem[] = DOCS_NAV.flatMap((section) => section.items)
 
 export const FEATURES = [
   {
