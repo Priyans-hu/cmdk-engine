@@ -165,6 +165,10 @@ export function CommandPalette({
   // Use i18n for defaults
   const resolvedLabel = label ?? t('palette.label')
   const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
+  // Names the results listbox. A `t` without a string for the key, which echoes
+  // it (`dictionary[key] ?? key`) or returns '', keeps today's "Suggestions".
+  const listLabel = t('palette.list')
+  const resolvedListLabel = (listLabel !== 'palette.list' && listLabel) || 'Suggestions'
   const resolvedRenderEmpty = renderEmpty ?? (() => (
     <div data-cmdk-engine-empty="">{t('palette.empty')}</div>
   ))
@@ -264,7 +268,7 @@ export function CommandPalette({
         className={inputClassName}
         onKeyDown={handleKeyDown}
       />
-      <Cmdk.List className={listClassName}>
+      <Cmdk.List className={listClassName} label={resolvedListLabel}>
         {results.length === 0 && !isLoading && (
           <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
         )}
