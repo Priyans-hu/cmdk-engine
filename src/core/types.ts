@@ -381,6 +381,8 @@ export interface CommandEngineConfig {
  * Items are untrusted: an `href` that is not relative, `http(s):`, `mailto:`
  * or `tel:` is removed when the items arrive (children included). For deep
  * links, return an `action`, or an allowed `href` that `onNavigate` maps.
+ * Items without a non-empty string `id` and `label` are dropped and counted in
+ * `asyncErrors[id]`, and non-string `keywords` entries are removed.
  */
 export interface AsyncSource {
   /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */

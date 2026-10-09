@@ -1,10 +1,12 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/pacocoursey/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 6.6 kB min + brotli on top of React and cmdk.
+The smart command palette engine for React. Built on [cmdk](https://github.com/dip/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![license](https://img.shields.io/npm/l/cmdk-engine.svg)](https://github.com/Priyans-hu/cmdk-engine/blob/main/LICENSE)
+
+![The cmdk adapter's palette opened with Cmd+K, styled with the CSS from the Styling section](https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/.github/assets/palette.png)
 
 ---
 
@@ -20,9 +22,9 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 | Frecency ranking | No | Yes — exponential decay algorithm |
 | Keyword synonyms | No | Yes — bidirectional, ranked below direct matches |
 | Smart route exclusion | No | Yes — auth, error, dynamic routes auto-filtered |
-| Deterministic sorting | [Broken (#264, #375)](https://github.com/pacocoursey/cmdk/issues/264) | Yes — frecency > priority > registration order |
-| First item auto-select | [Broken (#280)](https://github.com/pacocoursey/cmdk/issues/280) | Yes — auto-selects on every result update |
-| Dynamic content updates | [Broken (#267)](https://github.com/pacocoursey/cmdk/issues/267) | Yes — reactive pub/sub registry |
+| Deterministic sorting | [Open upstream issues (#264, #375)](https://github.com/dip/cmdk/issues/264) | Yes — frecency > priority > registration order |
+| First item auto-select | [Open upstream issue (#280)](https://github.com/dip/cmdk/issues/280) | Yes — auto-selects the first enabled item on every result update and on every open |
+| Dynamic content updates | [Open upstream issue (#267)](https://github.com/dip/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
 | Framework-agnostic core | No | Yes — zero runtime deps |
@@ -32,8 +34,6 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 ---
 
 ## Installation
-
-### Library (for React projects)
 
 ```bash
 # npm
@@ -57,112 +57,101 @@ yarn add cmdk-engine cmdk
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
 
-### Standalone CLI (no Node project required)
-
-The `cmdk-engine` route scanner also ships as a standalone binary:
-
-```bash
-# Homebrew
-brew install Priyans-hu/tap/cmdk-engine
-
-# curl installer (macOS/Linux)
-curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
-```
-
 ---
 
 ## Quick Start
 
-### 1. Wrap your app with the provider
+One file, with the cmdk adapter. Paste it into a React app, then press Cmd+K
+(Ctrl+K on Windows and Linux):
 
 ```tsx
-import { CommandEngineProvider } from 'cmdk-engine/react'
+// App.tsx
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 
-function App() {
+// Define config once, outside the component.
+const config = { onNavigate: (href: string) => window.location.assign(href) }
+
+function Commands() {
+  useCommandRegister([
+    { id: 'home', label: 'Home', href: '/' },
+    { id: 'billing', label: 'Billing Overview', href: '/billing', keywords: ['invoices'], group: 'Billing' },
+  ])
+  return null
+}
+
+function Palette() {
+  useCommandPaletteShortcut() // Cmd+K / Ctrl+K. Must be inside the provider.
+  return <CommandPalette dialog placeholder="Search..." />
+}
+
+export default function App() {
   return (
-    <CommandEngineProvider
-      config={{
-        synonyms: {
-          billing: ['money', 'payment', 'credits'],
-          settings: ['preferences', 'config', 'options'],
-        },
-      }}
-    >
-      <YourApp />
+    <CommandEngineProvider config={config}>
+      <Commands />
+      <Palette />
+      {/* your app */}
     </CommandEngineProvider>
   )
 }
 ```
 
-### 2. Register commands
+The palette starts closed. Cmd+K opens it, typing "invoices" narrows the list
+to Billing Overview, and Enter goes to `/billing` and closes the palette. It
+has no styles until you add some (see [Styling](#styling)). In a Next.js App
+Router project, put `'use client'` at the top of this file.
+
+`useCommandPaletteShortcut()` binds Cmd+K / Ctrl+K. Call it in a component
+**inside** `CommandEngineProvider`, like `Palette` above: without it nothing
+opens the dialog, and in the component that renders the provider it throws.
+
+### Splitting it into files
+
+- **Provider:** wrap your app once, near the root. Define `config` outside
+  components, or `useMemo` it: a new object on every render rebuilds the
+  engine.
+- **Commands:** call `useCommandRegister` in any component under the provider.
+  Its commands go away when that component unmounts, so register app-wide
+  navigation in a layout that stays mounted and page commands in the page.
+- **Palette:** keep `CommandPalette` and `useCommandPaletteShortcut()` together
+  in one component, anywhere under the provider.
+
+### Navigating with your router
+
+`onNavigate` gets the `href` of each selected command that has no `action`.
+`window.location.assign` reloads the page, so pass your router instead. With
+a React Router data router, use the router object:
 
 ```tsx
-import { useCommandRegister } from 'cmdk-engine/react'
-import { CreditCard } from 'lucide-react'
+const router = createBrowserRouter(routes)
+const config = { onNavigate: (href: string) => router.navigate(href) }
+```
 
-function BillingPage() {
-  useCommandRegister([
-    {
-      id: 'billing-overview',
-      label: 'Billing Overview',
-      href: '/billing/overview',
-      keywords: ['balance', 'credits'],
-      group: 'Billing',
-      icon: <CreditCard size={16} />, // React components, strings, or emoji
-    },
-  ])
+To use `useNavigate()` instead, render the provider inside the router (in a
+root layout route, for example) and `useMemo` the config there. A command's
+`action` runs instead of `onNavigate`, and an `onSelect` on the provider
+config or on `CommandPalette` replaces both.
 
-  return <div>...</div>
+### `onSelect` replaces the default handling
+
+`config.onSelect` runs for every selected command instead of its `action` and
+instead of `onNavigate`. The `onSelect` prop of `CommandPalette` does the same,
+and wins over the config. To track selections, call the default yourself, or
+leave `onSelect` unset and track inside `onNavigate` and your actions:
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelect: (item: CommandItem) => {
+    console.log('command selected', item.id) // your analytics call
+    if (item.action) item.action(item)
+    else if (item.href) window.location.assign(item.href)
+  },
 }
 ```
 
-### 3. Use the pre-wired cmdk adapter
-
-```tsx
-import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
-
-function CommandMenu() {
-  return (
-    <CommandPalette
-      dialog
-      placeholder="Type a command or search..."
-      onSelect={(item) => {
-        if (item.href) navigate(item.href)
-        if (item.action) item.action(item)
-      }}
-    />
-  )
-}
-```
-
-Or use `config.onSelect` on the provider to handle all selections in one place:
-
-```tsx
-<CommandEngineProvider
-  config={{
-    onSelect: (item) => {
-      if (item.href) navigate(item.href)
-      if (item.action) item.action(item)
-    },
-  }}
->
-```
-
-### SPA navigation with `onNavigate`
-
-If your commands mostly just navigate (`href`), skip the `onSelect` boilerplate
-and pass `onNavigate` — it's called for any `href`-only command so you can route
-without a full-page reload. `action` and `onSelect` still take priority; only
-plain `href` commands fall through to `onNavigate` (and to `window.location`
-when it's unset):
-
-```tsx
-const navigate = useNavigate() // react-router
-
-<CommandEngineProvider config={{ onNavigate: (href) => navigate(href) }}>
-```
-
-### 4. Or build your own UI with hooks
+### Or build your own UI with hooks
 
 ```tsx
 import { useCommandPalette } from 'cmdk-engine/react'
@@ -191,6 +180,73 @@ function CustomCommandMenu() {
 
 > `select()` records frecency + search history, runs `onSelect` → `action` →
 > `onNavigate`/`href`, and closes the palette — all in one call.
+
+## Styling
+
+`CommandPalette` ships no styles. Style cmdk's `[cmdk-*]` parts and the
+adapter's `data-cmdk-engine-*` attributes from any global stylesheet. This CSS
+gives the look in the screenshot at the top:
+
+```css
+[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); }
+[cmdk-dialog] {
+  position: fixed; top: 15vh; left: 50%; z-index: 50; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+}
+[cmdk-root] {
+  overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #fff; color: #111827; font: 14px/1.4 system-ui, sans-serif;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.2);
+}
+[cmdk-input] {
+  box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
+  border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
+}
+[cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
+[cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
+[cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
+[cmdk-item][data-selected='true'] { background: #f3f4f6; }
+[cmdk-item][data-disabled='true'] { opacity: 0.5; cursor: default; }
+[data-cmdk-engine-item] { display: flex; align-items: center; gap: 8px; }
+[data-cmdk-engine-item-content] { display: flex; flex: 1; flex-direction: column; }
+[data-cmdk-engine-item-description] { font-size: 12px; color: #6b7280; }
+[data-cmdk-engine-item-shortcut] kbd {
+  margin-left: 4px; padding: 0 6px; border: 1px solid #e5e7eb; border-radius: 4px;
+  font: inherit; font-size: 12px;
+}
+[data-cmdk-engine-empty],
+[data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }
+```
+
+Items also carry `data-cmdk-engine-icon` and `data-cmdk-engine-item-label`,
+plus `data-cmdk-engine-item-chevron` when they have children. Nested commands
+add `data-cmdk-engine-breadcrumbs`, with `data-cmdk-engine-breadcrumb-back`,
+`data-cmdk-engine-breadcrumb` and `data-cmdk-engine-breadcrumb-separator`
+inside. cmdk documents its parts in
+[Parts and styling](https://github.com/dip/cmdk#parts-and-styling) and has
+[drop-in stylesheets](https://github.com/dip/cmdk/tree/main/website/styles/cmdk).
+
+With Tailwind (v3 or v4), `@apply` the same utilities to the same selectors in
+your main CSS file:
+
+```css
+[cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
+[cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
+[cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
+[cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
+[cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
+[data-cmdk-engine-item] { @apply flex items-center gap-2; }
+[data-cmdk-engine-item-content] { @apply flex flex-1 flex-col; }
+[data-cmdk-engine-item-description] { @apply text-xs text-gray-500; }
+[data-cmdk-engine-item-shortcut] kbd { @apply ml-1 rounded border border-gray-200 px-1.5 font-sans text-xs; }
+[data-cmdk-engine-empty], [data-cmdk-engine-loading] { @apply p-4 text-center text-gray-500; }
+```
+
+To style per instance instead, `CommandPalette` passes `className`,
+`overlayClassName`, `contentClassName`, `inputClassName`, `listClassName`,
+`groupClassName`, `itemClassName` and `emptyClassName` to those parts.
 
 ---
 
@@ -375,6 +431,38 @@ useCommandRegister([
 
 ---
 
+## Synonyms
+
+Synonyms work both ways. With this config, typing "money" or "payment" finds
+the "Billing Overview" command from the Quick Start:
+
+```tsx
+const config = {
+  synonyms: {
+    billing: ['money', 'payment', 'credits'],
+    settings: ['preferences', 'config', 'options'],
+  },
+}
+```
+
+- **Query:** when the whole query (trimmed, any case) equals a key or a value,
+  the other terms are searched too: a key brings its values, a value its key.
+  Commands found only this way are listed after the direct matches and never
+  score above the weakest one. Frecency and context boosts apply afterwards,
+  so a command you use often can still move up.
+- **Commands:** with the built-in fuzzy search, a command whose keyword or
+  whole label equals a key or a value also matches the other terms, at a lower
+  weight.
+- **Not expanded:** the query, while it is a partial word ("mon" is searched
+  as typed until "money" is complete) or a longer phrase that contains a
+  synonym ("money transfer").
+
+match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
+matches, so only the query side works with it. When the query expands, a
+custom `searchEngine` is called once more for each extra term.
+
+---
+
 ## Frecency Ranking
 
 Commands you use frequently and recently appear higher in results. No configuration needed — it uses localStorage by default. When you use `select()`, frecency is recorded automatically.
@@ -402,7 +490,9 @@ Show a "Recent" group at the top of the palette when the search is empty:
 ```
 
 > Frecency (and search history, below) persist to `localStorage` by default and
-> degrade to in-memory automatically during SSR. Override the backend via
+> fall back to memory where it is unavailable: during SSR, in sandboxed iframes
+> and when the browser blocks cookies. Malformed data under their keys is
+> ignored and replaced on the next write. Override the backend via
 > `config.frecency.storage`.
 
 > `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
@@ -511,6 +601,10 @@ const issueSearch: AsyncSource = {
 - `asyncErrors` maps a source id to its last error, cleared on that source's
   next success. A failing source never breaks the palette, and nothing is
   logged.
+- Loaded items need a non-empty string `id` and `label`. Items without them
+  (children included) are dropped, the rest still show, and `asyncErrors[id]`
+  says so, for example "2 items dropped: missing label", until a load drops
+  nothing. Non-string `keywords` entries are removed.
 - Sources load at the root level only. Loads are aborted and their items
   cleared when the query changes, the palette closes, the user drills into a
   command, or the provider unmounts. A palette that reopens loads again; an
@@ -553,6 +647,18 @@ npx cmdk-engine scan --no-default-exclude
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Standalone binary
+
+The CLI also ships as a standalone binary for macOS on Apple silicon and for
+Linux x64, so it runs without a Node project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
+```
+
+There is no binary for Intel Macs or Linux on ARM yet; use `npx cmdk-engine`
+there.
 
 ### Smart defaults
 
@@ -633,20 +739,20 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 
 | Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
-| `cmdk-engine` | 3.2 kB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | 3.1 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine` | 3.4 kB | Core engine (types, registry, search, keywords, access control, frecency) |
+| `cmdk-engine/react` | 3.6 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
 | `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
-| `cmdk-engine/search/match-sorter` | 0.69 kB | Optional match-sorter search backend |
+| `cmdk-engine/search/match-sorter` | 0.72 kB | Optional match-sorter search backend |
 | `cmdk-engine/adapters/base-ui` | 1.5 kB | Pre-wired Base UI components |
 
 Sizes are minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **6.6 kB** in total, without the `react`,
-`react-dom` and `cmdk` peers. CI enforces size budgets about 10% above these
-figures.
+`useCommandPaletteShortcut`) is **7.2 kB** in total, without the `react`,
+`react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
+slightly above these figures.
 
 All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
@@ -741,10 +847,10 @@ import type {
 
 | Issue | Description | How We Fix It |
 |-------|-------------|---------------|
-| [#264](https://github.com/pacocoursey/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
-| [#280](https://github.com/pacocoursey/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
-| [#375](https://github.com/pacocoursey/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
-| [#267](https://github.com/pacocoursey/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
+| [#264](https://github.com/dip/cmdk/issues/264) | Sort not restored after clearing search | We own filtering; restore original order when query is empty |
+| [#280](https://github.com/dip/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
+| [#375](https://github.com/dip/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
+| [#267](https://github.com/dip/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
 
 ---
 

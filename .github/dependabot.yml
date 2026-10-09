@@ -1,6 +1,8 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  # bun, not npm: the npm ecosystem cannot update bun.lock, so its PRs failed
+  # `bun install --frozen-lockfile` in CI.
+  - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
@@ -12,13 +14,58 @@ updates:
       # supported peer version.
       - dependency-name: "base-ui-floor"
 
-  - package-ecosystem: npm
+      # Pinned to one major on purpose: the type tests cover react-router 6 and 7.
+      - dependency-name: "react-router-v6"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-router-v7"
+        update-types: ["version-update:semver-major"]
+      # These majors need Node 22, and CI and `engines` still support Node 20:
+      # commander 15 (>=22.12), jsdom 30 (^22.22.2), size-limit 13 and 14 with
+      # their preset (^22.18, ^22.19), @testing-library/jest-dom 7 (>=22),
+      # @changesets/cli 3 (^22.11), vitest 5 and @vitest/coverage-v8 5 (^22.12).
+      - dependency-name: "commander"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "size-limit"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@size-limit/preset-small-lib"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@testing-library/jest-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@changesets/cli"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/coverage-v8"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 is the native compiler without the JS API that tsup and
+      # typescript-eslint use.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Newer @types/node majors describe APIs that Node 20 and 22 lack.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: bun
     directory: /docs
     schedule:
       interval: weekly
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 10
+    ignore:
+      # Same reasons as for the root package.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: /

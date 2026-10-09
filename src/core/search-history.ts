@@ -4,6 +4,16 @@ const DEFAULT_MAX_ENTRIES = 20
 const DEFAULT_STORAGE_KEY = 'cmdk-search-history'
 const DEFAULT_MIN_QUERY_LENGTH = 2
 
+function isEntry(value: unknown): value is SearchHistoryEntry {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Partial<SearchHistoryEntry>
+  return (
+    typeof entry.query === 'string' &&
+    typeof entry.timestamp === 'number' &&
+    typeof entry.resultCount === 'number'
+  )
+}
+
 /**
  * Create a search history tracker that records search queries.
  * Separate from frecency (which tracks command usage).
@@ -23,11 +33,14 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
     }
   }
 
+  // The key is shared by every app on the origin, so it can hold anything.
+  // Malformed data is ignored, and the next save replaces it.
   function load(): SearchHistoryEntry[] {
     if (!isAvailable()) return []
     try {
       const raw = localStorage.getItem(storageKey)
-      return raw ? JSON.parse(raw) : []
+      const data: unknown = raw ? JSON.parse(raw) : []
+      return Array.isArray(data) ? data.filter(isEntry) : []
     } catch {
       return []
     }

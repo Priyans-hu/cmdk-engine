@@ -196,7 +196,7 @@
     {
       "name": "cmdk-engine/react (own code)",
       "path": "dist/react/index.js",
-      "limit": "3.45 KB",
+      "limit": "3.66 KB",
       "ignore": [
         "cmdk-engine",
         "react",

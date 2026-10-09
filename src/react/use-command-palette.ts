@@ -4,6 +4,7 @@ import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext, usePaletteState } from './context'
 import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
+import { searchWithSynonyms } from './synonym-search'
 
 const NO_RESULTS: ScoredItem[] = []
 
@@ -40,7 +41,10 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   drillUp: () => void
   /** Reset to root level */
   resetPath: () => void
-  /** Last error per async source id; an entry clears on that source's next successful load */
+  /**
+   * Last error per async source id: a failed load, or the items a load dropped.
+   * An entry clears on that source's next load that succeeds and drops nothing.
+   */
   asyncErrors: Readonly<Record<string, Error>>
 }
 
@@ -96,8 +100,9 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // 2. Filter by access control
     const accessible = accessFilter ? accessFilter(visible) : visible
 
-    // 3. Search
-    const searched = search.search(searchQuery, accessible)
+    // 3. Search. A query that is a synonym key or value also gets what the
+    //    other terms match, appended after the direct matches.
+    const searched = searchWithSynonyms(search, keywords.expandQuery, searchQuery, accessible)
 
     // 4. Rank by frecency
     if (searchQuery.trim()) {
@@ -150,7 +155,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // float to the top on empty query (README: frecency > priority > registration order).
     return frecency.rank(searched, 0.3)
   }, [
-    enrichedCommands, searchQuery, search, accessFilter, frecency,
+    enrichedCommands, searchQuery, search, keywords, accessFilter, frecency,
     contextEngine, t, config.context, config.frecency,
   ])
 

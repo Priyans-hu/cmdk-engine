@@ -62,17 +62,21 @@ export function createFuzzySearch(): SearchEngine {
 function scoreItem(query: string, item: CommandItem): number {
   let bestScore = 0
 
-  // Score against label (highest weight)
-  bestScore = Math.max(bestScore, fuzzyScore(query, item.label.toLowerCase()) * 1.0)
+  // Score against label (highest weight). Items from plain JS or JSON can lack
+  // a string label, description or keywords: those fields are skipped.
+  if (typeof item.label === 'string') {
+    bestScore = Math.max(bestScore, fuzzyScore(query, item.label.toLowerCase()) * 1.0)
+  }
 
   // Score against description (medium weight)
-  if (item.description) {
+  if (typeof item.description === 'string') {
     bestScore = Math.max(bestScore, fuzzyScore(query, item.description.toLowerCase()) * 0.7)
   }
 
   // Score against original keywords (medium-high weight)
-  if (item.keywords) {
+  if (Array.isArray(item.keywords)) {
     for (const kw of item.keywords) {
+      if (typeof kw !== 'string') continue
       bestScore = Math.max(bestScore, fuzzyScore(query, kw.toLowerCase()) * 0.85)
     }
   }

@@ -65,7 +65,12 @@ export function createKeywordEngine(
    * This lets the search engine score original keywords higher.
    */
   function enrichItem(item: CommandItem): CommandItem {
-    const originalKeywords = new Set<string>(item.keywords ?? [])
+    // Items from plain JS or JSON can carry non-string keywords or no label.
+    // Only strings are kept: the cmdk adapter trims every keyword.
+    const keywords = Array.isArray(item.keywords)
+      ? item.keywords.filter((kw) => typeof kw === 'string')
+      : []
+    const originalKeywords = new Set<string>(keywords)
     const synonymKeywords = new Set<string>()
 
     const addSynonymsFor = (term: string): void => {
@@ -78,8 +83,8 @@ export function createKeywordEngine(
       }
     }
 
-    for (const kw of item.keywords ?? []) addSynonymsFor(kw)
-    addSynonymsFor(item.label)
+    for (const kw of keywords) addSynonymsFor(kw)
+    if (typeof item.label === 'string') addSynonymsFor(item.label)
 
     // User aliases become original keywords (user explicitly added these).
     for (const alias of userAliases.get(item.id) ?? []) originalKeywords.add(alias)

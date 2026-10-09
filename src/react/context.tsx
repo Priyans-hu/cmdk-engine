@@ -4,7 +4,7 @@ import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
 import { createKeywordEngine } from '../core/keywords'
 import { createAccessFilter } from '../core/access-control'
-import { createFrecencyEngine } from '../core/frecency'
+import { createFrecencyEngine, createInMemoryStorage } from '../core/frecency'
 import { createLocalStorageFrecencyStorage } from '../core/frecency-storage'
 import { createGroupManager } from '../core/grouping'
 import { createContextEngine } from '../core/context'
@@ -45,6 +45,17 @@ export interface PaletteStateValue {
 
 const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 
+// The same guard as the core storage helpers (which `cmdk-engine` does not
+// export): reading `window.localStorage` throws in sandboxed iframes and when
+// the browser blocks cookies, and it is missing during SSR.
+function canUseLocalStorage(): boolean {
+  try {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+  } catch {
+    return false
+  }
+}
+
 export interface CommandEngineProviderProps {
   children: React.ReactNode
   config?: CommandEngineConfig
@@ -79,39 +90,40 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   // (not the whole `config` object) so an inline config that only changes an
   // unrelated field — e.g. `context` on every route change — doesn't rebuild
   // the search/keyword/frecency engines on every render.
-  const engines = useMemo(
-    () => ({
+  const engines = useMemo(() => {
+    const persist = canUseLocalStorage()
+    return {
       search: config.searchEngine ?? createFuzzySearch(),
       keywords: createKeywordEngine(config.synonyms ?? {}),
       accessFilter: config.accessControl
         ? createAccessFilter(config.accessControl, config.accessCheckMode)
         : null,
-      // Default to localStorage persistence (SSR-safe: the storage no-ops when
-      // window/localStorage is unavailable) so frecency survives reloads, as
-      // documented. Consumers can still pass their own `frecency.storage`.
+      // Default to localStorage persistence so frecency survives reloads, as
+      // documented, and to memory where storage is unavailable. Consumers can
+      // still pass their own `frecency.storage`.
       frecency: createFrecencyEngine(
         config.frecency?.storage
           ? config.frecency
           : {
               ...config.frecency,
-              storage: createLocalStorageFrecencyStorage(config.frecency?.storageKey),
+              storage: persist
+                ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
+                : createInMemoryStorage(),
             },
       ),
       groupManager: createGroupManager(config.groups),
       contextEngine: createContextEngine(config.contextBoostWeight),
       t: config.t ?? createDefaultTranslation(),
       // Persist search history to localStorage in the browser (so `storageKey`
-      // works, as documented); fall back to in-memory for SSR/non-browser.
-      searchHistory:
-        typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-          ? createSearchHistory(config.searchHistory)
-          : createInMemorySearchHistory(config.searchHistory),
-    }),
-    [
-      config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
-      config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
-    ],
-  )
+      // works, as documented); fall back to in-memory where it is unavailable.
+      searchHistory: persist
+        ? createSearchHistory(config.searchHistory)
+        : createInMemorySearchHistory(config.searchHistory),
+    }
+  }, [
+    config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
+    config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
+  ])
 
   const value = useMemo<EngineContextValue>(
     () => ({ registry: registryRef.current!, ...engines, config }),
