@@ -43,7 +43,10 @@ export interface CommandItem {
    * A function is re-evaluated whenever results are recomputed.
    */
   when?: boolean | (() => boolean)
-  /** Keyboard shortcut display (e.g., ["g", "h"]) */
+  /**
+   * Keyboard shortcut shown with the item (e.g., ["g", "h"]). Display only:
+   * nothing binds these keys.
+   */
   shortcut?: string[]
   /** Extensible metadata for consumer use */
   meta?: Record<string, unknown>
@@ -51,7 +54,10 @@ export interface CommandItem {
   scope?: string[]
   /** Child commands for nested/hierarchical menus */
   children?: CommandItem[]
-  /** Parent command ID (set automatically when flattening) */
+  /**
+   * @deprecated Never set or read by cmdk-engine; kept so existing code compiles.
+   * Put your own parent id in `meta` if you need one.
+   */
   parentId?: string
 }
 
@@ -164,11 +170,20 @@ export interface FrecencyStorage {
 
 /** Frecency engine configuration */
 export interface FrecencyOptions {
-  /** Storage backend (defaults to localStorage) */
+  /**
+   * Storage backend. `CommandEngineProvider` defaults to localStorage (memory
+   * where it is unavailable); `createFrecencyEngine` defaults to memory.
+   */
   storage?: FrecencyStorage
-  /** Full localStorage key, not a prefix (default: 'cmdk-frecency') */
+  /**
+   * Full localStorage key, not a prefix (default: 'cmdk-frecency'). Used by
+   * `CommandEngineProvider` for its default storage; `createFrecencyEngine` ignores it.
+   */
   storageKey?: string
-  /** Max age in days before entries are removed (default: 30) */
+  /**
+   * Days after its last use before an entry leaves "Recent" and is removed from
+   * storage on the next recorded use (default: 30)
+   */
   maxAge?: number
   /** Half-life in days for exponential decay (default: 7) */
   halfLife?: number
@@ -375,7 +390,10 @@ export interface CommandEngineConfig {
   contextBoostWeight?: number
   /** Translation function for UI strings (defaults to English) */
   t?: TranslationFn
-  /** Locale for collation-aware operations (default: 'en') */
+  /**
+   * @deprecated Never read: nothing in cmdk-engine depends on the locale. Kept so
+   * existing configs compile. Localize UI strings with `t`.
+   */
   locale?: string
   /** Search history configuration */
   searchHistory?: SearchHistoryConfig
