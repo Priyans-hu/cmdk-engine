@@ -409,7 +409,9 @@ Show a "Recent" group at the top of the palette when the search is empty:
 ```
 
 > Frecency (and search history, below) persist to `localStorage` by default and
-> degrade to in-memory automatically during SSR. Override the backend via
+> fall back to memory where it is unavailable: during SSR, in sandboxed iframes
+> and when the browser blocks cookies. Malformed data under their keys is
+> ignored and replaced on the next write. Override the backend via
 > `config.frecency.storage`.
 
 > `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
@@ -515,6 +517,10 @@ const issueSearch: AsyncSource = {
 - `asyncErrors` maps a source id to its last error, cleared on that source's
   next success. A failing source never breaks the palette, and nothing is
   logged.
+- Loaded items need a non-empty string `id` and `label`. Items without them
+  (children included) are dropped, the rest still show, and `asyncErrors[id]`
+  says so, for example "2 items dropped: missing label", until a load drops
+  nothing. Non-string `keywords` entries are removed.
 - Sources load at the root level only. Loads are aborted and their items
   cleared when the query changes, the palette closes, the user drills into a
   command, or the provider unmounts. A palette that reopens loads again; an
