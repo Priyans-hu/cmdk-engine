@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useRef, useMemo, useState } from 'react'
+import { createContext, useContext, useRef, useMemo, useState } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { CommandEngineConfig, CommandItem, CommandRegistry, TranslationFn } from '../core/types'
 import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
@@ -36,11 +37,11 @@ const EngineContext = createContext<EngineContextValue | null>(null)
  */
 export interface PaletteStateValue {
   isOpen: boolean
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setIsOpen: Dispatch<SetStateAction<boolean>>
   search: string
-  setSearch: React.Dispatch<React.SetStateAction<string>>
+  setSearch: Dispatch<SetStateAction<string>>
   activePath: CommandItem[]
-  setActivePath: React.Dispatch<React.SetStateAction<CommandItem[]>>
+  setActivePath: Dispatch<SetStateAction<CommandItem[]>>
 }
 
 const PaletteStateContext = createContext<PaletteStateValue | null>(null)
@@ -57,7 +58,7 @@ function canUseLocalStorage(): boolean {
 }
 
 export interface CommandEngineProviderProps {
-  children: React.ReactNode
+  children: ReactNode
   config?: CommandEngineConfig
 }
 
