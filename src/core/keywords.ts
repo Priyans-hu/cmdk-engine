@@ -127,8 +127,9 @@ export function createKeywordEngine(
     enrichAll,
 
     /**
-     * Add a user alias for a command. Takes effect at the next results
-     * recompute; does not re-render.
+     * Add a user alias for a command. Takes effect the next time results are
+     * computed (for example, on the next keystroke); it does not re-render by
+     * itself.
      */
     addAlias(commandId: string, alias: string): void {
       const existing = userAliases.get(commandId) ?? []
@@ -138,8 +139,9 @@ export function createKeywordEngine(
     },
 
     /**
-     * Remove a user alias for a command. Takes effect at the next results
-     * recompute; does not re-render.
+     * Remove a user alias for a command. Takes effect the next time results
+     * are computed (for example, on the next keystroke); it does not re-render
+     * by itself.
      */
     removeAlias(commandId: string, alias: string): void {
       const existing = userAliases.get(commandId) ?? []
@@ -157,8 +159,8 @@ export function createKeywordEngine(
     },
 
     /**
-     * Set the synonym dictionary (rebuilds the lookup index). The engine keeps
-     * its own index: neither dictionary is modified.
+     * Set the synonym dictionary (rebuilds the lookup index). The object is
+     * read, never changed.
      */
     setSynonyms(newSynonyms: SynonymMap): void {
       rebuildIndex(newSynonyms)
