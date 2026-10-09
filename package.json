@@ -44,7 +44,7 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "cmdk-engine": "./dist/cli/index.cjs"
+    "cmdk-engine": "dist/cli/index.cjs"
   },
   "exports": {
     ".": {
