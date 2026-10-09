@@ -205,6 +205,7 @@ gives the look in the screenshot at the top:
   box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
   border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
 }
+[cmdk-input]:focus-visible { border-bottom-color: #6366f1; box-shadow: inset 0 -1px 0 #6366f1; }
 [cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
 [cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
 [cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
@@ -221,6 +222,10 @@ gives the look in the screenshot at the top:
 [data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }
 ```
 
+The accent underline on `[cmdk-input]:focus-visible` replaces the outline the
+input drops, so keyboard users can see where focus is. Keep a focus style if
+you restyle the input.
+
 Items also carry `data-cmdk-engine-icon` and `data-cmdk-engine-item-label`,
 plus `data-cmdk-engine-item-chevron` when they have children. Nested commands
 add `data-cmdk-engine-breadcrumbs`, with `data-cmdk-engine-breadcrumb-back`,
@@ -236,7 +241,7 @@ your main CSS file:
 [cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
 [cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
 [cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
-[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none focus-visible:border-indigo-500 focus-visible:shadow-[inset_0_-1px_0_#6366f1]; }
 [cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
 [cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
 [cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
@@ -269,12 +274,12 @@ npm install cmdk-engine @base-ui/react
 exports `CommandPalette` and `useCommandPaletteShortcut` with the cmdk adapter's
 props, so switching adapters is an import-path change:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 
 // Inline: always rendered
 function SearchPanel() {
-<!-- readme-test: typecheck -->
   return <CommandPalette placeholder="Search commands..." />
 }
 
