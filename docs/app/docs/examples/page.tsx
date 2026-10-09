@@ -14,7 +14,7 @@ export default function Examples() {
         language="tsx"
         filename="App.tsx"
         code={`import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
-import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
@@ -45,16 +45,18 @@ const commands = scanRoutes(routes, {
   exclude: ['/admin/*'],  // string, glob, or regex
 })
 
+// The provider sits outside RouterProvider, so navigate with the router
+// object (useNavigate() only works inside the router).
+const config = {
+  onNavigate: (href: string) => router.navigate(href),
+  frecency: { showRecent: true },
+}
+
 function App() {
   return (
-    <CommandEngineProvider config={{
-      onSelect: (item) => {
-        if (item.href) navigate(item.href)
-      },
-      frecency: { showRecent: true },
-    }}>
+    <CommandEngineProvider config={config}>
       <RegisterRoutes />
-      <CommandPalette dialog />
+      <CommandMenu />
       <RouterProvider router={router} />
     </CommandEngineProvider>
   )
@@ -63,6 +65,11 @@ function App() {
 function RegisterRoutes() {
   useCommandRegister(commands)
   return null
+}
+
+function CommandMenu() {
+  useCommandPaletteShortcut() // Cmd+K / Ctrl+K
+  return <CommandPalette dialog />
 }`}
       />
       <p>On React Router 8 there is no <code>react-router-dom</code>: import <code>createBrowserRouter</code> from <code>react-router</code> and <code>RouterProvider</code> from <code>react-router/dom</code>.</p>

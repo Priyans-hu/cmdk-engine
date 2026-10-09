@@ -6,6 +6,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![license](https://img.shields.io/npm/l/cmdk-engine.svg)](https://github.com/Priyans-hu/cmdk-engine/blob/main/LICENSE)
 
+![The cmdk adapter's palette opened with Cmd+K, styled with the CSS from the Styling section](https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/.github/assets/palette.png)
+
 ---
 
 ## Why cmdk-engine?
@@ -33,8 +35,6 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 
 ## Installation
 
-### Library (for React projects)
-
 ```bash
 # npm
 npm install cmdk-engine cmdk
@@ -56,133 +56,81 @@ yarn add cmdk-engine cmdk
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
 
-### Standalone CLI (no Node project required)
-
-The `cmdk-engine` route scanner also ships as a standalone binary:
-
-```bash
-# Homebrew
-brew install Priyans-hu/tap/cmdk-engine
-
-# curl installer (macOS/Linux)
-curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
-```
-
 ---
 
 ## Quick Start
 
-### 1. Wrap your app with the provider
+One file, with the cmdk adapter. Paste it into a React app, then press Cmd+K
+(Ctrl+K on Windows and Linux):
 
 ```tsx
-import { CommandEngineProvider } from 'cmdk-engine/react'
+// App.tsx
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 
-function App() {
+// Define config once, outside the component.
+const config = { onNavigate: (href: string) => window.location.assign(href) }
+
+function Commands() {
+  useCommandRegister([
+    { id: 'home', label: 'Home', href: '/' },
+    { id: 'billing', label: 'Billing Overview', href: '/billing', keywords: ['invoices'], group: 'Billing' },
+  ])
+  return null
+}
+
+function Palette() {
+  useCommandPaletteShortcut() // Cmd+K / Ctrl+K. Must be inside the provider.
+  return <CommandPalette dialog placeholder="Search..." />
+}
+
+export default function App() {
   return (
-    <CommandEngineProvider
-      config={{
-        synonyms: {
-          billing: ['money', 'payment', 'credits'],
-          settings: ['preferences', 'config', 'options'],
-        },
-      }}
-    >
-      <YourApp />
+    <CommandEngineProvider config={config}>
+      <Commands />
+      <Palette />
+      {/* your app */}
     </CommandEngineProvider>
   )
 }
 ```
 
-### Synonyms
+The palette starts closed. Cmd+K opens it, typing "invoices" narrows the list
+to Billing Overview, and Enter goes to `/billing` and closes the palette. It
+has no styles until you add some (see [Styling](#styling)).
 
-Synonyms work both ways. With the config above, typing "money" or "payment"
-finds the "Billing Overview" command registered below.
+`useCommandPaletteShortcut()` binds Cmd+K / Ctrl+K. Call it in a component
+**inside** `CommandEngineProvider`, like `Palette` above: without it nothing
+opens the dialog, and in the component that renders the provider it throws.
 
-- **Query:** when the whole query (trimmed, any case) equals a key or a value,
-  the other terms are searched too: a key brings its values, a value its key.
-  Commands found only this way are listed after the direct matches and never
-  score above the weakest one. Frecency and context boosts apply afterwards,
-  so a command you use often can still move up.
-- **Commands:** with the built-in fuzzy search, a command whose keyword or
-  whole label equals a key or a value also matches the other terms, at a lower
-  weight.
-- **Not expanded:** the query, while it is a partial word ("mon" is searched
-  as typed until "money" is complete) or a longer phrase that contains a
-  synonym ("money transfer").
+### Splitting it into files
 
-match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
-matches, so only the query side works with it. When the query expands, a
-custom `searchEngine` is called once more for each extra term.
+- **Provider:** wrap your app once, near the root. Define `config` outside
+  components, or `useMemo` it: a new object on every render rebuilds the
+  engine.
+- **Commands:** call `useCommandRegister` in any component under the provider.
+  Its commands go away when that component unmounts, so register app-wide
+  navigation in a layout that stays mounted and page commands in the page.
+- **Palette:** keep `CommandPalette` and `useCommandPaletteShortcut()` together
+  in one component, anywhere under the provider.
 
-### 2. Register commands
+### Navigating with your router
 
-```tsx
-import { useCommandRegister } from 'cmdk-engine/react'
-import { CreditCard } from 'lucide-react'
-
-function BillingPage() {
-  useCommandRegister([
-    {
-      id: 'billing-overview',
-      label: 'Billing Overview',
-      href: '/billing/overview',
-      keywords: ['balance', 'credits'],
-      group: 'Billing',
-      icon: <CreditCard size={16} />, // React components, strings, or emoji
-    },
-  ])
-
-  return <div>...</div>
-}
-```
-
-### 3. Use the pre-wired cmdk adapter
+`onNavigate` gets the `href` of each selected command that has no `action`.
+`window.location.assign` reloads the page, so pass your router instead. With
+a React Router data router, use the router object:
 
 ```tsx
-import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
-
-function CommandMenu() {
-  return (
-    <CommandPalette
-      dialog
-      placeholder="Type a command or search..."
-      onSelect={(item) => {
-        if (item.href) navigate(item.href)
-        if (item.action) item.action(item)
-      }}
-    />
-  )
-}
+const router = createBrowserRouter(routes)
+const config = { onNavigate: (href: string) => router.navigate(href) }
 ```
 
-Or use `config.onSelect` on the provider to handle all selections in one place:
+To use `useNavigate()` instead, render the provider inside the router (in a
+root layout route, for example) and `useMemo` the config there. A command's
+`action` runs instead of `onNavigate`, and an `onSelect` on the provider
+config or on `CommandPalette` replaces both.
 
-```tsx
-<CommandEngineProvider
-  config={{
-    onSelect: (item) => {
-      if (item.href) navigate(item.href)
-      if (item.action) item.action(item)
-    },
-  }}
->
-```
-
-### SPA navigation with `onNavigate`
-
-If your commands mostly just navigate (`href`), skip the `onSelect` boilerplate
-and pass `onNavigate` — it's called for any `href`-only command so you can route
-without a full-page reload. `action` and `onSelect` still take priority; only
-plain `href` commands fall through to `onNavigate` (and to `window.location`
-when it's unset):
-
-```tsx
-const navigate = useNavigate() // react-router
-
-<CommandEngineProvider config={{ onNavigate: (href) => navigate(href) }}>
-```
-
-### 4. Or build your own UI with hooks
+### Or build your own UI with hooks
 
 ```tsx
 import { useCommandPalette } from 'cmdk-engine/react'
@@ -211,6 +159,73 @@ function CustomCommandMenu() {
 
 > `select()` records frecency + search history, runs `onSelect` → `action` →
 > `onNavigate`/`href`, and closes the palette — all in one call.
+
+## Styling
+
+`CommandPalette` ships no styles. Style cmdk's `[cmdk-*]` parts and the
+adapter's `data-cmdk-engine-*` attributes from any global stylesheet. This CSS
+gives the look in the screenshot at the top:
+
+```css
+[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); }
+[cmdk-dialog] {
+  position: fixed; top: 15vh; left: 50%; z-index: 50; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+}
+[cmdk-root] {
+  overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #fff; color: #111827; font: 14px/1.4 system-ui, sans-serif;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.2);
+}
+[cmdk-input] {
+  box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
+  border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
+}
+[cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
+[cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
+[cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
+[cmdk-item][data-selected='true'] { background: #f3f4f6; }
+[cmdk-item][data-disabled='true'] { opacity: 0.5; cursor: default; }
+[data-cmdk-engine-item] { display: flex; align-items: center; gap: 8px; }
+[data-cmdk-engine-item-content] { display: flex; flex: 1; flex-direction: column; }
+[data-cmdk-engine-item-description] { font-size: 12px; color: #6b7280; }
+[data-cmdk-engine-item-shortcut] kbd {
+  margin-left: 4px; padding: 0 6px; border: 1px solid #e5e7eb; border-radius: 4px;
+  font: inherit; font-size: 12px;
+}
+[data-cmdk-engine-empty],
+[data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }
+```
+
+Items also carry `data-cmdk-engine-icon` and `data-cmdk-engine-item-label`,
+plus `data-cmdk-engine-item-chevron` when they have children. Nested commands
+add `data-cmdk-engine-breadcrumbs`, with `data-cmdk-engine-breadcrumb-back`,
+`data-cmdk-engine-breadcrumb` and `data-cmdk-engine-breadcrumb-separator`
+inside. cmdk documents its parts in
+[Parts and styling](https://github.com/dip/cmdk#parts-and-styling) and has
+[drop-in stylesheets](https://github.com/dip/cmdk/tree/main/website/styles/cmdk).
+
+With Tailwind (v3 or v4), `@apply` the same utilities to the same selectors in
+your main CSS file:
+
+```css
+[cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
+[cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
+[cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
+[cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
+[cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
+[data-cmdk-engine-item] { @apply flex items-center gap-2; }
+[data-cmdk-engine-item-content] { @apply flex flex-1 flex-col; }
+[data-cmdk-engine-item-description] { @apply text-xs text-gray-500; }
+[data-cmdk-engine-item-shortcut] kbd { @apply ml-1 rounded border border-gray-200 px-1.5 font-sans text-xs; }
+[data-cmdk-engine-empty], [data-cmdk-engine-loading] { @apply p-4 text-center text-gray-500; }
+```
+
+To style per instance instead, `CommandPalette` passes `className`,
+`overlayClassName`, `contentClassName`, `inputClassName`, `listClassName`,
+`groupClassName`, `itemClassName` and `emptyClassName` to those parts.
 
 ---
 
@@ -332,6 +347,38 @@ useCommandRegister([
 
 > **Note:** access filtering is a UI concern, not a security boundary. Always
 > enforce permissions server-side.
+
+---
+
+## Synonyms
+
+Synonyms work both ways. With this config, typing "money" or "payment" finds
+the "Billing Overview" command from the Quick Start:
+
+```tsx
+const config = {
+  synonyms: {
+    billing: ['money', 'payment', 'credits'],
+    settings: ['preferences', 'config', 'options'],
+  },
+}
+```
+
+- **Query:** when the whole query (trimmed, any case) equals a key or a value,
+  the other terms are searched too: a key brings its values, a value its key.
+  Commands found only this way are listed after the direct matches and never
+  score above the weakest one. Frecency and context boosts apply afterwards,
+  so a command you use often can still move up.
+- **Commands:** with the built-in fuzzy search, a command whose keyword or
+  whole label equals a key or a value also matches the other terms, at a lower
+  weight.
+- **Not expanded:** the query, while it is a partial word ("mon" is searched
+  as typed until "money" is complete) or a longer phrase that contains a
+  synonym ("money transfer").
+
+match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
+matches, so only the query side works with it. When the query expands, a
+custom `searchEngine` is called once more for each extra term.
 
 ---
 
@@ -516,6 +563,18 @@ npx cmdk-engine scan --no-default-exclude
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Standalone binary
+
+The CLI also ships as a standalone binary for macOS on Apple silicon and for
+Linux x64, so it runs without a Node project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
+```
+
+There is no binary for Intel Macs or Linux on ARM yet; use `npx cmdk-engine`
+there.
 
 ### Smart defaults
 

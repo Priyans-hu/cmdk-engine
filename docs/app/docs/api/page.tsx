@@ -129,13 +129,14 @@ const expanded = keywords.expandQuery('money')
       <h2>Provider Config</h2>
 
       <h3><code>onSelect</code></h3>
-      <p>Centralized handler called when any command is selected. Replaces per-component <code>onSelect</code> props.</p>
+      <p>Centralized handler called when any command is selected. Replaces per-component <code>onSelect</code> props. It also replaces the default handling: commands no longer run their <code>action</code> or reach <code>onNavigate</code> on their own. If you only need to route <code>href</code> commands, set <code>onNavigate</code> instead.</p>
       <CodeBlock
         language="tsx"
-        code={`<CommandEngineProvider config={{
+        code={`// router is your React Router data router (createBrowserRouter)
+<CommandEngineProvider config={{
   onSelect: (item) => {
-    if (item.href) navigate(item.href)
     if (item.action) item.action(item)
+    else if (item.href) router.navigate(item.href)
   },
 }}>`}
       />
