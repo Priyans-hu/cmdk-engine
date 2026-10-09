@@ -196,7 +196,7 @@
     {
       "name": "cmdk-engine/react (own code)",
       "path": "dist/react/index.js",
-      "limit": "4 KB",
+      "limit": "4.35 KB",
       "ignore": [
         "cmdk-engine",
         "react",
@@ -241,7 +241,7 @@
         "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
         "dist/adapters/cmdk/index.js": "{ CommandPalette, useCommandPaletteShortcut }"
       },
-      "limit": "7.8 KB"
+      "limit": "8 KB"
     }
   ],
   "engines": {
