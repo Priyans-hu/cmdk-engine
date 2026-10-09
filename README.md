@@ -971,6 +971,32 @@ import type {
 
 ---
 
+## Testing
+
+jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need
+stubs. Without them the first render throws `ResizeObserver is not defined`:
+
+```ts
+// your test setup file
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Element.prototype.scrollIntoView = () => {}
+```
+
+- Render the palette inside `CommandEngineProvider`. To open a `dialog` palette, dispatch
+  `new KeyboardEvent('keydown', { key: 'k', metaKey: true })` on `document`, or call
+  `toggle()` from `useCommandPalette()`.
+- Frecency and search history persist to `localStorage` (`cmdk-frecency` and
+  `cmdk-search-history`). Clear them between tests, or pass `frecency.storage`, so one
+  test's selections do not rank the next test's results.
+- The Base UI adapter needs no stubs. Its dialog stays in the DOM for a moment after
+  Escape, so use `waitFor` before asserting that it is gone.
+
+---
+
 ## cmdk Issues We Solve
 
 | Issue | Description | How We Fix It |
