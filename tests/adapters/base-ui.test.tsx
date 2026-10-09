@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, onTestFinished } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
@@ -625,11 +625,17 @@ describe('CommandPalette (Base UI adapter): props', () => {
     const host = document.createElement('div')
     host.innerHTML = html
     document.body.appendChild(host)
+    // Unmount even if an assertion fails: a live root can still run work after
+    // jsdom is torn down ("window is not defined").
+    let root: ReturnType<typeof hydrateRoot> | undefined
+    onTestFinished(() => {
+      act(() => root?.unmount())
+      host.remove()
+    })
     await act(async () => {
-      hydrateRoot(host, tree)
+      root = hydrateRoot(host, tree)
     })
     expect(errors).not.toHaveBeenCalled()
     errors.mockRestore()
-    host.remove()
   })
 })
