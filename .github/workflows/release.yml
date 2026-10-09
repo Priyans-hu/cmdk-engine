@@ -1,11 +1,23 @@
 name: Release
 
+# A pushed v* tag publishes to npm, creates the GitHub release with the
+# standalone binaries, and updates the Homebrew tap. A manual run never
+# publishes to npm. See RELEASING.md.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Rehearsal: create no GitHub release and push nothing to the tap (npm is never published from a manual run)'
+        type: boolean
+        default: true
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  # 'true' only for a manual run with dry_run checked (the default)
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 
 jobs:
   publish:
@@ -48,6 +60,11 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "$(npm view "cmdk-engine@${VERSION}" version 2>/dev/null)" = "${VERSION}" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Verify pushed tag matches package.json version
         if: github.event_name == 'push'
@@ -61,11 +78,28 @@ jobs:
       # pnpm repos) for versions not yet on npm. It does not consume changesets;
       # `changeset version` did that in the version PR.
       - name: Publish to npm via Changesets
-        run: bun run release
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ steps.meta.outputs.published }}" = "true" ]; then
+            echo "::warning::cmdk-engine@${{ steps.meta.outputs.version }} is already on npm, so this run publishes nothing (and adds no provenance)."
+          fi
+          bun run release
         env:
           # Fallback when trusted publishing is not set up: npm tries OIDC first
           # and uses this token only when that fails.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # npm 11 refuses a publish dry run over a version that is already on npm,
+      # so that case is packed instead.
+      - name: Rehearse the npm publish
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ steps.meta.outputs.published }}" = "true" ]; then
+            echo "::notice::cmdk-engine@${{ steps.meta.outputs.version }} is already on npm. Packing instead of a publish dry run."
+            npm pack --dry-run
+          else
+            npm publish --dry-run
+          fi
 
   # Build the standalone binaries as workflow artifacts. The release job
   # attaches them once all three have built.
@@ -123,9 +157,10 @@ jobs:
   # One GitHub release with every binary, only after all three built. With
   # assets, `gh release create` makes a draft, uploads them, then publishes it,
   # so install.sh (which reads releases/latest) never sees a release without
-  # binaries.
+  # binaries. Skipped in a rehearsal.
   release:
     needs: [publish, binaries]
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -149,9 +184,12 @@ jobs:
             gh release create "$TAG" dist/* --title "$TAG" --generate-notes --verify-tag
           fi
 
-  # Update the Homebrew tap formula once the release has its binaries.
+  # Update the Homebrew tap formula. A rehearsal stops at `git push --dry-run`,
+  # which still checks that HOMEBREW_TAP_TOKEN can push to the tap.
   update-homebrew:
     needs: [publish, binaries, release]
+    # Runs after the release, or after the binaries when a rehearsal skips it.
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -224,4 +262,8 @@ jobs:
           else
             git commit -m "Update cmdk-engine to ${{ steps.meta.outputs.version }}"
           fi
-          git push
+          if [ "$DRY_RUN" = "true" ]; then
+            git push --dry-run
+          else
+            git push
+          fi
