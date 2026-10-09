@@ -52,6 +52,11 @@ export const DOCS_NAV: NavSection[] = [
         description: 'Every export, option and hook.',
       },
       {
+        label: 'Adapters',
+        href: '/docs/adapters',
+        description: 'The cmdk, Base UI and React Router adapters, with props and differences.',
+      },
+      {
         label: 'Examples',
         href: '/docs/examples',
         description: 'React Router, RBAC, a custom UI and a pre-commit hook.',
