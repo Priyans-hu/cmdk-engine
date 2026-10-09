@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Rehearsal: create no GitHub release and push nothing to the tap (npm is never published from a manual run)'
+        description: 'Rehearsal: no GitHub release, no tap push. Unchecked, the run must be on the release tag (--ref vX.Y.Z). npm is never published from a manual run.'
         type: boolean
         default: true
 
@@ -30,6 +30,23 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
+
+      # A manual run that creates a release must run on the release tag itself,
+      # so the release never gets (or, with --clobber, swaps in) binaries built
+      # from other code. A tag push always runs on its own tag.
+      - name: Check that a non-dry manual run is on the release tag
+        if: github.event_name == 'workflow_dispatch' && !inputs.dry_run
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          if ! git fetch --no-tags --depth=1 origin "+refs/tags/${TAG}:refs/tags/${TAG}"; then
+            echo "::error::Tag ${TAG} does not exist. A manual run with dry_run unchecked only re-releases an existing tag."
+            exit 1
+          fi
+          TAG_SHA=$(git rev-parse "${TAG}^{commit}")
+          if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::${TAG} is commit ${TAG_SHA}, but this run is on ${GITHUB_SHA}. Run it on the tag: gh workflow run release.yml --ref ${TAG} -f dry_run=false"
+            exit 1
+          fi
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -147,12 +164,14 @@ jobs:
             dist/${{ matrix.binary_name }}
             dist/${{ matrix.binary_name }}.sha256
           if-no-files-found: error
+          overwrite: true
 
       - uses: actions/upload-artifact@v7
         with:
           name: checksum-${{ matrix.target }}
           path: dist/${{ matrix.binary_name }}.sha256
           if-no-files-found: error
+          overwrite: true
 
   # One GitHub release with every binary, only after all three built. With
   # assets, `gh release create` makes a draft, uploads them, then publishes it,
