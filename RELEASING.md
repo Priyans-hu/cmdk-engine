@@ -6,7 +6,7 @@
 
 With trusted publishing, the workflow publishes with a short-lived OIDC token from GitHub instead of a stored npm token, and npm adds provenance automatically.
 
-1. Add it right before you tag: a new trusted publisher expires if no publish uses it within two days.
+1. Add it right before you tag: a new trusted publisher expires if it has not completed a successful publish within two days. npm does not check the configuration when you save it, so the first publish is its only test, and a wrong organization, repository or workflow filename shows up as a failed publish of the tag.
 2. On npmjs.com, open the `cmdk-engine` package, then **Settings** > **Trusted publishing**, and add a GitHub Actions publisher:
    - Organization or user: `Priyans-hu`
    - Repository: `cmdk-engine`
@@ -35,6 +35,8 @@ The rehearsal:
 - writes the Homebrew formula and runs `git push --dry-run` against the tap, which fails if `HOMEBREW_TAP_TOKEN` cannot push.
 
 It publishes nothing to npm, creates no GitHub release and pushes nothing to the tap. Rehearse after the version PR merges and before you tag, so the publish dry run covers the new version.
+
+A rehearsal cannot test the trusted publisher setup, because npm validates it only on the first real publish. Keep the `NPM_TOKEN` fallback until a release has published through OIDC.
 
 A manual run with dry_run unchecked still never publishes to npm. It creates (or updates, replacing the binaries) the GitHub release for the version in `package.json` and pushes the formula. It stops at once unless it runs on that version's tag, so release binaries always come from the tagged commit. Use it to retry the release steps of a tag:
 
