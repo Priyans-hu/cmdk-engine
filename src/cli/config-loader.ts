@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { CmdkEngineConfig } from '../core/types'
 import { isName, lineAt, splitCommas, stripTypeSuffix, toTree, tokenize, type Node } from './lexer'
 
@@ -25,7 +26,9 @@ export async function loadConfig(configPath: string): Promise<CmdkEngineConfig> 
   }
 
   if (fullPath.endsWith('.js') || fullPath.endsWith('.mjs') || fullPath.endsWith('.cjs')) {
-    const mod = await import(fullPath)
+    // A file URL, not a path: on Windows import('C:\\...') fails, and a '#' or '%'
+    // in a path would be read as URL syntax
+    const mod = await import(pathToFileURL(fullPath).href)
     return (mod.default ?? mod) as CmdkEngineConfig
   }
 
