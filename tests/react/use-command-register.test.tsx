@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { CommandEngineProvider, useEngineContext } from '../../src/react/context'
 import { useCommandRegister } from '../../src/react/use-command-register'
+import { useCommandPalette } from '../../src/react/use-command-palette'
+import type { CommandItem } from '../../src/core/types'
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <CommandEngineProvider>{children}</CommandEngineProvider>
@@ -63,5 +65,81 @@ describe('useCommandRegister', () => {
     rerender({ label: 'Second' })
     // deps=[] → registered once with the initial shape.
     expect(result.current.getById('a')?.label).toBe('First')
+  })
+})
+
+describe('useCommandRegister without deps', () => {
+  function renderCommands<P>(commands: (props: P) => CommandItem[], initialProps: P) {
+    return renderHook(
+      (props: P) => {
+        useCommandRegister(commands(props))
+        return { palette: useCommandPalette(), registry: useEngineContext().registry }
+      },
+      { wrapper, initialProps },
+    )
+  }
+
+  // Registry updates reach subscribers in a microtask.
+  const flush = () => act(async () => {})
+  const shown = (result: { current: { palette: ReturnType<typeof useCommandPalette> } }) =>
+    result.current.palette.results.map((r) => r.item.id)
+
+  it('shows a command when a boolean when turns true', async () => {
+    const { result, rerender } = renderCommands(
+      ({ on }: { on: boolean }) => [{ id: 'admin', label: 'Admin', when: on }],
+      { on: false },
+    )
+    await flush()
+    expect(shown(result)).toEqual([])
+
+    rerender({ on: true })
+    await flush()
+
+    expect(shown(result)).toEqual(['admin'])
+  })
+
+  it('re-evaluates a when function that closes over props', async () => {
+    const { result, rerender } = renderCommands(
+      ({ plan }: { plan: string }) => [
+        { id: 'sso', label: 'SSO settings', when: () => plan === 'enterprise' },
+      ],
+      { plan: 'free' },
+    )
+    await flush()
+    expect(shown(result)).toEqual([])
+
+    rerender({ plan: 'enterprise' })
+    await flush()
+
+    expect(shown(result)).toEqual(['sso'])
+  })
+
+  it('updates scope and a text icon', async () => {
+    const { result, rerender } = renderCommands(
+      ({ page }: { page: string }) => [
+        { id: 'x', label: 'X', scope: [`/${page}`], icon: page === 'a' ? '🅰️' : '🅱️' },
+      ],
+      { page: 'a' },
+    )
+    await flush()
+
+    rerender({ page: 'b' })
+    await flush()
+
+    expect(result.current.registry.getById('x')).toMatchObject({ scope: ['/b'], icon: '🅱️' })
+  })
+
+  it('does not re-register for a new element icon on every render', async () => {
+    const { result, rerender } = renderCommands(
+      (_: { n: number }) => [{ id: 'x', label: 'X', icon: <span>icon</span> }],
+      { n: 1 },
+    )
+    await flush()
+    const registered = result.current.registry.getById('x')
+
+    rerender({ n: 2 })
+    await flush()
+
+    expect(result.current.registry.getById('x')).toBe(registered)
   })
 })
