@@ -33,8 +33,6 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 
 ## Installation
 
-### Library (for React projects)
-
 ```bash
 # npm
 npm install cmdk-engine cmdk
@@ -55,18 +53,6 @@ yarn add cmdk-engine cmdk
 > `react-router-dom` v6 or v7 (for the React Router adapter; v8 ships only
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
-
-### Standalone CLI (no Node project required)
-
-The `cmdk-engine` route scanner also ships as a standalone binary:
-
-```bash
-# Homebrew
-brew install Priyans-hu/tap/cmdk-engine
-
-# curl installer (macOS/Linux)
-curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
-```
 
 ---
 
@@ -569,6 +555,18 @@ npx cmdk-engine scan --no-default-exclude
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Standalone binary
+
+The CLI also ships as a standalone binary for macOS on Apple silicon and for
+Linux x64, so it runs without a Node project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install.sh | bash
+```
+
+There is no binary for Intel Macs or Linux on ARM yet; use `npx cmdk-engine`
+there.
 
 ### Smart defaults
 
