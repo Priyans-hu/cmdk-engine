@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { Command as Cmdk } from 'cmdk'
 import { useCommandPalette } from '../../react/use-command-palette'
@@ -204,12 +204,26 @@ export function CommandPalette({
 
   // A dialog that (re)opens starts on the first enabled item, not on the last
   // highlight. Adjusted during render (not in an effect) so the old highlight
-  // never shows.
+  // never shows. It also notes what has focus, before the dialog takes it.
   const [wasOpen, setWasOpen] = useState(isOpen)
+  const returnFocusTo = useRef<HTMLElement | null>(null)
   if (dialog && isOpen !== wasOpen) {
     setWasOpen(isOpen)
-    if (isOpen) setActiveValue(firstEnabledId)
+    if (isOpen) {
+      setActiveValue(firstEnabledId)
+      returnFocusTo.current = document.activeElement as HTMLElement | null
+    }
   }
+
+  // cmdk's Dialog has no Radix trigger to return focus to on close, so give it
+  // back to what had it before, unless something outside took it meanwhile.
+  const dialogRootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const focused = document.activeElement
+    if (!isOpen && (focused === document.body || dialogRootRef.current?.contains(focused))) {
+      returnFocusTo.current?.focus({ preventScroll: true })
+    }
+  }, [isOpen])
 
   // Fall back to the first enabled item whenever the active id is no longer
   // rendered (e.g. the previously-highlighted item was filtered out mid-list)
@@ -297,6 +311,7 @@ export function CommandPalette({
         container={container}
         value={effectiveValue}
         onValueChange={setActiveValue}
+        ref={dialogRootRef}
       >
         {content}
       </Cmdk.Dialog>
