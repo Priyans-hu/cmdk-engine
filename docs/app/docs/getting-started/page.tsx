@@ -26,25 +26,27 @@ yarn add cmdk-engine cmdk`}
       <h2>1. Add the Provider</h2>
       <p>
         Wrap your app with <code>CommandEngineProvider</code>. This initializes the command registry,
-        search engine, and frecency tracker.
+        search engine, and frecency tracker. Define <code>config</code> once, outside the component:
+        a new object on every render rebuilds the engine.
       </p>
       <CodeBlock
         language="tsx"
         filename="App.tsx"
         code={`import { CommandEngineProvider } from 'cmdk-engine/react'
 
+const config = {
+  synonyms: {
+    billing: ['money', 'payment', 'credits'],
+  },
+  // Runs for commands with an href and no action. With a React Router
+  // data router, use (href) => router.navigate(href) to skip the reload.
+  onNavigate: (href: string) => window.location.assign(href),
+  frecency: { showRecent: true },
+}
+
 function App() {
   return (
-    <CommandEngineProvider config={{
-      synonyms: {
-        billing: ['money', 'payment', 'credits'],
-      },
-      onSelect: (item) => {
-        if (item.href) navigate(item.href)
-        if (item.action) item.action(item)
-      },
-      frecency: { showRecent: true },
-    }}>
+    <CommandEngineProvider config={config}>
       <YourApp />
     </CommandEngineProvider>
   )
@@ -84,15 +86,7 @@ function BillingPage() {
         code={`import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
 
 function CommandMenu() {
-  return (
-    <CommandPalette
-      dialog
-      placeholder="Search commands..."
-      onSelect={(item) => {
-        if (item.href) navigate(item.href)
-      }}
-    />
-  )
+  return <CommandPalette dialog placeholder="Search commands..." />
 }`}
       />
 
