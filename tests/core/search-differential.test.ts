@@ -127,10 +127,12 @@ describe('createFuzzySearch · differential against the 0.5 search (plain ASCII)
       const tail = after.slice(before.length)
       const ids = after.map((r) => r.item.id)
       expect(new Set(ids).size).toBe(ids.length)
+      // Like every result list, sorted by score rounded to 0.001, then priority.
       const floor = Math.min(...before.map((r) => r.score))
+      const grid = (score: number) => Math.round(score * 1000)
       tail.forEach((r, n) => {
         expect(r.score).toBeLessThanOrEqual(floor)
-        if (n > 0) expect(r.score).toBeLessThanOrEqual(tail[n - 1].score)
+        if (n > 0) expect(grid(r.score)).toBeLessThanOrEqual(grid(tail[n - 1].score))
       })
       appended += tail.length
     }

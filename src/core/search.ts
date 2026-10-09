@@ -47,6 +47,11 @@ function fold(value: string): [text: string, initials: string] {
  *
  * Query and fields are compared folded (see `foldText`): accents, Unicode
  * compatibility forms, case and repeated spaces do not matter.
+ *
+ * A query of several words also matches items where every word matches some
+ * field, in any order ("overview billing" finds "Billing Overview"), scored
+ * 0.9 × the weakest word. They come after the items that match the whole
+ * query, and never score above the lowest of those.
  */
 export function createFuzzySearch(): SearchEngine {
   return {
@@ -62,31 +67,52 @@ export function createFuzzySearch(): SearchEngine {
       const normalizedQuery = foldText(query)
       // Only marks or a spacing accent (a dead key while typing): nothing to match.
       if (!normalizedQuery) return []
+      // Longest word first: most items fail the any-order check on it.
+      const words = normalizedQuery.split(' ').sort((a, b) => b.length - a.length)
       const results: ScoredItem[] = []
+      const anyOrder: ScoredItem[] = []
+      let floor = 1
 
       for (const item of items) {
         // `hidden` only excludes items from the empty-query browse list (handled above).
         // With a non-empty query, hidden items are still searchable — just not browsable.
-        const score = scoreItem(normalizedQuery, item)
+        let score = scoreItem(normalizedQuery, item)
         if (score > 0) {
           results.push({ item, score })
+          floor = Math.min(floor, score)
+        } else if (words.length > 1) {
+          // Every word must match some field, in any order.
+          score = 1
+          for (const word of words) {
+            score = Math.min(score, scoreItem(word, item))
+            if (!score) break
+          }
+          if ((score *= 0.9) >= 0.15) anyOrder.push({ item, score })
         }
       }
 
-      // Sort by score descending, then by priority descending.
-      // Scores are rounded to a fixed grid first so "approximately equal"
-      // is a transitive relation (an epsilon compare is not, and can produce
-      // inconsistent orderings under TimSort).
-      results.sort((a, b) => {
-        const aScore = Math.round(a.score * 1000)
-        const bScore = Math.round(b.score * 1000)
-        if (aScore !== bScore) return bScore - aScore
-        return (b.item.priority ?? 0) - (a.item.priority ?? 0)
-      })
+      // Any-order matches follow, best first, scored at most the lowest
+      // whole-query match so the list stays sorted by score.
+      results.sort(byScore)
+      for (const scored of anyOrder.sort(byScore)) {
+        scored.score = Math.min(scored.score, floor)
+        results.push(scored)
+      }
 
       return results
     },
   }
+}
+
+// Sort by score descending, then by priority descending.
+// Scores are rounded to a fixed grid first so "approximately equal"
+// is a transitive relation (an epsilon compare is not, and can produce
+// inconsistent orderings under TimSort).
+function byScore(a: ScoredItem, b: ScoredItem): number {
+  const aScore = Math.round(a.score * 1000)
+  const bScore = Math.round(b.score * 1000)
+  if (aScore !== bScore) return bScore - aScore
+  return (b.item.priority ?? 0) - (a.item.priority ?? 0)
 }
 
 /**
