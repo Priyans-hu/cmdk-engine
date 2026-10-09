@@ -54,7 +54,7 @@ const PATHS = [
   '/billing/overview',
 ]
 
-describe('exclude globs (QA-11)', () => {
+describe('exclude globs', () => {
   it.each([
     ['/_*', '/_internal', true],
     ['/_*', '/_internal/logs', true],

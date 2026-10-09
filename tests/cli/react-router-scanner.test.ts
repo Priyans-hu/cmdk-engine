@@ -24,7 +24,7 @@ afterEach(() => {
   rmSync(TEMP_DIR, { recursive: true, force: true })
 })
 
-describe('React Router CLI scan: metadata belongs to its own route (QA-6)', () => {
+describe('React Router CLI scan: metadata belongs to its own route', () => {
   it('does not copy handle.command onto neighbouring routes', () => {
     const routes = scan(`
       export const routes = [
@@ -76,7 +76,7 @@ describe('React Router CLI scan: metadata belongs to its own route (QA-6)', () =
   })
 })
 
-describe('React Router CLI scan: no lost routes (QA-7)', () => {
+describe('React Router CLI scan: no lost routes', () => {
   it('keeps the routes after a /* path when a block comment follows', () => {
     const routes = scan(`
       export const routes = [
@@ -150,7 +150,7 @@ describe('React Router CLI scan: no lost routes (QA-7)', () => {
   })
 })
 
-describe('React Router CLI scan: quoted values (QA-9)', () => {
+describe('React Router CLI scan: quoted values', () => {
   it('keeps quotes and commas inside labels and keywords', () => {
     const routes = scan(`
       export const routes = [

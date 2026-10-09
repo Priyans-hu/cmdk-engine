@@ -46,7 +46,7 @@ describe('uniqueIds', () => {
   })
 })
 
-describe('scan: every route keeps a unique id (QA-5)', () => {
+describe('scan: every route keeps a unique id', () => {
   it('writes unique ids for routes whose ids collide, non-ASCII paths included', async () => {
     const app = join(TEMP_DIR, 'app')
     for (const dir of ['', '設定', '配置', '설정', 'a_b', 'ab']) {
