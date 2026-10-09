@@ -92,6 +92,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     [activeCommands, keywords],
   )
 
+  // Label of the "Recent" group while it can show (empty query with showRecent)
+  const recentLabel =
+    config.frecency?.showRecent && !searchQuery.trim()
+      ? (config.frecency.recentLabel ?? t('group.recent'))
+      : undefined
+
   // Pipeline: visibility → access → search → rank by frecency → context boost.
   // (Visibility + access stay here so they see live `when`/permission state.)
   const results = useMemo<ScoredItem[]>(() => {
@@ -120,10 +126,8 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }
 
     // 5. Inject "Recent" group when search is empty
-    const frecencyConfig = config.frecency
-    if (frecencyConfig?.showRecent) {
-      const recentCount = frecencyConfig.recentCount ?? 5
-      const recentLabel = frecencyConfig.recentLabel ?? t('group.recent')
+    if (recentLabel) {
+      const recentCount = config.frecency?.recentCount ?? 5
       const recentIds = frecency.getRecent(recentCount)
 
       if (recentIds.length > 0) {
@@ -157,7 +161,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return frecency.rank(searched, 0.3)
   }, [
     enrichedCommands, searchQuery, search, keywords, accessFilter, frecency,
-    contextEngine, t, config.context, config.frecency,
+    contextEngine, recentLabel, config.context, config.frecency,
   ])
 
   // Limit results
@@ -196,8 +200,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
 
   // Group results by group field (for consumers building custom UIs)
   const groupedResults = useMemo<GroupedResult[]>(() => {
-    return groupManager.groupResults(finalResults, searchQuery)
-  }, [finalResults, groupManager, searchQuery])
+    const grouped = groupManager.groupResults(finalResults, searchQuery)
+    // "Recent" leads the browse list, above the configured groups.
+    const recent = grouped.findIndex((g) => g.group.id === recentLabel)
+    if (recent > 0) grouped.unshift(...grouped.splice(recent, 1))
+    return grouped
+  }, [finalResults, groupManager, searchQuery, recentLabel])
 
   // Extract active groups
   const groups = useMemo<CommandGroup[]>(() => {
