@@ -7,6 +7,7 @@ import type { UseCommandPaletteReturn } from '../../src/react/use-command-palett
 import { useCommandRegister } from '../../src/react/use-command-register'
 import { createInMemoryStorage } from '../../src/core/frecency'
 import { createSimpleAccessProvider } from '../../src/core/access-control'
+import { ASYNC_SOURCE } from '../../src/react/async-sources'
 import type { AsyncSource, CommandEngineConfig, CommandItem } from '../../src/core/types'
 
 type Load = AsyncSource['load']
@@ -1174,5 +1175,94 @@ describe('async sources · href allowlist', () => {
     act(() => result.current.setSearch('link'))
     await advance(200)
     expect(result.current.results[0].item.href).toBe('myapp://local')
+  })
+})
+
+describe('async sources · source marker', () => {
+  const marker = (it: CommandItem) =>
+    (it as CommandItem & { [ASYNC_SOURCE]?: string })[ASYNC_SOURCE]
+
+  it('a registered command with meta._asyncSource stays a registered command', async () => {
+    const storage = createInMemoryStorage()
+    const onNavigate = vi.fn()
+    const local = item('local', 'Local deep link', {
+      href: 'myapp://local',
+      meta: { _asyncSource: 'remote' },
+    })
+    const { result } = renderPalette(
+      {
+        frecency: { storage },
+        onNavigate,
+        asyncSources: [{ id: 'remote', load: async () => [] }],
+      },
+      [local],
+    )
+    await act(async () => {})
+
+    act(() => result.current.setSearch('zzz'))
+    await advance(200)
+    expect(result.current.results).toEqual([])
+
+    act(() => result.current.setSearch('deep'))
+    await advance(200)
+    expect(ids(result.current)).toEqual(['local'])
+    expect(result.current.results[0].item.href).toBe('myapp://local')
+
+    act(() => result.current.select('local'))
+    expect(onNavigate).toHaveBeenCalledWith(
+      'myapp://local',
+      expect.objectContaining({ id: 'local' }),
+    )
+    expect(storage.getAll().map((e) => e.id)).toEqual(['local'])
+  })
+
+  it('async items keep the marker through filtering, grouping and select(), outside meta', async () => {
+    const storage = createInMemoryStorage()
+    const onSelect = vi.fn()
+    const { result } = renderPalette({
+      frecency: { storage },
+      onSelect,
+      asyncSources: [
+        {
+          id: 'filtered',
+          load: async () => [
+            item('remote', 'Remote thing', {
+              group: 'Remote',
+              meta: { keep: 1 },
+              children: [item('remote-child', 'Remote child')],
+            }),
+          ],
+        },
+        {
+          id: 'srv',
+          shouldFilter: false,
+          load: async () => [item('server', 'Server thing', { meta: { keep: 2 } })],
+        },
+      ],
+    })
+
+    act(() => result.current.setSearch('thing'))
+    await advance(200)
+
+    const byId = Object.fromEntries(result.current.results.map((r) => [r.item.id, r.item]))
+    expect(marker(byId.remote)).toBe('filtered') // survived the enrichment copy
+    expect(marker(byId.server)).toBe('srv')
+    expect(byId.remote.meta).toEqual({ keep: 1 })
+    expect(byId.server.meta).toEqual({ keep: 2 })
+    for (const group of result.current.groupedResults) {
+      for (const scored of group.items) expect(marker(scored.item)).toBeDefined()
+    }
+
+    act(() => result.current.select('server'))
+    expect(marker(onSelect.mock.calls[0][0])).toBe('srv')
+
+    act(() => result.current.setSearch('thing'))
+    await advance(200)
+    act(() => result.current.select('remote')) // has children: drills down
+    expect(marker(result.current.results[0].item)).toBe('filtered')
+    act(() => result.current.select('remote-child'))
+    expect(marker(onSelect.mock.calls[1][0])).toBe('filtered')
+
+    expect(storage.getAll()).toEqual([])
   })
 })

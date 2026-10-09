@@ -7,8 +7,15 @@ const DEFAULT_MAX_RESULTS = 10
 /** The only `href` protocols kept on async items (relative URLs resolve to `http:`) */
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
 
-/** Meta key set on every async item (and its children) to the id of its source */
-export const ASYNC_SOURCE_META = '_asyncSource'
+/**
+ * Own property set on every async item (and its children) to its source id.
+ * A symbol, so it never shows in `meta` and a registered command cannot
+ * collide with it; `Symbol.for` keeps one identity if this code loads twice.
+ * Object spread copies it, so it survives the pipeline's item copies.
+ */
+export const ASYNC_SOURCE: unique symbol = Symbol.for('cmdk-engine.asyncSource')
+
+type AsyncItem = CommandItem & { [ASYNC_SOURCE]?: string }
 
 /** What one source loaded for the current request */
 export interface LoadedSource {
@@ -248,7 +255,7 @@ function toAsyncItems(
 }
 
 function toAsyncItem(item: CommandItem, sourceId: string): CommandItem {
-  const copy: CommandItem = { ...item, meta: { ...item.meta, [ASYNC_SOURCE_META]: sourceId } }
+  const copy: AsyncItem = { ...item, [ASYNC_SOURCE]: sourceId }
   // Remote hrefs reach window.location and custom renderItem anchors, so the
   // check happens here, once, for every consumer: anything else is stripped.
   if ('href' in copy && !isSafeHref(copy.href)) delete copy.href

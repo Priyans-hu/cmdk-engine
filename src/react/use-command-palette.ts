@@ -3,7 +3,7 @@ import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from 
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext, usePaletteState } from './context'
-import { ASYNC_SOURCE_META, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
+import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
 
 const NO_RESULTS: ScoredItem[] = []
 
@@ -252,7 +252,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
 
       // Async items are never recorded: their ids may not exist on the next load.
-      if (item.meta?.[ASYNC_SOURCE_META] === undefined) frecency.recordUsage(item.id)
+      if (!(ASYNC_SOURCE in item)) frecency.recordUsage(item.id)
 
       // Record search history if enabled
       if (config.searchHistory?.enabled && searchQuery.trim()) {
