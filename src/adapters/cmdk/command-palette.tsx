@@ -269,9 +269,6 @@ export function CommandPalette({
         onKeyDown={handleKeyDown}
       />
       <Cmdk.List className={listClassName} label={resolvedListLabel}>
-        {results.length === 0 && !isLoading && (
-          <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
-        )}
         {groupedResults.map(({ group, items }) => (
           <Cmdk.Group
             key={group.id}
@@ -283,11 +280,16 @@ export function CommandPalette({
             {renderItems(items)}
           </Cmdk.Group>
         ))}
-        {/* After the groups, so results don't shift while sources load */}
-        {isLoading && (
-          <Cmdk.Loading label={t('palette.loading')}>{resolvedRenderLoading()}</Cmdk.Loading>
-        )}
       </Cmdk.List>
+      {/* The empty and loading rows sit after the list, not in it: a listbox may
+          only hold groups and options. Loading comes last, so results don't shift
+          while sources load. */}
+      {results.length === 0 && !isLoading && (
+        <Cmdk.Empty className={emptyClassName}>{resolvedRenderEmpty()}</Cmdk.Empty>
+      )}
+      {isLoading && (
+        <Cmdk.Loading label={t('palette.loading')}>{resolvedRenderLoading()}</Cmdk.Loading>
+      )}
       {footer}
     </>
   )

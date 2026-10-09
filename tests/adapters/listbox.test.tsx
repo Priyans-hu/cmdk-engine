@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { CommandEngineProvider } from '../../src/react/context'
 import { useCommandRegister } from '../../src/react/use-command-register'
 import { createDefaultTranslation } from '../../src/core/i18n'
@@ -57,6 +57,11 @@ describe.each([
 
   const listName = () => screen.getByRole('listbox').getAttribute('aria-label')
 
+  const type = (value: string) =>
+    act(async () => {
+      fireEvent.input(screen.getByRole('combobox'), { target: { value }, inputType: 'insertText' })
+    })
+
   describe('accessible name', () => {
     it('is "Suggestions" by default', () => {
       renderPalette()
@@ -80,6 +85,35 @@ describe.each([
       const blank: TranslationFn = (key) => (key === 'palette.list' ? '' : english(key))
       renderPalette({ t: blank })
       expect(listName()).toBe('Suggestions')
+    })
+  })
+
+  describe('rows that are not options', () => {
+    it('renders the empty state outside the listbox', async () => {
+      renderPalette()
+      await type('zzz')
+      const empty = screen.getByText('No results found.')
+      expect(empty.hasAttribute('data-cmdk-engine-empty')).toBe(true)
+      expect(screen.getByRole('listbox').contains(empty)).toBe(false)
+    })
+
+    it('renders the loading row outside the listbox, with or without results', async () => {
+      renderPalette({
+        asyncSources: [
+          {
+            id: 'remote',
+            debounceMs: 0,
+            trigger: () => true,
+            load: () => new Promise<CommandItem[]>(() => {}),
+          },
+        ],
+      })
+      for (const query of ['bil', 'zzz']) {
+        await type(query)
+        const loading = await screen.findByText('Loading...')
+        expect(loading.hasAttribute('data-cmdk-engine-loading')).toBe(true)
+        expect(screen.getByRole('listbox').contains(loading)).toBe(false)
+      }
     })
   })
 })
