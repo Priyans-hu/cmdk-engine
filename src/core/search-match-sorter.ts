@@ -1,5 +1,6 @@
-import { matchSorter } from 'match-sorter'
+import { matchSorter, rankings } from 'match-sorter'
 import type { MatchSorterOptions as SorterOptions } from 'match-sorter'
+import { foldText } from './search'
 import type { CommandItem, SearchEngine, ScoredItem } from './types'
 
 /**
@@ -10,6 +11,12 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  * match-sorter provides excellent ranking for "type what you remember" UX,
  * with configurable thresholds and multi-key support. It ranks every search,
  * including the first, so results do not change once it loads.
+ *
+ * The query is folded like the built-in search's (see `createFuzzySearch`);
+ * command values keep match-sorter's own accent handling. Synonym keywords
+ * from the keyword engine match too, ranked at most CONTAINS, so below direct
+ * label, description and keyword matches (a `threshold` above CONTAINS drops
+ * them).
  *
  * @param options.threshold - match-sorter threshold (default: match-sorter's, MATCHES)
  * @param options.keys - Additional keys to search beyond defaults
@@ -27,14 +34,18 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
 
       // With a non-empty query, hidden items stay searchable (searchable but
       // not browsable) — matching createFuzzySearch()'s documented contract.
-      const keys: string[] = [
+      const q = foldText(query)
+      // Only marks or a spacing accent (a dead key while typing): nothing to match.
+      if (!q) return []
+      const keys = [
         'label',
         'description',
         'keywords',
+        { key: 'meta._synonymKeywords', maxRanking: rankings.CONTAINS },
         ...(options?.keys ?? []),
       ]
 
-      const matched = matchSorter(items, query, {
+      const matched = matchSorter(items, q, {
         keys,
         // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
         // plain number (Ranking values are numeric), so bridge at this boundary.
