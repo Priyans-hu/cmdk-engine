@@ -2,3 +2,5 @@ node_modules/
 dist/
 .next/
 package-lock.json
+next-env.d.ts
+command-routes.json

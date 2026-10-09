@@ -284,6 +284,7 @@ repo, and each installs `cmdk-engine` from npm, so you can copy one out.
 | Example | What it shows | Try it |
 |---|---|---|
 | [Vite + React Router](examples/vite-react-router) | Commands from the route tree with `scanRoutes`, the provider inside the router, this Styling CSS, and the same palette on Base UI with `?adapter=base-ui` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/vite-react-router?file=src/layout.tsx) |
+| [Next.js App Router](examples/nextjs-app-router) | A `'use client'` provider file under a server layout, `router.push` as `onNavigate`, and `[locale]` pages found by `cmdk-engine scan --include-dynamic locale` and filled in with `sitemapToCommands` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/nextjs-app-router?file=components/command-menu.tsx) |
 | [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
 
 The docs site is a live demo too: Cmd+K there searches its own pages.

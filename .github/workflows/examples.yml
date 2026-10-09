@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [vite-react-router, shadcn]
+        example: [vite-react-router, nextjs-app-router, shadcn]
     steps:
       - uses: actions/checkout@v6
 
