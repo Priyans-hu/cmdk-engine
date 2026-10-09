@@ -72,117 +72,77 @@ curl -fsSL https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/install
 
 ## Quick Start
 
-### 1. Wrap your app with the provider
+One file, with the cmdk adapter. Paste it into a React app, then press Cmd+K
+(Ctrl+K on Windows and Linux):
 
 ```tsx
-import { CommandEngineProvider } from 'cmdk-engine/react'
+// App.tsx
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 
-function App() {
+// Define config once, outside the component.
+const config = { onNavigate: (href: string) => window.location.assign(href) }
+
+function Commands() {
+  useCommandRegister([
+    { id: 'home', label: 'Home', href: '/' },
+    { id: 'billing', label: 'Billing Overview', href: '/billing', keywords: ['invoices'], group: 'Billing' },
+  ])
+  return null
+}
+
+function Palette() {
+  useCommandPaletteShortcut() // Cmd+K / Ctrl+K. Must be inside the provider.
+  return <CommandPalette dialog placeholder="Search..." />
+}
+
+export default function App() {
   return (
-    <CommandEngineProvider
-      config={{
-        synonyms: {
-          billing: ['money', 'payment', 'credits'],
-          settings: ['preferences', 'config', 'options'],
-        },
-      }}
-    >
-      <YourApp />
+    <CommandEngineProvider config={config}>
+      <Commands />
+      <Palette />
+      {/* your app */}
     </CommandEngineProvider>
   )
 }
 ```
 
-### Synonyms
+The palette starts closed. Cmd+K opens it, typing "invoices" narrows the list
+to Billing Overview, and Enter goes to `/billing` and closes the palette. It
+has no styles until you add some (see [Styling](#styling)).
 
-Synonyms work both ways. With the config above, typing "money" or "payment"
-finds the "Billing Overview" command registered below.
+`useCommandPaletteShortcut()` binds Cmd+K / Ctrl+K. Call it in a component
+**inside** `CommandEngineProvider`, like `Palette` above: without it nothing
+opens the dialog, and in the component that renders the provider it throws.
 
-- **Query:** when the whole query (trimmed, any case) equals a key or a value,
-  the other terms are searched too: a key brings its values, a value its key.
-  Commands found only this way are listed after the direct matches and never
-  score above the weakest one. Frecency and context boosts apply afterwards,
-  so a command you use often can still move up.
-- **Commands:** with the built-in fuzzy search, a command whose keyword or
-  whole label equals a key or a value also matches the other terms, at a lower
-  weight.
-- **Not expanded:** the query, while it is a partial word ("mon" is searched
-  as typed until "money" is complete) or a longer phrase that contains a
-  synonym ("money transfer").
+### Splitting it into files
 
-match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
-matches, so only the query side works with it. When the query expands, a
-custom `searchEngine` is called once more for each extra term.
+- **Provider:** wrap your app once, near the root. Define `config` outside
+  components, or `useMemo` it: a new object on every render rebuilds the
+  engine.
+- **Commands:** call `useCommandRegister` in any component under the provider.
+  Its commands go away when that component unmounts, so register app-wide
+  navigation in a layout that stays mounted and page commands in the page.
+- **Palette:** keep `CommandPalette` and `useCommandPaletteShortcut()` together
+  in one component, anywhere under the provider.
 
-### 2. Register commands
+### Navigating with your router
 
-```tsx
-import { useCommandRegister } from 'cmdk-engine/react'
-import { CreditCard } from 'lucide-react'
-
-function BillingPage() {
-  useCommandRegister([
-    {
-      id: 'billing-overview',
-      label: 'Billing Overview',
-      href: '/billing/overview',
-      keywords: ['balance', 'credits'],
-      group: 'Billing',
-      icon: <CreditCard size={16} />, // React components, strings, or emoji
-    },
-  ])
-
-  return <div>...</div>
-}
-```
-
-### 3. Use the pre-wired cmdk adapter
+`onNavigate` gets the `href` of each selected command that has no `action`.
+`window.location.assign` reloads the page, so pass your router instead. With
+a React Router data router, use the router object:
 
 ```tsx
-import { CommandPalette } from 'cmdk-engine/adapters/cmdk'
-
-function CommandMenu() {
-  return (
-    <CommandPalette
-      dialog
-      placeholder="Type a command or search..."
-      onSelect={(item) => {
-        if (item.href) navigate(item.href)
-        if (item.action) item.action(item)
-      }}
-    />
-  )
-}
+const router = createBrowserRouter(routes)
+const config = { onNavigate: (href: string) => router.navigate(href) }
 ```
 
-Or use `config.onSelect` on the provider to handle all selections in one place:
+To use `useNavigate()` instead, render the provider inside the router (in a
+root layout route, for example) and `useMemo` the config there. A command's
+`action` runs instead of `onNavigate`, and an `onSelect` on the provider
+config or on `CommandPalette` replaces both.
 
-```tsx
-<CommandEngineProvider
-  config={{
-    onSelect: (item) => {
-      if (item.href) navigate(item.href)
-      if (item.action) item.action(item)
-    },
-  }}
->
-```
-
-### SPA navigation with `onNavigate`
-
-If your commands mostly just navigate (`href`), skip the `onSelect` boilerplate
-and pass `onNavigate` — it's called for any `href`-only command so you can route
-without a full-page reload. `action` and `onSelect` still take priority; only
-plain `href` commands fall through to `onNavigate` (and to `window.location`
-when it's unset):
-
-```tsx
-const navigate = useNavigate() // react-router
-
-<CommandEngineProvider config={{ onNavigate: (href) => navigate(href) }}>
-```
-
-### 4. Or build your own UI with hooks
+### Or build your own UI with hooks
 
 ```tsx
 import { useCommandPalette } from 'cmdk-engine/react'
@@ -332,6 +292,38 @@ useCommandRegister([
 
 > **Note:** access filtering is a UI concern, not a security boundary. Always
 > enforce permissions server-side.
+
+---
+
+## Synonyms
+
+Synonyms work both ways. With this config, typing "money" or "payment" finds
+the "Billing Overview" command from the Quick Start:
+
+```tsx
+const config = {
+  synonyms: {
+    billing: ['money', 'payment', 'credits'],
+    settings: ['preferences', 'config', 'options'],
+  },
+}
+```
+
+- **Query:** when the whole query (trimmed, any case) equals a key or a value,
+  the other terms are searched too: a key brings its values, a value its key.
+  Commands found only this way are listed after the direct matches and never
+  score above the weakest one. Frecency and context boosts apply afterwards,
+  so a command you use often can still move up.
+- **Commands:** with the built-in fuzzy search, a command whose keyword or
+  whole label equals a key or a value also matches the other terms, at a lower
+  weight.
+- **Not expanded:** the query, while it is a partial word ("mon" is searched
+  as typed until "money" is complete) or a longer phrase that contains a
+  synonym ("money transfer").
+
+match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
+matches, so only the query side works with it. When the query expands, a
+custom `searchEngine` is called once more for each extra term.
 
 ---
 
