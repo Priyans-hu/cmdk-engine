@@ -41,16 +41,33 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
         'label',
         'description',
         'keywords',
-        { key: 'meta._synonymKeywords', maxRanking: rankings.CONTAINS },
+        {
+          key: (item: CommandItem) => (item.meta?._synonymKeywords as string[] | undefined) ?? [],
+          maxRanking: rankings.CONTAINS,
+        },
         ...(options?.keys ?? []),
       ]
 
-      const matched = matchSorter(items, q, {
-        keys,
-        // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
-        // plain number (Ranking values are numeric), so bridge at this boundary.
-        threshold: options?.threshold as SorterOptions<CommandItem>['threshold'],
-      })
+      const sort = (list: CommandItem[], value: string) =>
+        matchSorter(list, value, {
+          keys,
+          // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
+          // plain number (Ranking values are numeric), so bridge at this boundary.
+          threshold: options?.threshold as SorterOptions<CommandItem>['threshold'],
+        })
+
+      let matched = sort(items, q)
+      // Words in any order: commands that match every word follow the
+      // whole-query matches, ranked by the first word. The longest word
+      // filters first, so the others only check its few matches.
+      const words = q.split(' ')
+      if (words.length > 1) {
+        const [first] = words
+        const seen = new Set(matched)
+        const rest = items.filter((item) => !seen.has(item))
+        const hits = words.sort((a, b) => b.length - a.length).reduce(sort, rest)
+        matched = matched.concat(sort(hits, first))
+      }
 
       // Convert to scored items (position-based scoring)
       return matched.map((item, index) => ({
