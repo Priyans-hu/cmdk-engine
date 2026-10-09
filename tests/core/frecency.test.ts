@@ -261,3 +261,32 @@ describe('createFrecencyEngine · maxAge', () => {
     expect(storage.getAll().map((e) => e.id)).toEqual(['new'])
   })
 })
+
+describe('createFrecencyEngine · maxAge with a storage without delete', () => {
+  const DAY = 86_400_000
+
+  it('zeroes a stale entry once, so a later recordUsage writes only its own entry', () => {
+    const inner = createInMemoryStorage()
+    inner.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    const writes: string[] = []
+    const engine = createFrecencyEngine({
+      maxAge: 30,
+      storage: {
+        get: inner.get,
+        getAll: inner.getAll,
+        clear: inner.clear,
+        set: (key, entry) => {
+          writes.push(key)
+          inner.set(key, entry)
+        },
+      },
+    })
+
+    engine.recordUsage('a')
+    expect(writes).toEqual(['old', 'a'])
+    expect(inner.get('old')?.count).toBe(0)
+
+    engine.recordUsage('b')
+    expect(writes).toEqual(['old', 'a', 'b'])
+  })
+})

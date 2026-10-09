@@ -134,10 +134,11 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
     for (const entry of storage.getAll()) {
       if (entry.lastUsed < cutoff) {
         // Actually remove the entry; fall back to zeroing for custom storages
-        // that don't implement delete().
+        // that don't implement delete(). An entry is zeroed only once, since
+        // this runs on every recordUsage.
         if (storage.delete) {
           storage.delete(entry.id)
-        } else {
+        } else if (entry.count) {
           storage.set(entry.id, { ...entry, count: 0, halfLifeScore: 0 })
         }
       }
