@@ -1,0 +1,27 @@
+{
+  "name": "cmdk-engine-example-vite-react-router",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "cmdk-engine with Vite and React Router: commands from the route tree, opened with Cmd+K through the cmdk or the Base UI adapter",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "cmdk": "^1.1.1",
+    "cmdk-engine": "^0.6.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^7.18.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4"
+  }
+}
