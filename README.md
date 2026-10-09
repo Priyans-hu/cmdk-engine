@@ -50,8 +50,9 @@ yarn add cmdk-engine cmdk
 ```
 
 > **Peer dependencies (all optional — install only what you use):** `react`,
-> `react-dom`, `cmdk` (for the cmdk adapter), `match-sorter` (for the
-> match-sorter search backend), and `react-router` v6, v7 or v8 /
+> `react-dom`, `cmdk` (for the cmdk adapter), `@base-ui/react` (for the Base
+> UI adapter), `match-sorter` (for the match-sorter search backend), and
+> `react-router` v6, v7 or v8 /
 > `react-router-dom` v6 or v7 (for the React Router adapter; v8 ships only
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
@@ -233,7 +234,7 @@ props. Other differences:
 |---|---|---|
 | Vim keys | `vimBindings` (Ctrl+N/P/J/K) | None; there is no `vimBindings` prop |
 | Home / End | First / last item | Move the caret in the input |
-| Disabled items | Skipped by the arrow keys | Reachable by the arrow keys; Enter and click do nothing |
+| Disabled items | Skipped by the arrow keys | Reachable by the arrow keys, and highlighted when first in the list; Enter and click do nothing |
 | Highlighted item | `[cmdk-item][data-selected="true"]` | `[role="option"][data-highlighted]` |
 | Loading row | `role="progressbar"`, inside the list | `role="status"` live region, after the list |
 | Results change while open (async sources) | Keeps the highlighted item | Keeps the highlighted position |
