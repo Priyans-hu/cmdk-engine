@@ -50,14 +50,20 @@ const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 // does not change on each render of the provider (each keystroke).
 const EMPTY: CommandEngineConfig = {}
 
-// The same guard as the core storage helpers (which `cmdk-engine` does not
-// export): reading `window.localStorage` throws in sandboxed iframes and when
-// the browser blocks cookies, and it is missing during SSR.
+// Reading `window.localStorage` throws in sandboxed iframes and when the
+// browser blocks cookies, it is missing during SSR and can be null, and writes
+// can throw. Full storage still reads, so a quota error with data counts as
+// available.
 function canUseLocalStorage(): boolean {
+  const probe = '__cmdk_engine_probe__'
+  let storage: Storage | null = null
   try {
-    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-  } catch {
-    return false
+    storage = window.localStorage
+    storage.setItem(probe, probe)
+    storage.removeItem(probe)
+    return true
+  } catch (error) {
+    return (error as Error).name === 'QuotaExceededError' && storage!.length > 0
   }
 }
 

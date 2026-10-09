@@ -1,10 +1,56 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
-import { render, act } from '@testing-library/react'
+import { render, renderHook, act } from '@testing-library/react'
 import { CommandEngineProvider } from '../../src/react/context'
 import { useCommandPalette } from '../../src/react/use-command-palette'
 import { useCommandRegister } from '../../src/react/use-command-register'
+import { useSearchHistory } from '../../src/react/use-search-history'
 import type { UseCommandPaletteReturn } from '../../src/react/use-command-palette'
+import type { CommandEngineConfig, CommandItem } from '../../src/core/types'
+
+const FRECENCY_KEY = 'cmdk-frecency'
+
+const COMMANDS: CommandItem[] = [
+  { id: 'home', label: 'Home', action: () => {} },
+  { id: 'billing', label: 'Billing Overview', action: () => {} },
+]
+
+const CONFIG: CommandEngineConfig = {
+  frecency: { showRecent: true },
+  searchHistory: { enabled: true },
+}
+
+function renderPalette(config: CommandEngineConfig = CONFIG) {
+  return renderHook(
+    () => {
+      useCommandRegister(COMMANDS)
+      return { palette: useCommandPalette(), history: useSearchHistory() }
+    },
+    {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <CommandEngineProvider config={config}>{children}</CommandEngineProvider>
+      ),
+    },
+  )
+}
+
+type Rendered = ReturnType<typeof renderPalette>['result']
+
+function searchAndSelectBilling(result: Rendered) {
+  act(() => result.current.palette.setSearch('bill'))
+  act(() => result.current.palette.select('billing'))
+}
+
+const recent = (result: Rendered) =>
+  result.current.palette.results.filter((r) => r.item.group === 'Recent').map((r) => r.item.id)
+
+beforeEach(() => {
+  localStorage.clear()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('CommandEngineProvider · without a config prop', () => {
   it('does not re-render engine consumers on each keystroke', () => {
@@ -33,5 +79,57 @@ describe('CommandEngineProvider · without a config prop', () => {
 
     expect(palette.search).toBe('alpha')
     expect(renders).toBe(before)
+  })
+})
+
+describe('CommandEngineProvider · storage that cannot be written', () => {
+  it('keeps frecency and search history in memory when writes throw', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('writes are blocked')
+    })
+    const { result } = renderPalette()
+
+    searchAndSelectBilling(result)
+
+    expect(recent(result)).toEqual(['billing'])
+    expect(result.current.history.getRecent().map((e) => e.query)).toEqual(['bill'])
+  })
+
+  it('keeps them in memory when window.localStorage is null', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage')!
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: null })
+    try {
+      const { result } = renderPalette()
+
+      searchAndSelectBilling(result)
+
+      expect(recent(result)).toEqual(['billing'])
+      expect(result.current.history.getRecent().map((e) => e.query)).toEqual(['bill'])
+    } finally {
+      Object.defineProperty(window, 'localStorage', original)
+    }
+  })
+
+  it('still reads full storage: a quota error with stored data counts as available', () => {
+    const home = { id: 'home', count: 1, lastUsed: Date.now(), halfLifeScore: 0 }
+    localStorage.setItem(FRECENCY_KEY, JSON.stringify({ home }))
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+    })
+
+    const { result } = renderPalette()
+
+    expect(recent(result)).toEqual(['home'])
+  })
+
+  it('falls back to memory on a quota error with nothing stored', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+    })
+    const { result } = renderPalette()
+
+    searchAndSelectBilling(result)
+
+    expect(recent(result)).toEqual(['billing'])
   })
 })
