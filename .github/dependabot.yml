@@ -7,6 +7,10 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 10
+    ignore:
+      # Pinned on purpose: test:dist runs the Base UI adapter against its lowest
+      # supported peer version.
+      - dependency-name: "base-ui-floor"
 
   - package-ecosystem: npm
     directory: /docs
