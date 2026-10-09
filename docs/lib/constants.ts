@@ -41,6 +41,11 @@ export const DOCS_NAV: NavSection[] = [
         href: '/docs/nested-commands',
         description: 'Sub-menus with breadcrumbs, and headings for long command lists.',
       },
+      {
+        label: 'CLI',
+        href: '/docs/cli',
+        description: 'Scan your route files into a sitemap, from the command line or CI.',
+      },
     ],
   },
   {
@@ -49,7 +54,12 @@ export const DOCS_NAV: NavSection[] = [
       {
         label: 'API Reference',
         href: '/docs/api',
-        description: 'Every export, option and hook.',
+        description: 'The provider, every option, the command object and the hooks.',
+      },
+      {
+        label: 'Core API',
+        href: '/docs/core',
+        description: 'The framework-agnostic building blocks: registry, frecency, groups and more.',
       },
       {
         label: 'Adapters',
