@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { scanReactRouterFiles } from '../../src/cli/scanners/react-router'
+import type { ScanOptions } from '../../src/cli/scanners/shared'
 
 const TEMP_DIR = resolve('.test-temp-rr-scanner')
 
-function scan(source: string, file = 'routes.tsx') {
+function scan(source: string, file = 'routes.tsx', options?: ScanOptions) {
   writeFileSync(join(TEMP_DIR, file), source)
-  return scanReactRouterFiles(TEMP_DIR)
+  return scanReactRouterFiles(TEMP_DIR, options)
 }
 
 const byPath = (routes: ReturnType<typeof scan>) =>
@@ -165,5 +166,47 @@ describe('React Router CLI scan: quoted values (QA-9)', () => {
       keywords: ['panic', 'a, b', "it's", 'tpl'],
       group: undefined,
     })
+  })
+})
+
+describe('React Router CLI scan: dynamic routes, like the runtime scanner', () => {
+  const routes = `
+    export const routes = [
+      { path: '/users' },
+      { path: '/users/:id' },
+      { path: '/users/:id/edit', handle: { command: { label: 'Edit user' } } },
+      { path: '/:org/settings' },
+      { path: '/:org/users/:id' },
+      { path: '/files/:name', handle: { command: undefined } },
+      { path: '/docs/*', handle: { command: { label: 'Docs' } } },
+    ]
+    export const team = <Route path="/teams/:team" handle={{ command: { label: 'Team' } }} />
+  `
+  const paths = (options?: ScanOptions) => scan(routes, 'routes.tsx', options).map((r) => r.path)
+
+  it('skips :param routes unless they declare their own handle.command', () => {
+    expect(paths()).toEqual(['/users', '/users/:id/edit', '/teams/:team'])
+  })
+
+  it('keeps :param routes whose params includeDynamic names, or all of them with true', () => {
+    expect(paths({ includeDynamic: ['org'] })).toEqual([
+      '/users',
+      '/users/:id/edit',
+      '/:org/settings',
+      '/teams/:team',
+    ])
+    expect(paths({ includeDynamic: true })).toEqual([
+      '/users',
+      '/users/:id',
+      '/users/:id/edit',
+      '/:org/settings',
+      '/:org/users/:id',
+      '/files/:name',
+      '/teams/:team',
+    ])
+  })
+
+  it('never keeps catch-all routes, even with handle.command or includeDynamic', () => {
+    expect(paths({ includeDynamic: true })).not.toContain('/docs/*')
   })
 })

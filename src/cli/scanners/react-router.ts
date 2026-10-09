@@ -13,7 +13,14 @@ import {
   type Node,
   type Token,
 } from '../lexer'
-import { SOURCE_FILE_RE, isIgnoredDir, deduplicateRoutes, toSource } from './shared'
+import {
+  SOURCE_FILE_RE,
+  allowsDynamicPath,
+  isIgnoredDir,
+  deduplicateRoutes,
+  toSource,
+  type ScanOptions,
+} from './shared'
 
 /**
  * Scan a directory for React Router route definitions.
@@ -23,17 +30,21 @@ import { SOURCE_FILE_RE, isIgnoredDir, deduplicateRoutes, toSource } from './sha
  *   with the `label`, `keywords` and `group` of their own `handle.command`
  * - `<Route path="...">` elements, with a `handle={{ command: ... }}` prop
  *
+ * Like the runtime `scanRoutes`, a route with a `:param` is skipped unless
+ * `includeDynamic` names its params or it declares its own `handle.command`.
+ * Catch-all routes (`/docs/*`) are always skipped.
+ *
  * Note: relative child paths inside nested `children` arrays are not composed
  * into full paths, so declare such routes with absolute `path` values to have
  * them discovered.
  */
-export function scanReactRouterFiles(dir: string): SitemapRoute[] {
+export function scanReactRouterFiles(dir: string, options: ScanOptions = {}): SitemapRoute[] {
   const files = findSourceFiles(dir)
   const routes: SitemapRoute[] = []
 
   for (const file of files) {
     const content = readFileSync(file, 'utf-8')
-    routes.push(...extractRoutes(content, file))
+    routes.push(...extractRoutes(content, file, options))
   }
 
   return deduplicateRoutes(routes)
@@ -74,11 +85,13 @@ interface CommandMeta {
 /** A route found in a file, before it becomes a sitemap entry */
 interface FoundRoute {
   path: string
+  /** Whether it declares a `handle.command`, which keeps it even with a `:param` */
+  hasCommand: boolean
   command?: CommandMeta
 }
 
 /** Extract the routes of one source file. */
-function extractRoutes(content: string, filePath: string): SitemapRoute[] {
+function extractRoutes(content: string, filePath: string, options: ScanOptions): SitemapRoute[] {
   const source = toSource(filePath)
   // JSX only exists in .js/.jsx/.tsx files; in .ts files `<` is a type or an operator
   const { tokens, error } = tokenize(content, { jsx: !/\.[mc]?ts$/.test(filePath) })
@@ -94,7 +107,11 @@ function extractRoutes(content: string, filePath: string): SitemapRoute[] {
   findJsxRoutes(tokens, found)
 
   return found
-    .filter(({ path }) => path.startsWith('/')) // Relative child paths: see the note above
+    .filter(
+      ({ path, hasCommand }) =>
+        path.startsWith('/') && // Relative child paths: see the note above
+        (allowsDynamicPath(path, options.includeDynamic) || (hasCommand && !path.includes('*'))),
+    )
     .map(({ path, command }) => {
       const route = createRoute(path, source)
       if (command?.label) route.label = command.label
@@ -111,7 +128,7 @@ function findObjectRoutes(nodes: Node[], found: FoundRoute[]): void {
     if (node.open === '{') {
       const props = objectProps(node)
       const path = stringValue(props.get('path'))
-      if (path !== undefined) found.push({ path, command: readCommand(props.get('handle')) })
+      if (path !== undefined) found.push({ path, ...readHandle(props.get('handle')) })
     }
     findObjectRoutes(node.items, found)
   }
@@ -124,28 +141,39 @@ function findJsxRoutes(tokens: Token[], found: FoundRoute[]): void {
     const { path } = token.attrs
     if (typeof path === 'string') {
       const handle = token.exprs.handle
-      found.push({ path, command: handle && readCommand(toTree(handle)) })
+      found.push({ path, ...readHandle(handle && toTree(handle)) })
     }
   }
 }
 
-/** The label, keywords and group of a `handle` value's own `command` object */
-function readCommand(handle: Node[] | undefined): CommandMeta | undefined {
+/** Whether a `handle` value declares a `command`, and that command's label, keywords and group */
+function readHandle(handle: Node[] | undefined): Pick<FoundRoute, 'hasCommand' | 'command'> {
   const handleObject = groupValue(handle, '{')
-  const command = handleObject && groupValue(objectProps(handleObject).get('command'), '{')
-  if (!command) return undefined
+  const value = handleObject && objectProps(handleObject).get('command')
+  const command = groupValue(value, '{')
+  if (!command) return { hasCommand: !!value?.length && !isFalsyLiteral(value) }
 
   const props = objectProps(command)
   const keywords = groupValue(props.get('keywords'), '[')
   return {
-    label: stringValue(props.get('label')),
-    group: stringValue(props.get('group')),
-    keywords:
-      keywords &&
-      splitCommas(keywords.items)
-        .map((item) => stringValue(item))
-        .filter((keyword): keyword is string => keyword !== undefined),
+    hasCommand: true,
+    command: {
+      label: stringValue(props.get('label')),
+      group: stringValue(props.get('group')),
+      keywords:
+        keywords &&
+        splitCommas(keywords.items)
+          .map((item) => stringValue(item))
+          .filter((keyword): keyword is string => keyword !== undefined),
+    },
   }
+}
+
+/** `undefined`, `null`, `false`, `0` or `''`: a `command` that does not opt a route in */
+function isFalsyLiteral([node, extra]: Node[]): boolean {
+  if (extra) return false
+  if (node.type === 'name') return ['undefined', 'null', 'false'].includes(node.value)
+  return (node.type === 'number' || node.type === 'string') && !node.value
 }
 
 function createRoute(path: string, source: string): SitemapRoute {

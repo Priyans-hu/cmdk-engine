@@ -73,7 +73,7 @@ export const scanCommand = new Command('scan')
 
       switch (framework) {
         case 'react-router':
-          routes = scanReactRouterFiles(resolvedRoutesDir)
+          routes = scanReactRouterFiles(resolvedRoutesDir, scanOptions)
           break
         case 'nextjs-app':
           routes = scanNextJsAppDir(resolvedRoutesDir, scanOptions)
