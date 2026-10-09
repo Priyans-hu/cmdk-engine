@@ -11,9 +11,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
-      id-token: write
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -24,10 +23,16 @@ jobs:
         with:
           bun-version: latest
 
+      # npm trusted publishing needs Node 22.14+ and npm 11.5.1+.
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org/
+
+      - name: Use npm 11.5.1 or later
+        run: |
+          npm install -g npm@^11.5.1
+          echo "node $(node --version), npm $(npm --version)"
 
       - run: bun install --frozen-lockfile
 
@@ -52,14 +57,15 @@ jobs:
             exit 1
           fi
 
-      # Use the package.json `release` script so Changesets consumes any
-      # pending entries in .changeset/ and updates CHANGELOG.md. This keeps
-      # the tag-push flow consistent with `bun run release` locally.
+      # `changeset publish` runs `npm publish` here (it only switches to pnpm in
+      # pnpm repos) for versions not yet on npm. It does not consume changesets;
+      # `changeset version` did that in the version PR.
       - name: Publish to npm via Changesets
         run: bun run release
         env:
+          # Fallback when trusted publishing is not set up: npm tries OIDC first
+          # and uses this token only when that fails.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # Build standalone binaries after npm publish
   binaries:
