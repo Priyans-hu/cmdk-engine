@@ -340,7 +340,15 @@ export interface CommandEngineConfig {
   /** Synonym dictionary for keyword expansion */
   synonyms?: SynonymMap
   /** Frecency configuration */
-  frecency?: FrecencyOptions & RecentCommandsConfig
+  frecency?: FrecencyOptions &
+    RecentCommandsConfig & {
+      /**
+       * `false` turns frecency off: nothing is stored or read, results are not
+       * ranked by use, and no "Recent" group shows, even with `showRecent`
+       * (default: true)
+       */
+      enabled?: boolean
+    }
   /** Group definitions and ordering */
   groups?: CommandGroup[]
   /** Maximum results to return */

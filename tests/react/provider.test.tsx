@@ -5,6 +5,7 @@ import { CommandEngineProvider } from '../../src/react/context'
 import { useCommandPalette } from '../../src/react/use-command-palette'
 import { useCommandRegister } from '../../src/react/use-command-register'
 import { useSearchHistory } from '../../src/react/use-search-history'
+import { useFrecency } from '../../src/react/use-frecency'
 import type { UseCommandPaletteReturn } from '../../src/react/use-command-palette'
 import type { CommandEngineConfig, CommandItem } from '../../src/core/types'
 
@@ -165,5 +166,42 @@ describe('CommandEngineProvider · in-memory fallback', () => {
 
     expect(palette.results[0].item).toMatchObject({ id: 'billing', group: 'Recent' })
     expect(history.getRecent().map((e) => e.query)).toEqual(['bill'])
+  })
+})
+
+describe('frecency.enabled: false', () => {
+  const off: CommandEngineConfig = { frecency: { enabled: false, showRecent: true } }
+
+  it('stores nothing and shows no Recent group, even with showRecent', () => {
+    const { result } = renderPalette(off)
+
+    searchAndSelectBilling(result)
+
+    expect(localStorage.getItem(FRECENCY_KEY)).toBeNull()
+    expect(recent(result)).toEqual([])
+    expect(result.current.palette.results.map((r) => r.item.id)).toEqual(['home', 'billing'])
+  })
+
+  it('does not read or rank earlier usage', () => {
+    const billing = { id: 'billing', count: 9, lastUsed: Date.now(), halfLifeScore: 0 }
+    localStorage.setItem(FRECENCY_KEY, JSON.stringify({ billing }))
+    const { result } = renderPalette(off)
+
+    expect(recent(result)).toEqual([])
+    expect(result.current.palette.results.map((r) => r.item.id)).toEqual(['home', 'billing'])
+  })
+
+  it('turns useFrecency() into a no-op', () => {
+    const { result } = renderHook(() => useFrecency(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <CommandEngineProvider config={off}>{children}</CommandEngineProvider>
+      ),
+    })
+
+    act(() => result.current.recordUsage('home'))
+
+    expect(result.current.getScore('home')).toBe(0)
+    expect(result.current.getRecent()).toEqual([])
+    expect(localStorage.getItem(FRECENCY_KEY)).toBeNull()
   })
 })

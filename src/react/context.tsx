@@ -56,6 +56,9 @@ const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 // does not change on each render of the provider (each keystroke).
 const EMPTY: CommandEngineConfig = {}
 
+// `frecency.enabled: false`: nothing is stored, read or ranked.
+const NO_FRECENCY: FrecencyStorage = { get: () => null, set() {}, getAll: () => [], clear() {} }
+
 // Reading `window.localStorage` throws in sandboxed iframes and when the
 // browser blocks cookies, it is missing during SSR and can be null, and writes
 // can throw. Full storage still reads, so a quota error with data counts as
@@ -127,14 +130,16 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
       // documented, and to memory where storage is unavailable. Consumers can
       // still pass their own `frecency.storage`.
       frecency: createFrecencyEngine(
-        config.frecency?.storage
-          ? config.frecency
-          : {
-              ...config.frecency,
-              storage: persist
-                ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
-                : (memory.frecency ??= createInMemoryStorage()),
-            },
+        config.frecency?.enabled === false
+          ? { storage: NO_FRECENCY }
+          : config.frecency?.storage
+            ? config.frecency
+            : {
+                ...config.frecency,
+                storage: persist
+                  ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
+                  : (memory.frecency ??= createInMemoryStorage()),
+              },
       ),
       groupManager: createGroupManager(config.groups),
       contextEngine: createContextEngine(config.contextBoostWeight),
