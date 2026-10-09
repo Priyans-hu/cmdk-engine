@@ -154,8 +154,11 @@ jobs:
       - name: Run the binary
         run: dist/${{ matrix.binary_name }} --version
 
+      # Run inside dist/ so the file names the bare binary, and
+      # `shasum -c <name>.sha256` works next to the downloaded release asset.
       - name: Generate checksum
-        run: shasum -a 256 dist/${{ matrix.binary_name }} > dist/${{ matrix.binary_name }}.sha256
+        working-directory: dist
+        run: shasum -a 256 ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
 
       - uses: actions/upload-artifact@v7
         with:
