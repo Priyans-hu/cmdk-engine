@@ -915,7 +915,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | `cmdk-engine/search/match-sorter` | 0.72 kB | Optional match-sorter search backend |
 | `cmdk-engine/adapters/base-ui` | 1.5 kB | Pre-wired Base UI components |
 
-Sizes are minified + brotli. Entries import the siblings they use (the cmdk
+Sizes are measured with size-limit, minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
@@ -929,6 +929,9 @@ All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
 ## API Reference
 
+A quick index. The [docs site](https://priyans-hu.github.io/cmdk-engine/docs/api) has
+every option, field and hook.
+
 ### Core
 
 ```ts
@@ -940,7 +943,13 @@ import {
   createSimpleAccessProvider, // Permission provider from array/Set
   createFrecencyEngine,  // Frecency ranking with exponential decay
   createGroupManager,    // Command group management
-  defineConfig,          // Typed config helper for CLI
+  createContextEngine,   // Scope boosting
+  createSearchHistory,   // Search history (localStorage); createInMemorySearchHistory for tests and SSR
+  createInMemoryStorage, // In-memory frecency storage; createLocalStorageFrecencyStorage for localStorage
+  isCommandVisible,      // Resolve a command's `when` gate; filterVisible filters a list with it
+  getTranslationKeys,    // Every UI string key; createDefaultTranslation is the English `t`
+  pathToId, pathToLabel, pathToGroup, pathSegmentToLabel, // Route path helpers
+  defineConfig,          // Typed config helper for the CLI config file
 } from 'cmdk-engine'
 ```
 
@@ -952,6 +961,10 @@ import {
   useCommandPalette,    // Main hook: search + filter + rank
   useCommandRegister,   // Register commands from components
   useFrecency,          // Direct frecency access
+  useSearchHistory,     // Read and edit search history
+  useCommandContext,    // Read the context config (read-only)
+  useEngineContext,     // The engine singletons, for custom UIs; throws outside the provider
+  usePaletteState,      // The shared open, search and path state; throws outside the provider
 } from 'cmdk-engine/react'
 ```
 
@@ -971,12 +984,15 @@ const {
   search,          // Current query
   setSearch,       // Update query
   results,         // ScoredItem[] (flat)
-  flatResults,     // Same as results
+  flatResults,     // The same array as results (an alias; use results)
   groupedResults,  // GroupedResult[] — results grouped by group
   groups,          // CommandGroup[] — active groups
   isOpen,          // Palette visibility
   isLoading,       // True while an async source is loading
   asyncErrors,     // Record<sourceId, Error> — last error per async source
+  breadcrumbs,     // CommandItem[], the sub-menu path (nested commands)
+  depth,           // 0 at the root
+  drillDown, drillUp, resetPath, // Move through nested commands
   open, close, toggle,
   select,          // Select a command (records frecency + runs handler + closes)
   recordUsage,     // Record frecency manually
@@ -1004,9 +1020,18 @@ import type {
   CommandGroup,
   SynonymMap,
   RouteCommandMeta,
-  CmdkEngineConfig,
-  CommandEngineConfig,
+  CmdkEngineConfig,    // the CLI config file (cmdk-engine.config.ts)
+  CommandEngineConfig, // the provider's `config` prop
   CommandPaletteState,
+  AccessCheckMode,
+  FrecencyEntry,
+  FrecencyStorage,
+  CommandContext,
+  TranslationFn,
+  SearchHistoryConfig,
+  SearchHistoryEntry,
+  Sitemap,
+  SitemapRoute,
 } from 'cmdk-engine'
 ```
 
