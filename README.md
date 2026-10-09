@@ -290,9 +290,8 @@ props. Other differences:
 |---|---|---|
 | Vim keys | `vimBindings` (Ctrl+N/P/J/K) | None; there is no `vimBindings` prop |
 | Home / End | First / last item | Move the caret in the input |
-| Disabled items | Skipped by the arrow keys | Reachable by the arrow keys, and highlighted when first in the list; Enter and click do nothing |
 | Highlighted item | `[cmdk-item][data-selected="true"]` | `[role="option"][data-highlighted]` |
-| Loading row | `role="progressbar"`, inside the list | `role="status"` live region, after the list |
+| Loading row | `role="progressbar"`, after the list | `role="status"` live region, after the list |
 | Results change while open (async sources) | Keeps the highlighted item | Keeps the highlighted position |
 | IME input | The query updates while composing | The query updates when composition ends |
 
@@ -301,7 +300,9 @@ give your app's root element `isolation: isolate` so the dialog stays on top,
 and for iOS 26+ Safari give the backdrop (`overlayClassName`)
 `position: absolute` and add `body { position: relative }`. Like cmdk's, the
 dialog is unstyled. Its visually hidden close button is labelled by the
-`palette.close` translation key.
+`palette.close` translation key. With `@base-ui/react` 1.1, Firefox logs a
+`mozInputSource` deprecation warning the first time the input is clicked. It
+comes from Base UI and is gone in later versions.
 
 Base UI costs more than cmdk: about 44 kB min + brotli for Autocomplete and
 48 kB with Dialog, versus about 14 kB for cmdk with its Radix dialog. In Node,
@@ -539,7 +540,9 @@ import { getTranslationKeys } from 'cmdk-engine'
 > English text for now.
 
 `palette.close` (default "Close") names the visually hidden close button in the
-Base UI adapter's dialog.
+Base UI adapter's dialog. `palette.list` (default "Suggestions") names the
+results listbox in both adapters. A `t` that returns the key unchanged, like the
+one above, or an empty string keeps "Suggestions".
 
 ## Search History
 
@@ -795,6 +798,26 @@ import { scanRoutes } from 'cmdk-engine/adapters/react-router'
 // import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 ```
 
+### Keyboard shortcut
+
+`useCommandPaletteShortcut(shortcut?)` toggles the palette and returns
+`{ isOpen, toggle }`. A string is the key pressed with Cmd or Ctrl (default
+`'k'`). It also matches with Caps Lock on and, on non-Latin layouts such as
+Russian or Greek, by the physical key. Holding the keys toggles once. For any
+other shortcut, pass a function that decides the whole match, modifiers
+included. Define it outside the component, or every render re-binds it:
+
+```ts
+// Cmd/Ctrl+Shift+P, as in VS Code
+const isPaletteKey = (e: KeyboardEvent) =>
+  (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p'
+
+function CommandMenu() {
+  useCommandPaletteShortcut(isPaletteKey)
+  return <CommandPalette dialog />
+}
+```
+
 ### Key hook return values
 
 ```ts
@@ -851,6 +874,13 @@ import type {
 | [#280](https://github.com/dip/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
 | [#375](https://github.com/dip/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
 | [#267](https://github.com/dip/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
+
+> With `@radix-ui/react-dialog` 1.1.x, which cmdk 1.1 can install, Radix logs
+> "`DialogContent` requires a `DialogTitle`" and a missing `Description` warning
+> each time the dialog opens, and points `aria-labelledby`/`aria-describedby` at
+> ids that do not exist. The dialog is still named by its `aria-label`. cmdk
+> exposes no dialog title, so the adapter cannot add one: update
+> `@radix-ui/react-dialog` to 1.2 or later (`npm update @radix-ui/react-dialog`).
 
 ---
 
