@@ -64,6 +64,7 @@ yarn add cmdk-engine cmdk
 One file, with the cmdk adapter. Paste it into a React app, then press Cmd+K
 (Ctrl+K on Windows and Linux):
 
+<!-- readme-test: render -->
 ```tsx
 // App.tsx
 import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
@@ -139,6 +140,7 @@ instead of `onNavigate`. The `onSelect` prop of `CommandPalette` does the same,
 and wins over the config. To track selections, call the default yourself, or
 leave `onSelect` unset and track inside `onNavigate` and your actions:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { CommandItem } from 'cmdk-engine'
 
@@ -153,6 +155,7 @@ const config = {
 
 ### Or build your own UI with hooks
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandPalette } from 'cmdk-engine/react'
 
@@ -271,6 +274,7 @@ import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/
 
 // Inline: always rendered
 function SearchPanel() {
+<!-- readme-test: typecheck -->
   return <CommandPalette placeholder="Search commands..." />
 }
 
