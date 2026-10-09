@@ -92,10 +92,11 @@ function reinstallFromRegistry(dir, registry) {
   if (items.length === 0) fail(`no registry items in ${registry}`)
   for (const file of items) {
     const item = JSON.parse(readFileSync(path.join(registry, file), 'utf8'))
+    if (!Array.isArray(item.files) || item.files.length === 0) fail(`${file} lists no files`)
     const installed = item.files.map((f) =>
       path.join(dir, 'src', 'components', path.basename(f.path)),
     )
-    for (const f of installed) rmSync(f)
+    for (const f of installed) rmSync(f, { force: true })
     // The CLI would `npm install` the item's dependencies, and the cmdk-engine range
     // may not be on npm yet. The packed build is installed already.
     delete item.dependencies
