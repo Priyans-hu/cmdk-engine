@@ -6,6 +6,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/p
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![license](https://img.shields.io/npm/l/cmdk-engine.svg)](https://github.com/Priyans-hu/cmdk-engine/blob/main/LICENSE)
 
+![The cmdk adapter's palette opened with Cmd+K, styled with the CSS from the Styling section](https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/.github/assets/palette.png)
+
 ---
 
 ## Why cmdk-engine?
