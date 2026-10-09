@@ -172,18 +172,6 @@ export function CommandPalette({
     <div data-cmdk-engine-loading="">{t('palette.loading')}</div>
   ))
 
-  const handleSelect = useCallback(
-    (value: string) => {
-      const scored = results.find((r) => r.item.id === value)
-      if (!scored) return
-      // Delegate to the hook's select(): it drills into children, records
-      // frecency + search history, applies onSelect/action/onNavigate/href,
-      // and closes. The component-level onSelect prop takes priority.
-      select(scored.item, { onSelect })
-    },
-    [results, select, onSelect],
-  )
-
   // Handle backspace for nested navigation
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent) => {
@@ -229,9 +217,13 @@ export function CommandPalette({
   // rendered (e.g. the previously-highlighted item was filtered out mid-list)
   // or is disabled. Computed during render so cmdk always receives a value
   // that exists, or '' when no item is enabled (an undefined value would let
-  // cmdk keep its own stale highlight).
+  // cmdk keep its own stale highlight). cmdk trims item values, and with them
+  // the values it reports, so ids are compared trimmed.
   const activeValueValid =
-    activeValue !== undefined && results.some((r) => r.item.id === activeValue && !r.item.disabled)
+    activeValue !== undefined &&
+    results.some(
+      (r) => String(r.item.id).trim() === String(activeValue).trim() && !r.item.disabled,
+    )
   const effectiveValue = (activeValueValid ? activeValue : firstEnabledId) ?? ''
 
   useEffect(() => {
@@ -247,7 +239,10 @@ export function CommandPalette({
         key={item.id}
         value={item.id}
         disabled={item.disabled}
-        onSelect={handleSelect}
+        // The hook's select() drills into children, records frecency and search
+        // history, applies onSelect/action/onNavigate/href, and closes. Bound to
+        // the item: cmdk reports values trimmed, so they cannot look it up.
+        onSelect={() => select(item, { onSelect })}
         className={itemClassName}
         keywords={item.keywords}
       >
