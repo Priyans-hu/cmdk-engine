@@ -104,12 +104,24 @@ bun run size           # size budgets for each entry
 
 ### Docs site
 
-The docs site in `docs/` is a Next.js static export with its own lockfile. Build it with Node 20:
+The docs site in `docs/` is a Next.js static export with its own lockfile. It runs this repo's build of `cmdk-engine`, not the npm release, so build the library first. With Node 20:
 
 ```bash
-cd docs
 bun install --frozen-lockfile
 bun run build
+cd docs
+bun install --frozen-lockfile
+node ../scripts/local-build.mjs docs   # run it again after each library build
+bun run build
+```
+
+### Examples
+
+Each app in `examples/` installs `cmdk-engine` from npm, and CI builds it against this repo's build instead. To run one the same way, from the repo root (see [examples/README.md](examples/README.md)):
+
+```bash
+bun run build
+node scripts/local-build.mjs example vite-react-router --dev
 ```
 
 ## Changesets
@@ -159,6 +171,7 @@ cmdk-engine/
 
 - Add JSDoc comments to exported functions and types
 - Update docs if you change public API
+- Put `<!-- readme-test: typecheck -->` on the line directly above a README code fence that should keep compiling. `bun run test:dist` type-checks it against the built package. Exactly one fence, the Quick Start, is marked `render` and also runs
 
 ## Commit Messages
 
