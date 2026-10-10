@@ -55,25 +55,33 @@ function typeErrors(dir: string, entry: string, consumer: string): string[] {
 }
 
 describe('core types without React', () => {
-  it.each(ENTRIES)('%s compiles with no React types installed', (entry, consumer) => {
-    // The OS temp dir has no node_modules above it, so `react` cannot resolve
-    const dir = mkdtempSync(join(tmpdir(), 'cmdk-engine-types-'))
-    try {
-      expect(typeErrors(dir, entry, consumer + VALID)).toEqual([])
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
-  }, 30_000)
+  it.each(ENTRIES)(
+    '%s compiles with no React types installed',
+    (entry, consumer) => {
+      // The OS temp dir has no node_modules above it, so `react` cannot resolve
+      const dir = mkdtempSync(join(tmpdir(), 'cmdk-engine-types-'))
+      try {
+        expect(typeErrors(dir, entry, consumer + VALID)).toEqual([])
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+    30_000,
+  )
 
-  it.each(ENTRIES)('%s keeps icon a ReactNode with React types installed', (entry, consumer) => {
-    // Inside the repo, `react` resolves to the dev dependency and its types
-    const base = join(ROOT, 'node_modules', '.cache')
-    mkdirSync(base, { recursive: true })
-    const dir = mkdtempSync(join(base, 'cmdk-engine-types-'))
-    try {
-      expect(typeErrors(dir, entry, consumer + VALID + INVALID_ICON)).toEqual([])
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
-  }, 30_000)
+  it.each(ENTRIES)(
+    '%s keeps icon a ReactNode with React types installed',
+    (entry, consumer) => {
+      // Inside the repo, `react` resolves to the dev dependency and its types
+      const base = join(ROOT, 'node_modules', '.cache')
+      mkdirSync(base, { recursive: true })
+      const dir = mkdtempSync(join(base, 'cmdk-engine-types-'))
+      try {
+        expect(typeErrors(dir, entry, consumer + VALID + INVALID_ICON)).toEqual([])
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+    30_000,
+  )
 })

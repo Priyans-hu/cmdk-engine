@@ -32,9 +32,7 @@ describe('Nested / Hierarchical Commands', () => {
           cmd({
             id: 'level1',
             label: 'Level 1',
-            children: [
-              cmd({ id: 'level2', label: 'Level 2' }),
-            ],
+            children: [cmd({ id: 'level2', label: 'Level 2' })],
           }),
         ],
       })
@@ -196,13 +194,16 @@ describe('Nested / Hierarchical Commands', () => {
     it('returns root commands when activePath is empty', () => {
       const rootCommands = [
         cmd({ id: 'dashboard', label: 'Dashboard' }),
-        cmd({ id: 'settings', label: 'Settings', children: [cmd({ id: 'general', label: 'General' })] }),
+        cmd({
+          id: 'settings',
+          label: 'Settings',
+          children: [cmd({ id: 'general', label: 'General' })],
+        }),
       ]
       const activePath: CommandItem[] = []
 
-      const activeCommands = activePath.length === 0
-        ? rootCommands
-        : activePath[activePath.length - 1].children ?? []
+      const activeCommands =
+        activePath.length === 0 ? rootCommands : (activePath[activePath.length - 1].children ?? [])
 
       expect(activeCommands).toEqual(rootCommands)
     })
@@ -221,9 +222,8 @@ describe('Nested / Hierarchical Commands', () => {
       ]
       const activePath = [rootCommands[1]] // drilled into "Settings"
 
-      const activeCommands = activePath.length === 0
-        ? rootCommands
-        : activePath[activePath.length - 1].children ?? []
+      const activeCommands =
+        activePath.length === 0 ? rootCommands : (activePath[activePath.length - 1].children ?? [])
 
       expect(activeCommands).toHaveLength(2)
       expect(activeCommands[0].id).toBe('general')

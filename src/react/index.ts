@@ -1,10 +1,6 @@
 // Provider
 export { CommandEngineProvider, useEngineContext, usePaletteState } from './context'
-export type {
-  CommandEngineProviderProps,
-  EngineContextValue,
-  PaletteStateValue,
-} from './context'
+export type { CommandEngineProviderProps, EngineContextValue, PaletteStateValue } from './context'
 
 // Hooks
 export { useCommandPalette } from './use-command-palette'

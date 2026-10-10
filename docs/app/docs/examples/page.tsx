@@ -133,10 +133,17 @@ function CommandMenu() {
   return <CommandPalette dialog />
 }`}
       />
-      <p>On React Router 8 there is no <code>react-router-dom</code>: import <code>createBrowserRouter</code> from <code>react-router</code> and <code>RouterProvider</code> from <code>react-router/dom</code>.</p>
+      <p>
+        On React Router 8 there is no <code>react-router-dom</code>: import{' '}
+        <code>createBrowserRouter</code> from <code>react-router</code> and{' '}
+        <code>RouterProvider</code> from <code>react-router/dom</code>.
+      </p>
 
       <h2>With RBAC</h2>
-      <p>Filter commands based on user permissions. Commands with restricted permissions are automatically hidden.</p>
+      <p>
+        Filter commands based on user permissions. Commands with restricted permissions are
+        automatically hidden.
+      </p>
       <CodeBlock
         language="tsx"
         code={`import { createSimpleAccessProvider } from 'cmdk-engine'
@@ -172,7 +179,11 @@ export function AdminCommands() {
       </p>
 
       <h2>Custom UI (without cmdk)</h2>
-      <p>Build a fully custom command palette UI using only the headless hooks. Use <code>groupedResults</code> for pre-grouped items and <code>select()</code> as a one-call handler.</p>
+      <p>
+        Build a fully custom command palette UI using only the headless hooks. Use{' '}
+        <code>groupedResults</code> for pre-grouped items and <code>select()</code> as a one-call
+        handler.
+      </p>
       <CodeBlock
         language="tsx"
         code={`import { useCommandPalette } from 'cmdk-engine/react'
@@ -218,13 +229,19 @@ function CustomPalette() {
       />
 
       <h2>CLI: Pre-commit Hook</h2>
-      <p>Auto-scan routes on every commit to keep your command sitemap up to date. With husky 9, run <code>npx husky init</code>, then put the command in <code>.husky/pre-commit</code>:</p>
+      <p>
+        Auto-scan routes on every commit to keep your command sitemap up to date. With husky 9, run{' '}
+        <code>npx husky init</code>, then put the command in <code>.husky/pre-commit</code>:
+      </p>
       <CodeBlock
         language="bash"
         filename=".husky/pre-commit"
         code={`npx cmdk-engine scan && git add src/generated/command-routes.json`}
       />
-      <p>Or with lint-staged. Use a function task: a plain command string would get the staged file names appended, and <code>scan</code> takes no file arguments.</p>
+      <p>
+        Or with lint-staged. Use a function task: a plain command string would get the staged file
+        names appended, and <code>scan</code> takes no file arguments.
+      </p>
       <CodeBlock
         language="js"
         filename="lint-staged.config.mjs"
@@ -238,9 +255,9 @@ function CustomPalette() {
 
       <h2>Testing</h2>
       <p>
-        jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need stubs.
-        Without them the first render throws <code>ResizeObserver is not defined</code>. The Base UI
-        adapter needs no stubs.
+        jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need
+        stubs. Without them the first render throws <code>ResizeObserver is not defined</code>. The
+        Base UI adapter needs no stubs.
       </p>
       <CodeBlock
         language="tsx"
@@ -283,11 +300,11 @@ test('Cmd+K opens the palette', async () => {
 })`}
       />
       <p>
-        Frecency and search history persist to <code>localStorage</code> (<code>cmdk-frecency</code> and{' '}
-        <code>cmdk-search-history</code>). Clear them between tests, or pass <code>frecency.storage</code>,
-        so one test&apos;s selections do not rank the next test&apos;s results. The Base UI dialog stays
-        in the DOM for a moment after Escape, so use <code>waitFor</code> before asserting that it is
-        gone.
+        Frecency and search history persist to <code>localStorage</code> (<code>cmdk-frecency</code>{' '}
+        and <code>cmdk-search-history</code>). Clear them between tests, or pass{' '}
+        <code>frecency.storage</code>, so one test&apos;s selections do not rank the next
+        test&apos;s results. The Base UI dialog stays in the DOM for a moment after Escape, so use{' '}
+        <code>waitFor</code> before asserting that it is gone.
       </p>
     </>
   )

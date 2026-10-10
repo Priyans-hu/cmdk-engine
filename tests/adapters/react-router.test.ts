@@ -22,10 +22,7 @@ describe('scanRoutes', () => {
     const routes: RouteObject[] = [
       {
         path: '/billing',
-        children: [
-          { path: 'overview' },
-          { path: 'credits' },
-        ],
+        children: [{ path: 'overview' }, { path: 'credits' }],
       },
     ]
 
@@ -60,10 +57,7 @@ describe('scanRoutes', () => {
   })
 
   it('auto-generates group from first path segment', () => {
-    const routes: RouteObject[] = [
-      { path: '/billing/overview' },
-      { path: '/settings/team' },
-    ]
+    const routes: RouteObject[] = [{ path: '/billing/overview' }, { path: '/settings/team' }]
 
     const commands = scanRoutes(routes)
     expect(commands[0].group).toBe('Billing')
@@ -74,10 +68,7 @@ describe('scanRoutes', () => {
     const routes: RouteObject[] = [
       {
         // Layout route — no path
-        children: [
-          { path: '/dashboard' },
-          { path: '/settings' },
-        ],
+        children: [{ path: '/dashboard' }, { path: '/settings' }],
       },
     ]
 
@@ -101,9 +92,7 @@ describe('scanRoutes', () => {
   })
 
   it('generates correct IDs', () => {
-    const routes: RouteObject[] = [
-      { path: '/billing/overview' },
-    ]
+    const routes: RouteObject[] = [{ path: '/billing/overview' }]
 
     const commands = scanRoutes(routes)
     expect(commands[0].id).toBe('billing--overview')
@@ -152,10 +141,7 @@ describe('scanRoutes', () => {
   })
 
   it('excludes custom paths with exact string', () => {
-    const routes: RouteObject[] = [
-      { path: '/dashboard' },
-      { path: '/internal' },
-    ]
+    const routes: RouteObject[] = [{ path: '/dashboard' }, { path: '/internal' }]
 
     const commands = scanRoutes(routes, { exclude: ['/internal'] })
     expect(commands).toHaveLength(1)
@@ -187,10 +173,7 @@ describe('scanRoutes', () => {
   })
 
   it('skips default excludes with noDefaultExclude', () => {
-    const routes: RouteObject[] = [
-      { path: '/login' },
-      { path: '/dashboard' },
-    ]
+    const routes: RouteObject[] = [{ path: '/login' }, { path: '/dashboard' }]
 
     const commands = scanRoutes(routes, { noDefaultExclude: true })
     expect(commands).toHaveLength(2)
@@ -223,20 +206,14 @@ describe('scanRoutes', () => {
   })
 
   it('includes dynamic routes with includeDynamic option', () => {
-    const routes: RouteObject[] = [
-      { path: '/billing' },
-      { path: '/billing/:id' },
-    ]
+    const routes: RouteObject[] = [{ path: '/billing' }, { path: '/billing/:id' }]
 
     const commands = scanRoutes(routes, { includeDynamic: true })
     expect(commands).toHaveLength(2)
   })
 
   it('avoids duplicate IDs for similar paths', () => {
-    const routes: RouteObject[] = [
-      { path: '/agent-flow-runs' },
-      { path: '/agent/flow-runs' },
-    ]
+    const routes: RouteObject[] = [{ path: '/agent-flow-runs' }, { path: '/agent/flow-runs' }]
 
     const commands = scanRoutes(routes)
     expect(commands[0].id).not.toBe(commands[1].id)

@@ -164,7 +164,10 @@ describe('loadConfig', () => {
   it('strips a UTF-8 BOM from JSON configs', async () => {
     mkdirSync(TEMP_DIR, { recursive: true })
     const configPath = resolve(TEMP_DIR, 'config.json')
-    writeFileSync(configPath, String.fromCharCode(0xfeff) + JSON.stringify({ framework: 'react-router' }))
+    writeFileSync(
+      configPath,
+      String.fromCharCode(0xfeff) + JSON.stringify({ framework: 'react-router' }),
+    )
     const config = await loadConfig(configPath)
     expect(config.framework).toBe('react-router')
   })

@@ -152,7 +152,7 @@ function scoreItem(query: string, item: CommandItem): number {
   }
 
   // Score against synonym-expanded keywords (lower weight)
-  const synonymKeywords = (item.meta?._synonymKeywords as string[] | undefined)
+  const synonymKeywords = item.meta?._synonymKeywords as string[] | undefined
   if (synonymKeywords) {
     for (const kw of synonymKeywords) {
       bestScore = Math.max(bestScore, fuzzyScore(query, fold(kw)) * 0.55)

@@ -14,15 +14,9 @@ export function useFrecency() {
     [frecency],
   )
 
-  const getScore = useCallback(
-    (commandId: string) => frecency.getScore(commandId),
-    [frecency],
-  )
+  const getScore = useCallback((commandId: string) => frecency.getScore(commandId), [frecency])
 
-  const getRecent = useCallback(
-    (count?: number) => frecency.getRecent(count),
-    [frecency],
-  )
+  const getRecent = useCallback((count?: number) => frecency.getRecent(count), [frecency])
 
   const clear = useCallback(() => frecency.clear(), [frecency])
 

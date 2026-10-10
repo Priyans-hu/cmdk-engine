@@ -24,7 +24,8 @@ export const DOCS_NAV: NavSection[] = [
       {
         label: 'Styling',
         href: '/docs/styling',
-        description: 'Starter CSS and Tailwind, class name props and the attributes you can target.',
+        description:
+          'Starter CSS and Tailwind, class name props and the attributes you can target.',
       },
     ],
   },
@@ -34,7 +35,8 @@ export const DOCS_NAV: NavSection[] = [
       {
         label: 'Next.js',
         href: '/docs/nextjs',
-        description: 'Use the palette in the App Router: a client file, router.push and [locale] routes.',
+        description:
+          'Use the palette in the App Router: a client file, router.push and [locale] routes.',
       },
       {
         label: 'shadcn/ui',
@@ -97,27 +99,32 @@ export const FEATURES = [
   {
     icon: '🔍',
     title: 'Route Discovery',
-    description: 'Auto-scan React Router and Next.js routes. The CLI writes a sitemap, and sitemapToCommands turns it into commands.',
+    description:
+      'Auto-scan React Router and Next.js routes. The CLI writes a sitemap, and sitemapToCommands turns it into commands.',
   },
   {
     icon: '⚡',
     title: 'Fuzzy Search',
-    description: 'Built-in lightweight fuzzy search: exact > prefix > substring > word initials > fuzzy. Words match in any order, and accents are ignored.',
+    description:
+      'Built-in lightweight fuzzy search: exact > prefix > substring > word initials > fuzzy. Words match in any order, and accents are ignored.',
   },
   {
     icon: '🔐',
     title: 'RBAC Filtering',
-    description: 'Filter commands by user permissions. Supports any/all modes with a pluggable access provider.',
+    description:
+      'Filter commands by user permissions. Supports any/all modes with a pluggable access provider.',
   },
   {
     icon: '📈',
     title: 'Frecency Ranking',
-    description: 'Frequently and recently used commands float to the top. Exponential decay algorithm, zero config.',
+    description:
+      'Frequently and recently used commands float to the top. Exponential decay algorithm, zero config.',
   },
   {
     icon: '🔤',
     title: 'Keyword Synonyms',
-    description: 'Bidirectional synonym engine. "money" finds "billing", and a synonym match never outranks a direct match.',
+    description:
+      'Bidirectional synonym engine. "money" finds "billing", and a synonym match never outranks a direct match.',
   },
   {
     icon: '📦',

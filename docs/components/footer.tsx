@@ -14,7 +14,10 @@ export function Footer() {
             <ul className="space-y-2">
               {DOCS_ORDER.map((page) => (
                 <li key={page.href}>
-                  <Link href={page.href} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                  <Link
+                    href={page.href}
+                    className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  >
                     {page.label}
                   </Link>
                 </li>
@@ -29,17 +32,32 @@ export function Footer() {
             </p>
             <ul className="space-y-2">
               <li>
-                <a href={SITE.github} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href={SITE.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   GitHub
                 </a>
               </li>
               <li>
-                <a href={SITE.npm} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href={SITE.npm}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   npm
                 </a>
               </li>
               <li>
-                <a href={`${SITE.github}/issues`} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href={`${SITE.github}/issues`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   Issues
                 </a>
               </li>
@@ -53,17 +71,32 @@ export function Footer() {
             </p>
             <ul className="space-y-2">
               <li>
-                <a href="https://cmdk.paco.me" target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href="https://cmdk.paco.me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   cmdk
                 </a>
               </li>
               <li>
-                <a href={`${SITE.github}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href={`${SITE.github}/blob/main/CONTRIBUTING.md`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   Contributing
                 </a>
               </li>
               <li>
-                <a href={`${SITE.github}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <a
+                  href={`${SITE.github}/blob/main/LICENSE`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
                   MIT License
                 </a>
               </li>
@@ -74,13 +107,16 @@ export function Footer() {
         <div className="mt-10 pt-6 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-[var(--text-muted)]">
             Built by{' '}
-            <a href="https://github.com/Priyans-hu" target="_blank" rel="noopener noreferrer" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+            <a
+              href="https://github.com/Priyans-hu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            >
               Priyanshu
             </a>
           </p>
-          <p className="text-sm text-[var(--text-muted)]">
-            Open source under MIT License
-          </p>
+          <p className="text-sm text-[var(--text-muted)]">Open source under MIT License</p>
         </div>
       </div>
     </footer>

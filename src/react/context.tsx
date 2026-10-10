@@ -129,9 +129,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
   )
 
   // Async sources load here, once per query, not in each useCommandPalette().
-  const asyncSources = useAsyncSources(
-    config.asyncSources, search, activePath.length === 0, isOpen,
-  )
+  const asyncSources = useAsyncSources(config.asyncSources, search, activePath.length === 0, isOpen)
 
   // Build the engine singletons from the specific config fields they depend on
   // (not the whole `config` object) so an inline config that only changes an
@@ -170,8 +168,15 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
         : (memory.history ??= createInMemorySearchHistory(config.searchHistory)),
     }
   }, [
-    config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
-    config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
+    config.searchEngine,
+    config.synonyms,
+    config.accessControl,
+    config.accessCheckMode,
+    config.frecency,
+    config.groups,
+    config.contextBoostWeight,
+    config.t,
+    config.searchHistory,
   ])
 
   const value = useMemo(
@@ -182,9 +187,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
   return (
     <EngineContext.Provider value={value}>
       <PaletteStateContext.Provider value={paletteState}>
-        <AsyncSourcesContext.Provider value={asyncSources}>
-          {children}
-        </AsyncSourcesContext.Provider>
+        <AsyncSourcesContext.Provider value={asyncSources}>{children}</AsyncSourcesContext.Provider>
       </PaletteStateContext.Provider>
     </EngineContext.Provider>
   )

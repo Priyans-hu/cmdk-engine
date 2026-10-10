@@ -114,8 +114,7 @@ function scanRoutesInternal(
 
       // Check if path matches any exclude pattern
       const isExcluded = excludePatterns.some(
-        (p) =>
-          matchesExcludePattern(fullPath, p) || matchesExcludePattern(route.path ?? '', p),
+        (p) => matchesExcludePattern(fullPath, p) || matchesExcludePattern(route.path ?? '', p),
       )
       excluded = isExcluded
 

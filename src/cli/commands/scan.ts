@@ -8,7 +8,11 @@ import { scanNextJsPagesDir } from '../scanners/nextjs-pages'
 import { generateSitemap, sortRoutes } from '../generators/sitemap'
 import type { ScanOptions } from '../scanners/shared'
 import type { CmdkEngineConfig, Sitemap, SitemapRoute } from '../../core/types'
-import { DEFAULT_EXCLUDE, matchesExcludePattern, type ExcludePattern } from '../../core/route-defaults'
+import {
+  DEFAULT_EXCLUDE,
+  matchesExcludePattern,
+  type ExcludePattern,
+} from '../../core/route-defaults'
 
 export const scanCommand = new Command('scan')
   .description('Scan project routes and generate a command sitemap')
@@ -228,7 +232,9 @@ function applyOverrides(
  * segment, `**` across segments) and RegExp.
  */
 function applyExclusions(routes: SitemapRoute[], exclude: ExcludePattern[]): SitemapRoute[] {
-  return routes.filter((route) => !exclude.some((pattern) => matchesExcludePattern(route.path, pattern)))
+  return routes.filter(
+    (route) => !exclude.some((pattern) => matchesExcludePattern(route.path, pattern)),
+  )
 }
 
 /**

@@ -64,12 +64,14 @@ function DefaultItem({ item }: { item: CommandItem }) {
   const hasChildren = item.children && item.children.length > 0
   return (
     <div data-cmdk-engine-item="">
-      {item.icon && <span data-cmdk-engine-icon="" aria-hidden="true">{item.icon}</span>}
+      {item.icon && (
+        <span data-cmdk-engine-icon="" aria-hidden="true">
+          {item.icon}
+        </span>
+      )}
       <div data-cmdk-engine-item-content="">
         <span data-cmdk-engine-item-label="">{item.label}</span>
-        {item.description && (
-          <span data-cmdk-engine-item-description="">{item.description}</span>
-        )}
+        {item.description && <span data-cmdk-engine-item-description="">{item.description}</span>}
       </div>
       {item.shortcut && (
         <span data-cmdk-engine-item-shortcut="">
@@ -157,8 +159,17 @@ export function CommandPalette({
   footer,
 }: CommandPaletteProps) {
   const {
-    search, setSearch, results, isOpen, close, isLoading,
-    breadcrumbs, depth, drillUp, select, groupedResults,
+    search,
+    setSearch,
+    results,
+    isOpen,
+    close,
+    isLoading,
+    breadcrumbs,
+    depth,
+    drillUp,
+    select,
+    groupedResults,
   } = useCommandPalette()
   const { t } = useEngineContext()
 
@@ -169,12 +180,10 @@ export function CommandPalette({
   // it (`dictionary[key] ?? key`) or returns '', keeps today's "Suggestions".
   const listLabel = t('palette.list')
   const resolvedListLabel = (listLabel !== 'palette.list' && listLabel) || 'Suggestions'
-  const resolvedRenderEmpty = renderEmpty ?? (() => (
-    <div data-cmdk-engine-empty="">{t('palette.empty')}</div>
-  ))
-  const resolvedRenderLoading = renderLoading ?? (() => (
-    <div data-cmdk-engine-loading="">{t('palette.loading')}</div>
-  ))
+  const resolvedRenderEmpty =
+    renderEmpty ?? (() => <div data-cmdk-engine-empty="">{t('palette.empty')}</div>)
+  const resolvedRenderLoading =
+    renderLoading ?? (() => <div data-cmdk-engine-loading="">{t('palette.loading')}</div>)
 
   // Handle backspace for nested navigation
   const handleKeyDown = useCallback(
@@ -241,9 +250,7 @@ export function CommandPalette({
   // the values it reports, so ids are compared trimmed.
   const activeValueValid =
     activeValue !== undefined &&
-    results.some(
-      (r) => String(r.item.id).trim() === String(activeValue).trim() && !r.item.disabled,
-    )
+    results.some((r) => String(r.item.id).trim() === String(activeValue).trim() && !r.item.disabled)
   const effectiveValue = (activeValueValid ? activeValue : firstEnabledId) ?? ''
 
   useEffect(() => {
@@ -287,11 +294,16 @@ export function CommandPalette({
 
   const content = (
     <>
-      {depth > 0 && (
-        renderBreadcrumbs
-          ? renderBreadcrumbs(breadcrumbs, drillUp)
-          : <DefaultBreadcrumbs crumbs={breadcrumbs} onBack={drillUp} backLabel={t('breadcrumbs.back')} />
-      )}
+      {depth > 0 &&
+        (renderBreadcrumbs ? (
+          renderBreadcrumbs(breadcrumbs, drillUp)
+        ) : (
+          <DefaultBreadcrumbs
+            crumbs={breadcrumbs}
+            onBack={drillUp}
+            backLabel={t('breadcrumbs.back')}
+          />
+        ))}
       <Cmdk.Input
         value={search}
         onValueChange={setSearch}
@@ -396,8 +408,12 @@ export function useCommandPaletteShortcut(
   shortcut: string | ((event: KeyboardEvent) => boolean) = 'k',
 ) {
   // Palette state only: the results pipeline runs once, in the palette.
-  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } =
-    usePaletteState('useCommandPaletteShortcut')
+  const {
+    isOpen,
+    setIsOpen,
+    setSearch: setSearchQuery,
+    setActivePath,
+  } = usePaletteState('useCommandPaletteShortcut')
   // The same toggle as useCommandPalette()'s.
   const toggle = useCallback(() => {
     // Clear query/path when closing; keep setState updaters side-effect free.
