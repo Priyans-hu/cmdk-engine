@@ -29,8 +29,8 @@ const commands: CommandItem[] = [
   },
 ]
 
-function Register() {
-  useCommandRegister(commands)
+function Register({ items = commands }: { items?: CommandItem[] }) {
+  useCommandRegister(items)
   return null
 }
 
@@ -51,6 +51,8 @@ function expectActiveDescendant() {
   const option = highlighted()
   for (const el of [screen.getByRole('combobox'), screen.getByRole('listbox')]) {
     const id = el.getAttribute('aria-activedescendant')
+    // An id must name an element (axe: aria-valid-attr-value)
+    if (id !== null) expect(document.getElementById(id)).not.toBeNull()
     expect(id === null ? null : document.getElementById(id)).toBe(option)
   }
 }
@@ -92,10 +94,10 @@ describe.each([
     await settle()
   }
 
-  it('names the highlighted option after drilling down, going back and filtering', async () => {
+  async function openWith(items?: CommandItem[]) {
     render(
       <CommandEngineProvider>
-        <Register />
+        <Register items={items} />
         <Opener />
         <CommandPalette dialog />
       </CommandEngineProvider>,
@@ -104,6 +106,10 @@ describe.each([
       fireEvent.click(screen.getByRole('button', { name: 'open' }))
     })
     await settle()
+  }
+
+  it('names the highlighted option after drilling down, going back and filtering', async () => {
+    await openWith()
     expect(highlighted()?.textContent).toBe('Dashboard')
     expectActiveDescendant()
 
@@ -128,6 +134,24 @@ describe.each([
 
     await type('zzz')
     expect(highlighted()).toBeNull()
+    expectActiveDescendant()
+  })
+
+  it('names nothing after drilling into a page whose only item is disabled', async () => {
+    await openWith([
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'locked', label: 'Locked', children: [{ id: 'a', label: 'A', disabled: true }] },
+    ])
+    await press('ArrowDown')
+    await press('Enter')
+    expect(screen.getByText('A')).toBeTruthy()
+    expect(highlighted()).toBeNull()
+    expectActiveDescendant()
+  })
+
+  it('names a highlighted option whose id has surrounding whitespace', async () => {
+    await openWith([{ id: ' lead-trail ', label: 'Lead and trail' }, ...commands])
+    expect(highlighted()?.textContent).toBe('Lead and trail')
     expectActiveDescendant()
   })
 })
