@@ -415,7 +415,7 @@ A `handle` returned from `lazy()` is not read, because the scanner never calls `
 
 An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
 
-The CLI scanner (`npx cmdk-engine scan`) is regex-based and unchanged, so it does not resolve index routes.
+The CLI scanner (`npx cmdk-engine scan`) does not resolve index routes.
 
 ---
 
@@ -686,9 +686,33 @@ npx cmdk-engine scan
 # Scan without default auth/error exclusions
 npx cmdk-engine scan --no-default-exclude
 
+# Keep routes under a [locale] folder (or another :param)
+npx cmdk-engine scan --include-dynamic locale
+
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Use the output
+
+`scan` writes `src/generated/command-routes.json`. `sitemapToCommands` turns it
+into commands; register them once, at the app level:
+
+```tsx
+import { useCommandRegister } from 'cmdk-engine/react'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
+import sitemap from './generated/command-routes.json'
+
+const routeCommands = sitemapToCommands(sitemap)
+
+function RouteCommands() {
+  useCommandRegister(routeCommands)
+  return null
+}
+```
+
+Each route becomes `{ id, label, keywords, group, href }`, and selecting one
+calls your `onNavigate`. Commit the JSON, or run the scan in a `prebuild` script.
 
 ### Standalone binary
 
@@ -713,6 +737,28 @@ React Router adapter, so the generated sitemap automatically skips:
 Pass `--no-default-exclude` to opt out (you'll have full control via
 the `exclude` config field instead).
 
+### Dynamic routes and `[locale]`
+
+A command needs a real URL, so the scan skips routes with a `:param`
+(`/users/:id`, `app/[id]/page.tsx`). To keep routes under a segment you can
+fill at runtime, such as a Next.js `[locale]` folder, name it in
+`includeDynamic` (or pass `--include-dynamic locale`). `app/[locale]/billing/page.tsx`
+then becomes `/:locale/billing`, which `params` fills:
+
+```tsx
+const commands = useMemo(() => sitemapToCommands(sitemap, { params: { locale } }), [locale])
+useCommandRegister(commands)
+```
+
+- `params` values are inserted as given, and `''` drops the segment (a default
+  locale served without a prefix).
+- Ids keep the placeholder (`locale--billing`), so frecency is shared across
+  locales.
+- `includeDynamic: true` keeps every `:param` route. A route whose param you do
+  not fill is skipped, and catch-alls (`[...slug]`, `/docs/*`) are never kept.
+- A React Router route with its own `handle.command` is kept, as with the
+  runtime `scanRoutes`.
+
 ### Config file
 
 ```ts
@@ -727,16 +773,49 @@ export default defineConfig({
     '/billing': { keywords: ['money', 'payment'], group: 'Billing' },
   },
   exclude: ['/_*', '/admin/*', /^\/debug\//], // strings, globs, or RegExp
+  includeDynamic: ['locale'], // keep /:locale/... routes
   synonyms: {
     billing: ['money', 'payment', 'credits'],
   },
 })
 ```
 
-> **Next.js:** the CLI **scans** both the App Router (`nextjs-app`) and Pages
-> Router (`nextjs-pages`) to generate a sitemap. A dedicated Next.js *runtime*
-> adapter is not implemented yet — render commands with `<CommandPalette>` from
-> `cmdk-engine/adapters/cmdk` (mark the file `'use client'`).
+The CLI reads `cmdk-engine.config.ts` without running it, so its values must be
+static: strings, numbers, booleans, arrays, objects, RegExp literals and
+top-level `const`s, with `as const` and `satisfies` allowed. For computed values
+such as `process.env`, use `cmdk-engine.config.mjs`. A config the CLI cannot
+read fails `scan` and `validate`, naming the line.
+
+`exclude` takes exact paths, RegExp and globs. In a glob, `*` matches within one
+path segment and `**` across segments. Excluding a path also excludes the paths
+below it, and a trailing `/*` also matches the base: `/admin/*` excludes
+`/admin` and everything under it.
+
+### What the scan reads
+
+The scan reads your files without running them.
+
+- **React Router:**
+  - Reads route objects with a string `path` (as passed to `createBrowserRouter`)
+    and `<Route path="...">` elements, with the `label`, `keywords` and `group`
+    of their own `handle.command`.
+  - Joins relative child paths to their parent route in the same file
+    (`children` arrays, nested `<Route>`s).
+  - Does not read paths built at runtime, routes imported from another file,
+    index routes, or a `handle` returned by `lazy()`.
+- **Next.js:**
+  - Reads `app/**/page.*` (`nextjs-app`) and `pages/**` (`nextjs-pages`).
+  - Route groups and `@slot` folders add no segment.
+  - Private `_folders`, intercepting `(.)` routes and `api/` are skipped.
+  - `[[...slug]]` gives its parent's URL; other dynamic routes need `includeDynamic`.
+
+Ids keep letters, digits and `-` (`/billing/overview` gives `billing--overview`),
+so `/a_b` and `/ab` would share `ab`. The scan then keeps it for the last of them
+in path order and gives the others `ab-2`, `ab-3`, ...
+
+**Next.js:** for the App Router setup (a `'use client'` palette file,
+`router.push`, `[locale]`), see the
+[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs).
 
 ### Pre-commit hook
 

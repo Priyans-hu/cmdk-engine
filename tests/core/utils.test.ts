@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { pathSegmentToLabel, pathToLabel, pathToGroup, pathToId } from '../../src/core/utils'
+import { PATH_ID_TABLE } from './path-id-table'
 
 describe('pathSegmentToLabel', () => {
   it('handles kebab, snake, camel, and Pascal case', () => {
@@ -55,5 +56,28 @@ describe('pathToId', () => {
   it('generates a stable id', () => {
     expect(pathToId('/billing/overview')).toBe('billing--overview')
     expect(pathToId('/')).toBe('home')
+  })
+})
+
+describe('pathToId and pathToLabel · shared id table', () => {
+  it.each(PATH_ID_TABLE)('%j', (path, id, label) => {
+    expect(pathToId(path)).toBe(id)
+    expect(pathToLabel(path)).toBe(label)
+  })
+
+  it('gives non-ASCII paths distinct ids that are never "home"', () => {
+    const paths = [
+      '/',
+      '/配置',
+      '/設定',
+      '/설정',
+      '/配置/設定',
+      '/設定/配置',
+      '/configuración',
+      '/configuracion',
+    ]
+    const ids = paths.map(pathToId)
+    expect(new Set(ids).size).toBe(paths.length)
+    expect(ids.filter((id) => id === 'home')).toEqual(['home'])
   })
 })

@@ -11,6 +11,10 @@ export const DOCS_NAV: NavSection[] = [
     ],
   },
   {
+    title: 'Guides',
+    items: [{ label: 'Next.js', href: '/docs/nextjs' }],
+  },
+  {
     title: 'Reference',
     items: [
       { label: 'API Reference', href: '/docs/api' },
@@ -22,6 +26,7 @@ export const DOCS_NAV: NavSection[] = [
 
 export const DOCS_ORDER = [
   { label: 'Getting Started', href: '/docs/getting-started' },
+  { label: 'Next.js', href: '/docs/nextjs' },
   { label: 'API Reference', href: '/docs/api' },
   { label: 'Examples', href: '/docs/examples' },
   { label: 'shadcn/ui', href: '/docs/shadcn' },
