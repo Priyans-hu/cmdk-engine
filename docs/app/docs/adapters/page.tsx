@@ -94,8 +94,9 @@ export default function Adapters() {
       <h1>Adapters</h1>
       <p>
         The engine does the filtering, ranking and grouping. An adapter connects it to a UI library,
-        or to a router. There are two UI adapters, for cmdk and Base UI, and one route adapter, for
-        React Router. Each is its own entry point, so you only ship the ones you import.
+        or to a router. There are two UI adapters, for cmdk and Base UI, and two route adapters:
+        React Router, which reads routes at runtime, and sitemap, which reads the sitemap the CLI
+        writes. Each is its own entry point, so you only ship the ones you import.
       </p>
 
       <h2>cmdk adapter</h2>
@@ -124,13 +125,86 @@ function CommandMenu() {
       </p>
       <ApiTable head={['Prop', 'Type', 'Default', 'Description']} rows={PALETTE_PROPS} />
       <h3>
-        <code>useCommandPaletteShortcut(shortcut = &apos;k&apos;)</code>
+        <code>useCommandPaletteShortcut(shortcut?)</code>
       </h3>
       <p>
-        Toggles the palette when the user presses Cmd (macOS) or Ctrl plus the key, and returns{' '}
-        <code>{'{ isOpen, toggle }'}</code>. Call it in a component inside the provider, not in the
-        component that renders the provider.
+        Toggles the palette and returns <code>{'{ isOpen, toggle }'}</code>. It works the same in
+        both UI adapters. Call it in a component inside the provider, not in the component that
+        renders the provider.
       </p>
+      <ApiTable
+        head={['Argument', 'What it matches']}
+        rows={[
+          [
+            <>
+              a string <code>&apos;k&apos;</code> (the default)
+            </>,
+            <>
+              The key pressed with Cmd (macOS) or Ctrl. It also matches with Caps Lock on and, on
+              non-Latin layouts such as Russian or Greek, by the physical key. Ctrl+Shift+K and
+              AltGr combinations do not match.
+            </>,
+          ],
+          [
+            <>
+              a function <Since />
+            </>,
+            <>
+              <code>(event: KeyboardEvent) =&gt; boolean</code> decides the whole match, modifiers
+              included, for any other shortcut.
+            </>,
+          ],
+        ]}
+      />
+      <ul>
+        <li>
+          Holding the keys toggles once. Matching keys are always blocked, repeats included, so a
+          held Ctrl+K never reaches the browser&apos;s own Ctrl+K shortcut.
+        </li>
+        <li>Define a function outside the component, or every render re-binds the listener.</li>
+      </ul>
+      <CodeBlock
+        language="tsx"
+        code={`import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
+
+// Cmd/Ctrl+Shift+P, as in VS Code
+const isPaletteKey = (e: KeyboardEvent) =>
+  (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p'
+
+function CommandMenu() {
+  useCommandPaletteShortcut(isPaletteKey)
+  return <CommandPalette dialog />
+}`}
+      />
+
+      <h3>Focus, markup and accessibility</h3>
+      <ul>
+        <li>
+          In dialog mode, focus returns to the element that had it before the dialog opened, whether
+          it closes with Escape, the shortcut, the overlay or a selected command. If a command moves
+          focus elsewhere, focus stays there. The Base UI adapter does the same.
+        </li>
+        <li>
+          Both adapters name the results listbox with the <code>palette.list</code> translation key
+          (default &quot;Suggestions&quot;).
+        </li>
+        <li>
+          The empty state and the loading row render right after the results list, not inside it,
+          because a <code>role=&quot;listbox&quot;</code> may only hold groups and options. Their{' '}
+          <code>cmdk-*</code> and <code>data-cmdk-engine-*</code> attributes are unchanged, so style
+          them with <code>[cmdk-empty]</code> and <code>[cmdk-loading]</code>, not as list
+          descendants. Tests that look for the empty text inside{' '}
+          <code>role=&quot;listbox&quot;</code> must search the palette instead.
+        </li>
+        <li>
+          With <code>@radix-ui/react-dialog</code> 1.1.x, which cmdk 1.1 can install, Radix logs
+          &quot;<code>DialogContent</code> requires a <code>DialogTitle</code>&quot; and a missing{' '}
+          <code>Description</code> warning each time the dialog opens, and points{' '}
+          <code>aria-labelledby</code> and <code>aria-describedby</code> at ids that do not exist.
+          The dialog is still named by its <code>aria-label</code>. cmdk exposes no dialog title, so
+          the adapter cannot add one: update <code>@radix-ui/react-dialog</code> to 1.2 or later.
+        </li>
+      </ul>
 
       <h2>
         Base UI adapter <Since />
@@ -178,11 +252,6 @@ function CommandMenu() {
           ],
           ['Home / End', 'First / last item', 'Move the caret in the input'],
           [
-            'Disabled items',
-            'Skipped by the arrow keys',
-            'Reachable by the arrow keys, and highlighted when first in the list; Enter and click do nothing',
-          ],
-          [
             'Highlighted item',
             <code key="a">[cmdk-item][data-selected=&quot;true&quot;]</code>,
             <code key="b">[role=&quot;option&quot;][data-highlighted]</code>,
@@ -190,7 +259,7 @@ function CommandMenu() {
           [
             'Loading row',
             <>
-              <code>role=&quot;progressbar&quot;</code>, inside the list
+              <code>role=&quot;progressbar&quot;</code>, after the list
             </>,
             <>
               <code>role=&quot;status&quot;</code> live region, after the list
@@ -215,7 +284,9 @@ function CommandMenu() {
         iOS 26+ Safari give the backdrop (<code>overlayClassName</code>){' '}
         <code>position: absolute</code> and add <code>{'body { position: relative }'}</code>. Like
         cmdk&apos;s, the dialog is unstyled. Its visually hidden close button is labelled by the{' '}
-        <code>palette.close</code> translation key.
+        <code>palette.close</code> translation key. With <code>@base-ui/react</code> 1.1, Firefox
+        logs a <code>mozInputSource</code> deprecation warning the first time the input is clicked.
+        It comes from Base UI and is gone in later versions.{' '}
       </p>
       <p>
         Base UI costs more than cmdk: about {SIZES.baseUiAutocomplete} min + brotli for Autocomplete
@@ -280,7 +351,12 @@ export function App() {
             '[]',
             <>
               Paths to leave out, in addition to the defaults. Each entry is an exact string, a glob
-              ending in <code>/*</code> such as <code>/admin/*</code>, or a RegExp.
+              or a RegExp. In a glob, <code>*</code> matches within one path segment and{' '}
+              <code>**</code> across segments, so <code>/_*</code> excludes <code>/_internal</code>{' '}
+              and <code>/users/*/settings</code> leaves <code>/users/list</code> alone. A match also
+              covers every path below it, and a trailing <code>/*</code> also matches the base:{' '}
+              <code>/admin/*</code> excludes <code>/admin</code> and everything under it.{' '}
+              <code>/admin*</code> also matches <code>/administration</code>.
             </>,
           ],
           [
@@ -358,6 +434,76 @@ export function App() {
         its own command. Index routes follow their parent&apos;s exclusion and the dynamic-route
         rule. <code>index: true</code> with a <code>path</code> is a normal path route.
       </p>
+
+      <h2>
+        Sitemap adapter <Since />
+      </h2>
+      <p>
+        <code>cmdk-engine/adapters/sitemap</code> turns the sitemap that{' '}
+        <Link href="/docs/cli">cmdk-engine scan</Link> writes into commands, for apps whose routes
+        live in files, as in Next.js. It has no peer dependencies.
+      </p>
+      <CodeBlock
+        language="tsx"
+        code={`import { useCommandRegister } from 'cmdk-engine/react'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
+import sitemap from './generated/command-routes.json'
+
+const routeCommands = sitemapToCommands(sitemap)
+
+function RouteCommands() {
+  useCommandRegister(routeCommands)
+  return null
+}`}
+      />
+      <h3>
+        <code>sitemapToCommands(sitemap, options?)</code>
+      </h3>
+      <p>
+        Takes the parsed <code>command-routes.json</code>, or its <code>routes</code> array, and
+        returns a <code>CommandItem[]</code> for <code>useCommandRegister</code>: one{' '}
+        <code>{'{ id, label, keywords, group, href }'}</code> per route. Selecting one calls your{' '}
+        <code>onNavigate</code>.
+      </p>
+      <ApiTable
+        head={['Option', 'Description']}
+        rows={[
+          [
+            'params',
+            <>
+              Values for the <code>:name</code> segments that <code>--include-dynamic</code> keeps,
+              inserted as given (not URL-encoded). <code>{"{ locale: 'en' }"}</code> turns{' '}
+              <code>/:locale/billing</code> into <code>/en/billing</code>, and{' '}
+              <code>&apos;&apos;</code> drops the segment, giving <code>/billing</code>. A route
+              with a segment left unfilled is skipped.
+            </>,
+          ],
+        ]}
+      />
+      <ul>
+        <li>
+          Ids keep the <code>:name</code> placeholders whatever <code>params</code> fills in (
+          <code>locale--billing</code> in every locale), so frecency and Recent are shared across
+          locales.
+        </li>
+        <li>
+          Routes with a catch-all (<code>*</code>) segment are skipped.
+        </li>
+      </ul>
+      <p>For example, to fill a locale segment from the current locale:</p>
+      <CodeBlock
+        language="tsx"
+        code={`import { useMemo } from 'react'
+import { useCommandRegister } from 'cmdk-engine/react'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
+import sitemap from './generated/command-routes.json'
+
+export function LocaleRouteCommands({ locale }: { locale: string }) {
+  const commands = useMemo(() => sitemapToCommands(sitemap, { params: { locale } }), [locale])
+  useCommandRegister(commands)
+  return null
+}`}
+      />
     </>
   )
 }
