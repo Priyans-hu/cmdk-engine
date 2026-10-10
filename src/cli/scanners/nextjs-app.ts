@@ -23,6 +23,7 @@ const PAGE_FILE_RE = /^page\.(?:[mc]?[jt]s|[jt]sx|mdx?)$/
  * - app/[id]/page.tsx → /:id (dynamic: kept only with `includeDynamic`)
  * - app/shop/[[...slug]]/page.tsx → /shop (the optional catch-all's own URL)
  * - app/feed/(..)photo/page.tsx → skipped (an intercepting route renders another route's page)
+ * - app/_drafts/pricing/page.tsx → skipped (a private folder is not routed)
  */
 export function scanNextJsAppDir(dir: string, options: ScanOptions = {}): SitemapRoute[] {
   const routes: SitemapRoute[] = []
@@ -88,7 +89,8 @@ function walkAppDir(
 /**
  * Convert a directory path to a route path, or null for a page that has no URL of
  * its own. Handles Next.js conventions: route groups (), dynamic [params],
- * catch-all [...params], optional catch-all [[...params]], intercepting (.)routes.
+ * catch-all [...params], optional catch-all [[...params]], intercepting (.)routes,
+ * private _folders.
  */
 function dirToRoutePath(dirPath: string): string | null {
   if (!dirPath) return '/'
@@ -104,8 +106,8 @@ function dirToRoutePath(dirPath: string): string | null {
     // Skip route groups: (auth), (marketing), etc.
     if (segment.startsWith('(') && segment.endsWith(')')) continue
 
-    // Skip private folders: _components, _lib, etc.
-    if (segment.startsWith('_')) continue
+    // Private folders, _components, _drafts: Next.js routes nothing under them
+    if (segment.startsWith('_')) return null
 
     // Convert dynamic segments: [id] → :id
     if (segment.startsWith('[') && segment.endsWith(']')) {

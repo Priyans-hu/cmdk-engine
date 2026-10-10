@@ -97,6 +97,15 @@ describe('Next.js App Router scan: special folders', () => {
 
     expect(paths(scanNextJsAppDir(TEMP_DIR))).toEqual(['/settings'])
   })
+
+  it('skips every page under a private _folder', () => {
+    appPage('_drafts/pricing')
+    appPage('_components')
+    appPage('dashboard/_lib/old')
+    appPage('pricing')
+
+    expect(paths(scanNextJsAppDir(TEMP_DIR))).toEqual(['/pricing'])
+  })
 })
 
 describe('Next.js Pages Router scan', () => {
