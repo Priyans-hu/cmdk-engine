@@ -6,7 +6,8 @@ export interface SitemapToCommandsOptions {
    * Values for the `:name` segments that `cmdk-engine scan --include-dynamic`
    * keeps, inserted as given (not URL-encoded): `{ locale: 'en' }` turns
    * `/:locale/billing` into `/en/billing`, and `''` drops the segment
-   * (`/billing`). A route with a segment left unfilled is skipped.
+   * (`/billing`). A route with a segment left unfilled is skipped. Only own
+   * properties count.
    */
   params?: Record<string, string>
 }
@@ -34,7 +35,8 @@ export function sitemapToCommands(
     let unfilled = route.path.includes('*')
     const href =
       route.path.replace(/\/:([^/?]+)\??/g, (_, name: string) => {
-        const value = params[name]
+        // Own properties only, so `/:constructor` is not filled from Object.prototype
+        const value = Object.prototype.hasOwnProperty.call(params, name) ? params[name] : undefined
         if (value === undefined) unfilled = true
         return value ? '/' + value : ''
       }) || '/'

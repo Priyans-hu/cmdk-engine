@@ -76,4 +76,13 @@ describe('sitemapToCommands', () => {
       '/settings',
     ])
   })
+
+  it('reads only the own properties of params, not Object.prototype', () => {
+    const routes = [route('/:constructor/a', 'constructor--a'), route('/:toString', 'tostring')]
+
+    expect(sitemapToCommands(routes, { params: {} })).toEqual([])
+    expect(
+      sitemapToCommands(routes, { params: { constructor: 'x', toString: 'y' } }).map((c) => c.href),
+    ).toEqual(['/x/a', '/y'])
+  })
 })
