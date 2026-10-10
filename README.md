@@ -323,7 +323,9 @@ repo, and each installs `cmdk-engine` from npm, so you can copy one out.
 | [Next.js App Router](examples/nextjs-app-router) | A `'use client'` provider file under a server layout, `router.push` as `onNavigate`, and `[locale]` pages found by `cmdk-engine scan --include-dynamic locale` and filled in with `sitemapToCommands` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/nextjs-app-router?file=components/command-menu.tsx) |
 | [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
 
-The docs site is a live demo too: Cmd+K there searches its own pages.
+The docs site is a live demo too: Cmd+K there searches its own pages. Its
+[Examples page](https://priyans-hu.github.io/cmdk-engine/docs/examples) has more
+recipes: RBAC, a custom UI and a pre-commit hook.
 
 ---
 
@@ -602,6 +604,19 @@ typos, partial words and initials.
   match-sorter alone on Node 22 and 2 to 3 times on Node 20, the most for
   three or more words.
 
+Pass the engine in the provider config, and create it once, outside the
+component:
+
+```tsx
+import { createMatchSorterSearch } from 'cmdk-engine/search/match-sorter'
+
+const config = { searchEngine: createMatchSorterSearch() }
+```
+
+Any object with a `search(query, items)` method works as `searchEngine` too.
+The [Search page](https://priyans-hu.github.io/cmdk-engine/docs/search) has the
+scoring tiers, the `threshold` and `keys` options and a custom engine.
+
 ---
 
 ## Synonyms
@@ -637,7 +652,7 @@ extra term.
 
 ## Frecency Ranking
 
-Commands you use frequently and recently appear higher in results. No configuration needed — it uses localStorage by default. When you use `select()`, frecency is recorded automatically.
+Commands you use frequently and recently appear higher in results. No configuration needed: it uses `localStorage` by default. When you use `select()`, frecency is recorded automatically.
 
 The algorithm uses exponential decay with a configurable half-life:
 
@@ -663,8 +678,10 @@ Show a "Recent" group at the top of the palette when the search is empty:
 
 > Frecency (and search history, below) persist to `localStorage` by default and
 > fall back to memory where it is unavailable: during SSR, in sandboxed iframes
-> and when the browser blocks cookies. Malformed data under their keys is
-> ignored and replaced on the next write. Override the backend via
+> and when the browser blocks cookies, or `window.localStorage` is `null` or
+> rejects writes. To test storage, the provider writes and removes a
+> `cmdk-engine-probe` key once when it mounts. Malformed data under their keys
+> is ignored and replaced on the next write. Override the backend via
 > `config.frecency.storage`.
 
 > `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
@@ -835,7 +852,8 @@ one above, or an empty string keeps "Suggestions".
 ## Search History
 
 Opt-in tracking of past queries (persisted to `localStorage`). A query is recorded when
-the user selects a command, not on every keystroke:
+the user selects a command, not on every keystroke. Where `localStorage` is unavailable, the
+history stays in memory, with the options it was created with until the provider remounts:
 
 ```tsx
 const config = { searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }
@@ -1240,7 +1258,9 @@ Russian or Greek, by the physical key. Holding the keys toggles once. For any
 other shortcut, pass a function that decides the whole match, modifiers
 included. Define it outside the component, or every render re-binds it:
 
-```ts
+```tsx
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
+
 // Cmd/Ctrl+Shift+P, as in VS Code
 const isPaletteKey = (e: KeyboardEvent) =>
   (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p'
@@ -1254,6 +1274,8 @@ function CommandMenu() {
 ### Key hook return values
 
 ```ts
+import { useCommandPalette } from 'cmdk-engine/react'
+
 const {
   search,          // Current query
   setSearch,       // Update query
