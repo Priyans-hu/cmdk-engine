@@ -1,6 +1,6 @@
 {
   "name": "cmdk-engine",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling.",
   "license": "MIT",
   "author": "Priyanshu <gargpriyanshu2004@gmail.com> (https://github.com/Priyans-hu)",
