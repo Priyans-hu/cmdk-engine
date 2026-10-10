@@ -476,7 +476,8 @@ function RouteCommands() {
               inserted as given (not URL-encoded). <code>{"{ locale: 'en' }"}</code> turns{' '}
               <code>/:locale/billing</code> into <code>/en/billing</code>, and{' '}
               <code>&apos;&apos;</code> drops the segment, giving <code>/billing</code>. A route
-              with a segment left unfilled is skipped.
+              with a segment left unfilled is skipped, and only own properties of{' '}
+              <code>params</code> count.
             </>,
           ],
         ]}
