@@ -20,6 +20,7 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 | `cmdk-engine/adapters/react-router` | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | Optional match-sorter search backend |
 | `cmdk-engine/adapters/base-ui` | Base UI adapter (Autocomplete + Dialog) |
+| `cmdk-engine/adapters/sitemap` | `sitemapToCommands`: turns the CLI's sitemap into commands |
 
 ### Key Design Decisions
 
@@ -27,7 +28,7 @@ Router Config -> Route Adapter -> Command Registry -> Keyword Engine -> Access C
 - **Registry uses pub/sub pattern**: Compatible with React's `useSyncExternalStore`
 - **cmdk adapter sets `shouldFilter={false}`**: We own all filtering, solving cmdk's sorting/selection bugs
 - **Frecency uses exponential decay**: Half-life algorithm, not simple counters
-- **CLI uses AST-light parsing**: Regex-based route extraction, no heavy TS compiler API
+- **CLI reads files with a small hand-written tokenizer** (`src/cli/lexer.ts`): route files and the TS config are read, never run, and no parser is bundled
 
 ## Tech Stack
 
