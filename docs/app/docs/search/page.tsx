@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ApiTable } from '@/components/api-table'
 import { CodeBlock } from '@/components/code-block'
+import { Since } from '@/components/since'
 
 export const metadata = { title: 'Search' }
 
@@ -81,9 +82,34 @@ export default function Search() {
         </li>
         <li>
           An empty query lists every command that is not <code>hidden</code>, ordered by{' '}
-          <code>priority</code>. A <code>hidden</code> command is still found by a non-empty query.
-        </li>
+          <code>priority</code>. A <code>hidden</code> command is still found by a non-empty
+          query.{' '}
+        </li>{' '}
       </ul>
+
+      <h3>
+        Words in any order <Since />
+      </h3>
+      <p>
+        The words of a query can match in any order, and each word can match a different field:
+        &quot;overview billing&quot; finds &quot;Billing Overview&quot;, and &quot;invoices
+        billing&quot; finds a &quot;Billing&quot; command with the keyword &quot;invoices&quot;.
+        Every word has to match something. These matches come after the commands that match the
+        whole query, which keep their order and scores, and never score above the weakest of them.
+      </p>
+
+      <h3>
+        Accents, Unicode forms and spaces <Since />
+      </h3>
+      <p>
+        The query and the commands are compared after Unicode compatibility decomposition (NFKD),
+        with the combining accents U+0300 to U+036F removed, in lowercase, with repeated whitespace
+        collapsed. So &quot;resume&quot; finds &quot;Résumé&quot;, a decomposed &quot;café&quot;
+        finds a composed one, and <code>billing&nbsp; over</code> (two spaces) finds &quot;Billing
+        Overview&quot;. Other marks (Indic vowel signs, kana voicing marks) are kept, ß and dotless
+        ı are not folded, and Korean is compared by its letters (jamo). Plain ASCII text scores as
+        before. Pass your own <code>searchEngine</code> if you need accent-sensitive matching.
+      </p>
 
       <h2>Synonyms</h2>
       <p>
@@ -101,15 +127,16 @@ export default function Search() {
       />
       <ul>
         <li>
-          <strong>Query:</strong> when the whole query (trimmed, any case) equals a key or a value,
-          the other terms are searched too: a key brings its values, a value its key. Commands found
-          only this way are listed after the direct matches and never score above the weakest one.
-          Frecency and context boosts apply afterwards, so a command you use often can still move
-          up.
+          <strong>Query:</strong> when the whole query (ignoring case, accents and extra spaces)
+          equals a key or a value, the other terms are searched too: a key brings its values, a
+          value its key. Commands found only this way are listed after the direct matches and never
+          score above the weakest one. Frecency and context boosts apply afterwards, so a command
+          you use often can still move up.
         </li>
         <li>
-          <strong>Commands:</strong> with the built-in fuzzy search, a command whose keyword or
-          whole label equals a key or a value also matches the other terms, at a lower weight.
+          <strong>Commands:</strong> a command whose keyword or whole label equals a key or a value
+          also matches the other terms, at a lower weight (with match-sorter, ranked at most
+          CONTAINS).
         </li>
         <li>
           <strong>Not expanded:</strong> the query, while it is a partial word (&quot;mon&quot; is
@@ -126,8 +153,10 @@ export default function Search() {
       <p>
         <code>cmdk-engine/search/match-sorter</code> swaps in{' '}
         <a href="https://github.com/kentcdodds/match-sorter">match-sorter</a>, which ranks by how
-        closely a command matches. Install the optional peer <code>match-sorter</code> (7 or 8) and
-        pass the engine in the provider config. Create it once, outside the component:
+        closely a command matches. Install the optional peer <code>match-sorter</code> (7 or 8): the
+        entry imports it directly, so it must be installed for this entry, and results do not change
+        once it loads. Pass the engine in the provider config, and create it once, outside the
+        component:
       </p>
       <CodeBlock
         language="tsx"
@@ -164,13 +193,30 @@ export const config = { searchEngine }`}
         ]}
       />
 
+      <ul>
+        <li>
+          The query is folded the same way as in the built-in search (accents and extra spaces).
+        </li>
+        <li>
+          A command also matches its synonym keywords, ranked at most CONTAINS so they stay below
+          direct matches: &quot;prefer&quot; finds a &quot;Settings&quot; command with the synonym
+          &quot;preferences&quot;. A <code>threshold</code> above CONTAINS leaves synonym matches
+          out.
+        </li>
+        <li>
+          Words in any order work too, appended after the whole-query matches. On a large list, a
+          keystroke can take up to about twice as long as match-sorter alone.
+        </li>
+      </ul>
+
       <h2>A custom engine</h2>
       <p>
         Any object with a <code>search(query, items)</code> method works. It receives the commands
         that passed the visibility and permission checks, and returns the matches as{' '}
         <code>ScoredItem</code> objects, best first, with scores from 0 to 1. The engine is also
         called for an empty query, which should return the browse list (leave out items with{' '}
-        <code>hidden</code>).
+        <code>hidden</code>). Any-order matching and accent folding belong to the built-in engine
+        and the match-sorter entry; a custom engine decides for itself.
       </p>
       <CodeBlock
         language="tsx"
