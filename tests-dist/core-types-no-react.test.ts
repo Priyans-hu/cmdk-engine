@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import ts from 'typescript'
 
-// The core and match-sorter entries do not need React, so their published types
+// The core, match-sorter and sitemap entries do not need React, so their published types
 // must compile without React's types and with `skipLibCheck: false`. Each check
 // copies one built .d.ts into a fresh directory and type checks a small consumer.
 const ROOT = resolve(__dirname, '..')
@@ -17,11 +17,17 @@ const MATCH_SORTER = `import { createMatchSorterSearch } from './entry'
 type Item = Parameters<ReturnType<typeof createMatchSorterSearch>['search']>[1][number]
 const make = (item: Item) => item
 `
+const SITEMAP = `import { sitemapToCommands } from './entry'
+type Item = ReturnType<typeof sitemapToCommands>[number]
+const make = (item: Item) => item
+`
 const ENTRIES = [
   ['core/index.d.ts', CORE],
   ['core/index.d.cts', CORE],
   ['core/search-match-sorter.d.ts', MATCH_SORTER],
   ['core/search-match-sorter.d.cts', MATCH_SORTER],
+  ['adapters/sitemap/index.d.ts', SITEMAP],
+  ['adapters/sitemap/index.d.cts', SITEMAP],
 ]
 
 const VALID = `export const item = make({ id: 'a', label: 'A', icon: 'star' })

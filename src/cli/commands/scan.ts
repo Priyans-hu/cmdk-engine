@@ -5,7 +5,8 @@ import { loadConfig } from '../config-loader'
 import { scanReactRouterFiles } from '../scanners/react-router'
 import { scanNextJsAppDir } from '../scanners/nextjs-app'
 import { scanNextJsPagesDir } from '../scanners/nextjs-pages'
-import { generateSitemap } from '../generators/sitemap'
+import { generateSitemap, sortRoutes } from '../generators/sitemap'
+import type { ScanOptions } from '../scanners/shared'
 import type { CmdkEngineConfig, Sitemap, SitemapRoute } from '../../core/types'
 import { DEFAULT_EXCLUDE, matchesExcludePattern, type ExcludePattern } from '../../core/route-defaults'
 
@@ -20,6 +21,10 @@ export const scanCommand = new Command('scan')
   .option(
     '--no-default-exclude',
     'Skip the default exclusion list (auth/error routes like /login, /signup, /404 are normally excluded)',
+  )
+  .option(
+    '--include-dynamic [names...]',
+    'Keep routes with these :param segments, e.g. locale (every :param when no name is given)',
   )
   .action(async (options, command: Command) => {
     try {
@@ -50,19 +55,31 @@ export const scanCommand = new Command('scan')
         process.exit(1)
       }
 
+      // The flag wins over the config; `--include-dynamic a,b` and `a b` both work
+      const scanOptions: ScanOptions = {
+        includeDynamic:
+          command.getOptionValueSource('includeDynamic') === 'cli'
+            ? options.includeDynamic === true ||
+              (options.includeDynamic as string[])
+                .flatMap((names) => names.split(','))
+                .map((name) => name.trim())
+                .filter(Boolean)
+            : config.includeDynamic,
+      }
+
       console.log(`Scanning ${framework} routes in ${routesDir}...`)
 
       let routes: SitemapRoute[] = []
 
       switch (framework) {
         case 'react-router':
-          routes = scanReactRouterFiles(resolvedRoutesDir)
+          routes = scanReactRouterFiles(resolvedRoutesDir, scanOptions)
           break
         case 'nextjs-app':
-          routes = scanNextJsAppDir(resolvedRoutesDir)
+          routes = scanNextJsAppDir(resolvedRoutesDir, scanOptions)
           break
         case 'nextjs-pages':
-          routes = scanNextJsPagesDir(resolvedRoutesDir)
+          routes = scanNextJsPagesDir(resolvedRoutesDir, scanOptions)
           break
         default:
           console.error(
@@ -86,6 +103,8 @@ export const scanCommand = new Command('scan')
       if (config.exclude) {
         routes = applyExclusions(routes, config.exclude)
       }
+
+      routes = uniqueIds(routes)
 
       // Refuse to silently overwrite good output with an empty sitemap (a
       // mistyped --routes-dir/--framework is a common cause of 0 routes).
@@ -204,13 +223,38 @@ function applyOverrides(
 }
 
 /**
- * Filter out routes matching user-supplied exclude patterns. Uses the shared
- * matcher so globs boundary-check correctly (`/admin*` won't match
- * `/administration`) and RegExp patterns are supported, matching the runtime
- * React Router adapter.
+ * Filter out routes matching user-supplied exclude patterns, with the matcher the
+ * runtime React Router adapter shares: exact strings, globs (`*` within a path
+ * segment, `**` across segments) and RegExp.
  */
 function applyExclusions(routes: SitemapRoute[], exclude: ExcludePattern[]): SitemapRoute[] {
   return routes.filter((route) => !exclude.some((pattern) => matchesExcludePattern(route.path, pattern)))
+}
+
+/**
+ * Make route ids unique. Ids keep only letters, digits and '-', so `/a_b` and
+ * `/ab` share `ab`. A registry keeps the last command registered with an id, so
+ * in path order the last of them keeps it (and the frecency and Recent history
+ * stored under it), and the others get `-2`, `-3`, ..., skipping ids in use.
+ * Exported for direct testing.
+ */
+export function uniqueIds(routes: SitemapRoute[]): SitemapRoute[] {
+  const sorted = sortRoutes(routes)
+  const taken = new Set(sorted.map((route) => route.id))
+  const owner = new Map(sorted.map((route) => [route.id, route]))
+
+  return sorted.map((route) => {
+    const kept = owner.get(route.id)
+    if (kept === route) return route
+    let n = 2
+    while (taken.has(`${route.id}-${n}`)) n++
+    const id = `${route.id}-${n}`
+    taken.add(id)
+    console.warn(
+      `Warning: ${route.path} and ${kept?.path} share the id "${route.id}"; ${route.path} gets "${id}".`,
+    )
+    return { ...route, id }
+  })
 }
 
 /**
