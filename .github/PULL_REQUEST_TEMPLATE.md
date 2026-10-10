@@ -15,7 +15,8 @@
 
 - [ ] My code follows the project style guidelines
 - [ ] I have added tests for my changes
-- [ ] All tests pass (`bun test`)
+- [ ] All tests pass (`bun run test`)
+- [ ] The build, built-package tests and size budgets pass (`bun run build && bun run test:dist && bun run size`)
 - [ ] Lint passes (`bun run lint`)
 - [ ] Type check passes (`bun run typecheck`)
 - [ ] I have updated documentation if needed

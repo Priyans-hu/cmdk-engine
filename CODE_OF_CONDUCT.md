@@ -45,7 +45,7 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers at **mailpriyanshugarg@gmail.com**.
+reported to the project maintainers at **gargpriyanshu2004@gmail.com**.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

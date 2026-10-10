@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SITE } from '@/lib/constants'
+import { DOCS_ORDER, SITE } from '@/lib/constants'
 
 export function Footer() {
   return (
@@ -9,24 +9,16 @@ export function Footer() {
           {/* Product */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
-              Product
+              Docs
             </p>
             <ul className="space-y-2">
-              <li>
-                <Link href="/docs/getting-started" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                  Getting Started
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs/api" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                  API Reference
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs/examples" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                  Examples
-                </Link>
-              </li>
+              {DOCS_ORDER.map((page) => (
+                <li key={page.href}>
+                  <Link href={page.href} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                    {page.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

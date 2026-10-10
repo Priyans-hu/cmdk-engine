@@ -1,6 +1,6 @@
 # cmdk-engine
 
-The smart command palette engine for React. Built on [cmdk](https://github.com/dip/cmdk). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
+Permission-aware command palette engine for React. Works with [cmdk](https://github.com/dip/cmdk) or [Base UI](https://base-ui.com). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -10,6 +10,8 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/d
 
 **Live demo:** press Cmd+K (Ctrl+K) on the [docs site](https://priyans-hu.github.io/cmdk-engine/). Runnable apps are in [Examples](#examples).
 
+**Contents:** [Installation](#installation), [Quick Start](#quick-start), [Styling](#styling), [Examples](#examples), [Search](#search), [Nested Commands](#nested-commands), [Async Command Sources](#async-command-sources), [CLI Tool](#cli-tool), [API Reference](#api-reference), [Testing](#testing).
+
 ---
 
 ## Why cmdk-engine?
@@ -18,7 +20,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/d
 
 | Feature | cmdk | cmdk-engine |
 |---------|------|-------------|
-| Composable UI components | Yes | Yes (via cmdk adapter) |
+| Composable UI components | Yes | Yes (via the cmdk or Base UI adapter) |
 | Route auto-discovery | No | Yes — CLI scanner + runtime adapters |
 | RBAC / permission filtering | No | Yes — any/all modes |
 | Frecency ranking | No | Yes — exponential decay algorithm |
@@ -29,7 +31,7 @@ The smart command palette engine for React. Built on [cmdk](https://github.com/d
 | Dynamic content updates | [Open upstream issue (#267)](https://github.com/dip/cmdk/issues/267) | Yes — reactive pub/sub registry |
 | Async / server-side sources | No | Yes — debounced, abortable, one load per query |
 | CLI tooling | No | Yes — scan, init, validate |
-| Framework-agnostic core | No | Yes — zero runtime deps |
+| UI-agnostic core | No | Yes: one engine under cmdk or Base UI, zero runtime deps |
 
 **cmdk-engine owns all filtering** (`shouldFilter={false}`), solving the sorting and selection bugs in cmdk while keeping its composable UI primitives.
 
@@ -58,6 +60,20 @@ yarn add cmdk-engine cmdk
 > `react-router-dom` v6 or v7 (for the React Router adapter; v8 ships only
 > `react-router`). The core engine (`cmdk-engine`) has zero runtime
 > dependencies.
+
+### Requirements
+
+- **React** 18 or 19.
+- **A UI adapter:** `cmdk` ^1 for the cmdk adapter, or `@base-ui/react` ^1.1 for the
+  Base UI adapter. Or build your own UI with the hooks.
+- **Optional:** `react-router` 6, 7 or 8 for the route scanner, and `match-sorter` 7 or 8
+  for the match-sorter search backend.
+- **Node.js** 20 or later, needed by the CLI only. The library runs in the browser and
+  during SSR.
+
+**Support:** the latest minor release gets fixes. While the version is 0.x, a minor
+release can change behavior; each such change is listed as a "Behavior change" in the
+[changelog](./CHANGELOG.md). To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 
 ---
 
@@ -157,10 +173,13 @@ const config = {
 
 ### Errors from commands
 
+*New in 0.6.*
+
 A command's `action`, your `onSelect` or your `onNavigate` can throw or return
 a rejected promise. Set `onSelectError` to handle that; the palette still
 closes right away. Without it, errors propagate as before.
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { CommandItem } from 'cmdk-engine'
 
@@ -201,6 +220,8 @@ function CustomCommandMenu() {
 
 > `select()` records frecency + search history, runs `onSelect` → `action` →
 > `onNavigate`/`href`, and closes the palette — all in one call.
+
+---
 
 ## Styling
 
@@ -303,11 +324,41 @@ repo, and each installs `cmdk-engine` from npm, so you can copy one out.
 | [Next.js App Router](examples/nextjs-app-router) | A `'use client'` provider file under a server layout, `router.push` as `onNavigate`, and `[locale]` pages found by `cmdk-engine scan --include-dynamic locale` and filled in with `sitemapToCommands` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/nextjs-app-router?file=components/command-menu.tsx) |
 | [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
 
-The docs site is a live demo too: Cmd+K there searches its own pages.
+The docs site is a live demo too: Cmd+K there searches its own pages. Its
+[Examples page](https://priyans-hu.github.io/cmdk-engine/docs/examples) has more
+recipes: RBAC, a custom UI and a pre-commit hook.
+
+---
+
+## CommandPalette Props
+
+Both adapters export `CommandPalette` with the same props, except `vimBindings`, which
+only the cmdk adapter has. Every prop is optional.
+
+| Prop | Default | Description |
+|------|---------|-------------|
+| `dialog` | `false` | Render in a modal dialog with an overlay. When `false`, the palette is inline and always visible. Open a dialog with `useCommandPaletteShortcut()` or `toggle()` |
+| `placeholder` | `palette.placeholder` | Input placeholder |
+| `label` | `palette.label` | Accessible name of the palette and of the dialog |
+| `loop` | `true` | Wrap from the last item to the first, and back |
+| `onSelect` | none | `(item) => void`. Runs instead of the default handling (`action`, then `onNavigate` or `href`), and wins over `config.onSelect` |
+| `renderItem` | built-in row | `(item, score) => ReactNode`. The row content; the adapter still renders the selectable wrapper |
+| `renderGroupHeading` | the group label | `(group) => ReactNode` |
+| `renderEmpty` | `palette.empty` text | `() => ReactNode`, shown when nothing matches |
+| `renderLoading` | `palette.loading` text | `() => ReactNode`, shown while async sources load |
+| `renderBreadcrumbs` | built-in trail | `(crumbs, onBack) => ReactNode`, shown inside a sub-menu ([Nested Commands](#nested-commands)) |
+| `footer` | none | Node rendered below the list |
+| `container` | the page body | Portal target in dialog mode |
+| `disablePointerSelection` | `false` | The pointer no longer moves the highlight. Clicking an item still runs it |
+| `vimBindings` | `true` | cmdk adapter only. Ctrl+N, P, J and K move the highlight |
+| `className`, `inputClassName`, `listClassName`, `itemClassName`, `groupClassName`, `emptyClassName` | none | Class names for those parts ([Styling](#styling)) |
+| `overlayClassName`, `contentClassName` | none | Class names for the dialog overlay and content |
 
 ---
 
 ## Base UI Adapter
+
+*New in 0.6.*
 
 Prefer [Base UI](https://base-ui.com)? `cmdk-engine/adapters/base-ui` renders
 the palette with Base UI's
@@ -371,19 +422,41 @@ load the adapter with either `import` or `require`, not both, or two copies of
 
 ## React Router Integration
 
-Auto-discover routes from your React Router config:
+Auto-discover routes from your React Router config. Register them inside the provider,
+and navigate with the router object, since the provider sits above `RouterProvider`:
 
+<!-- readme-test: typecheck -->
 ```tsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
-import { useCommandRegister } from 'cmdk-engine/react'
 
-const commands = scanRoutes(routeConfig)
+const routes = [
+  { path: '/', element: <h1>Home</h1> },
+  { path: '/billing', element: <h1>Billing</h1> },
+]
+const router = createBrowserRouter(routes)
+const commands = scanRoutes(routes)
+const config = { onNavigate: (href: string) => router.navigate(href) }
 
-function App() {
+function RegisterRoutes() {
   useCommandRegister(commands)
-  return <RouterProvider router={router} />
+  return null
+}
+
+export function App() {
+  return (
+    <CommandEngineProvider config={config}>
+      <RegisterRoutes />
+      {/* the palette from the Quick Start goes here */}
+      <RouterProvider router={router} />
+    </CommandEngineProvider>
+  )
 }
 ```
+
+On React Router 8 there is no `react-router-dom`: import `createBrowserRouter` from
+`react-router` and `RouterProvider` from `react-router/dom`.
 
 ### Smart defaults
 
@@ -430,9 +503,24 @@ A `handle` returned from `lazy()` is not read, because the scanner never calls `
 
 ### Index routes
 
+*New in 0.6.*
+
 An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
 
 The CLI scanner (`npx cmdk-engine scan`) does not resolve index routes.
+
+---
+
+## Next.js
+
+The palette needs a Client Component. Put the provider, the palette and the
+shortcut in one file that starts with `'use client'`, pass `router.push` as
+`onNavigate`, and render it from your root layout. `npx cmdk-engine scan` reads
+App Router and Pages Router files; for `[locale]` pages see
+[Dynamic routes and `[locale]`](#dynamic-routes-and-locale). The
+[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs) has the
+full files, and [`examples/nextjs-app-router`](examples/nextjs-app-router) is a
+runnable app.
 
 ---
 
@@ -440,15 +528,17 @@ The CLI scanner (`npx cmdk-engine scan`) does not resolve index routes.
 
 Filter commands based on user permissions:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { createSimpleAccessProvider } from 'cmdk-engine'
 
-<CommandEngineProvider
-  config={{
-    accessControl: createSimpleAccessProvider(['admin.view', 'billing.read']),
-    accessCheckMode: 'any', // user needs ANY listed permission
-  }}
->
+// Build the provider once, outside the component, or `useMemo` it per user.
+const config = {
+  accessControl: createSimpleAccessProvider(['admin.view', 'billing.read']),
+  accessCheckMode: 'any' as const, // user needs ANY listed permission
+}
+
+// <CommandEngineProvider config={config}>
 ```
 
 Commands with `permissions: ['admin.view']` will only show for users who have that permission.
@@ -492,6 +582,8 @@ useCommandRegister([
 
 ## Search
 
+*New in 0.6: words in any order, and folding of accents and spaces.*
+
 The built-in search matches labels, descriptions and keywords, and tolerates
 typos, partial words and initials.
 
@@ -514,6 +606,20 @@ typos, partial words and initials.
   A keystroke with several words takes about 1.5 to 2 times as long as
   match-sorter alone on Node 22 and 2 to 3 times on Node 20, the most for
   three or more words.
+
+Pass the engine in the provider config, and create it once, outside the
+component:
+
+<!-- readme-test: typecheck -->
+```tsx
+import { createMatchSorterSearch } from 'cmdk-engine/search/match-sorter'
+
+const config = { searchEngine: createMatchSorterSearch() }
+```
+
+Any object with a `search(query, items)` method works as `searchEngine` too.
+The [Search page](https://priyans-hu.github.io/cmdk-engine/docs/search) has the
+scoring tiers, the `threshold` and `keys` options and a custom engine.
 
 ---
 
@@ -550,7 +656,7 @@ extra term.
 
 ## Frecency Ranking
 
-Commands you use frequently and recently appear higher in results. No configuration needed — it uses localStorage by default. When you use `select()`, frecency is recorded automatically.
+Commands you use frequently and recently appear higher in results. No configuration needed: it uses `localStorage` by default. When you use `select()`, frecency is recorded automatically.
 
 The algorithm uses exponential decay with a configurable half-life:
 
@@ -576,8 +682,10 @@ Show a "Recent" group at the top of the palette when the search is empty:
 
 > Frecency (and search history, below) persist to `localStorage` by default and
 > fall back to memory where it is unavailable: during SSR, in sandboxed iframes
-> and when the browser blocks cookies. Malformed data under their keys is
-> ignored and replaced on the next write. Override the backend via
+> and when the browser blocks cookies, or `window.localStorage` is `null` or
+> rejects writes. To test storage, the provider writes and removes a
+> `cmdk-engine-probe` key once when it mounts. Malformed data under their keys
+> is ignored and replaced on the next write. Override the backend via
 > `config.frecency.storage`.
 
 > `frecency.storageKey` and `searchHistory.storageKey` are full `localStorage`
@@ -587,6 +695,8 @@ Show a "Recent" group at the top of the palette when the search is empty:
 
 ### Turning frecency off
 
+*New in 0.6.*
+
 Set `frecency: { enabled: false }` to turn frecency off. Nothing is stored in
 or read from `localStorage`, results are not ranked by past use, and no
 "Recent" group shows, even with `showRecent`.
@@ -595,8 +705,9 @@ or read from `localStorage`, results are not ranked by past use, and no
 
 ## Context / Scope Boosting
 
-Commands with a `scope` are boosted when they match the current app context —
-so on `/billing`, billing commands rank higher:
+Commands with a `scope` are boosted when they match the current app context, so on
+`/billing`, billing commands rank higher while you search. The empty-query browse
+list is not boosted.
 
 ```tsx
 <CommandEngineProvider
@@ -610,19 +721,128 @@ so on `/billing`, billing commands rank higher:
 { id: 'add-card', label: 'Add Card', scope: ['/billing', '/billing/*'] }
 ```
 
+A `scope` entry matches when it equals the current `context.path` or is a parent of it
+(`/billing` matches `/billing/overview`), when a glob such as `/billing/*` covers it (the
+glob matches below `/billing`, not `/billing` itself), or when it equals one of the
+`context.tags`.
+
+---
+
+## Nested Commands
+
+Give a command `children` to make a sub-menu. Selecting it opens its children instead
+of running it:
+
+<!-- readme-test: typecheck -->
+```tsx
+import { useCommandRegister } from 'cmdk-engine/react'
+
+const setTheme = (theme: string) => document.documentElement.setAttribute('data-theme', theme)
+
+function ThemeCommands() {
+  useCommandRegister([
+    {
+      id: 'theme',
+      label: 'Change theme',
+      children: [
+        { id: 'theme-light', label: 'Light', action: () => setTheme('light') },
+        { id: 'theme-dark', label: 'Dark', action: () => setTheme('dark') },
+      ],
+    },
+  ])
+  return null
+}
+```
+
+- A command with children never runs its own `action` or `href`. An empty `children`
+  array counts as a leaf.
+- The palette lists only the children, and search covers only that level. `when`,
+  `permissions` and `hidden` apply to them as at the root.
+- Backspace in an empty input, or the back button in the breadcrumbs, goes up one level.
+  Closing the palette returns to the root.
+- Opening a sub-menu is not recorded in frecency or search history; running a child is.
+- Async sources load at the root level only.
+- Changes to the registered command's `children` show up while you are inside the
+  sub-menu. A parent that is no longer registered keeps showing the children it had.
+- In a custom UI, `useCommandPalette()` returns `breadcrumbs`, `depth`,
+  `drillDown(item)`, `drillUp()` and `resetPath()`. Both adapters take
+  `renderBreadcrumbs(crumbs, onBack)` and mark the chevron and the trail with
+  `data-cmdk-engine-item-chevron` and `data-cmdk-engine-breadcrumbs` (see
+  [Styling](#styling)).
+
+---
+
+## Groups
+
+A command's `group` string puts it under a heading. Without any config, each distinct
+`group` becomes a heading with the same text, and commands without a `group` go under
+"Other", always last. Set `groups` in the provider config to choose labels and order:
+
+<!-- readme-test: typecheck -->
+```tsx
+import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
+
+const config = {
+  groups: [
+    { id: 'navigation', label: 'Go to', priority: 10 },
+    { id: 'actions', label: 'Actions', priority: 5 },
+  ],
+}
+
+function Commands() {
+  useCommandRegister([
+    { id: 'home', label: 'Home', href: '/', group: 'navigation' },
+    { id: 'invite', label: 'Invite teammate', action: () => {}, group: 'actions' },
+  ])
+  return null
+}
+
+export function Root({ children }: { children: React.ReactNode }) {
+  return (
+    <CommandEngineProvider config={config}>
+      <Commands />
+      {children}
+    </CommandEngineProvider>
+  )
+}
+```
+
+- A command's `group` matches a group's `id`. A `group` you did not define still shows,
+  labelled with the `group` string.
+- With an empty query, defined groups are listed by `priority` (higher first), then the
+  other groups in the order their first command appears. While searching, groups are
+  ordered by their best match instead.
+- A group's `icon` is not rendered by the built-in components; `renderGroupHeading(group)`
+  receives it.
+- `maxResults` (default 50) caps the total number of results across groups.
+- The Recent group (`frecency.showRecent`) comes first, above your configured groups.
+  The palette highlights the first item when it opens, so with groups configured that
+  is the most recent command. To keep your groups on top, leave `showRecent` off, or
+  render your own list from `groupedResults`.
+
+---
+
 ## Internationalization (i18n)
 
 Built-in UI strings go through a translation function. Pass your own to
 localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { getTranslationKeys } from 'cmdk-engine'
 
-<CommandEngineProvider
-  config={{ t: (key) => myDictionary[key] ?? key }}
->
+const myDictionary: Record<string, string> = {
+  'palette.placeholder': 'Buscar comandos...',
+  'palette.empty': 'Sin resultados.',
+}
+
+// Define `t` once, outside the component: a new function on every render rebuilds the engine.
+const config = { t: (key: string) => myDictionary[key] ?? key }
+
+// <CommandEngineProvider config={config}>
 
 // getTranslationKeys() lists every key that has a default English string.
+console.log(getTranslationKeys())
 ```
 
 > `getTranslationKeys()` also lists `group.other` and `search.history`, which
@@ -634,28 +854,50 @@ Base UI adapter's dialog. `palette.list` (default "Suggestions") names the
 results listbox in both adapters. A `t` that returns the key unchanged, like the
 one above, or an empty string keeps "Suggestions".
 
+---
+
 ## Search History
 
-Opt-in tracking of past queries (persisted to `localStorage`):
+Opt-in tracking of past queries (persisted to `localStorage`). A query is recorded when
+the user selects a command, not on every keystroke. Where `localStorage` is unavailable, the
+history stays in memory, with the options it was created with until the provider remounts:
 
 ```tsx
-import { useSearchHistory } from 'cmdk-engine/react'
+const config = { searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }
+```
 
-<CommandEngineProvider
-  config={{ searchHistory: { enabled: true, maxEntries: 20, minQueryLength: 2 } }}
->
+Read it with `useSearchHistory()`, and set the search box with `setSearch` from
+`useCommandPalette()`:
+
+<!-- readme-test: typecheck -->
+```tsx
+import { useCommandPalette, useSearchHistory } from 'cmdk-engine/react'
 
 function RecentSearches() {
-  const { getRecent, remove, clear } = useSearchHistory()
-  return <>{getRecent(5).map((e) => <button key={e.query} onClick={() => setSearch(e.query)}>{e.query}</button>)}</>
+  const { setSearch } = useCommandPalette()
+  const { getRecent } = useSearchHistory() // also: remove(query), clear()
+  return (
+    <>
+      {getRecent(5).map((entry) => (
+        <button key={entry.query} onClick={() => setSearch(entry.query)}>
+          {entry.query}
+        </button>
+      ))}
+    </>
+  )
 }
 ```
 
+---
+
 ## Palette Events
+
+*New in 0.6.*
 
 `useCommandPaletteEvents` reports what happens in the palette, for analytics.
 Call it once, in any component inside the provider:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandPaletteEvents } from 'cmdk-engine/react'
 
@@ -680,12 +922,17 @@ function PaletteAnalytics() {
 before sending it anywhere. An error thrown by your handler never breaks the
 palette. Without the hook, nothing is reported.
 
+---
+
 ## Async Command Sources
+
+*New in 0.6.*
 
 Mix registered commands with results loaded for each query, such as a
 server-side search. The provider runs every source once per query for all
 consumers: it debounces, aborts stale requests and ignores late responses.
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { AsyncSource } from 'cmdk-engine'
 
@@ -704,7 +951,9 @@ const issueSearch: AsyncSource = {
   group: 'Issues',
 }
 
-<CommandEngineProvider config={{ asyncSources: [issueSearch] }}>
+const config = { asyncSources: [issueSearch] }
+
+// <CommandEngineProvider config={config}>
 ```
 
 | Option | Default | Description |
@@ -775,6 +1024,8 @@ npx cmdk-engine validate
 
 ### Use the output
 
+*New in 0.6.*
+
 `scan` writes `src/generated/command-routes.json`. `sitemapToCommands` turns it
 into commands; register them once, at the app level:
 
@@ -819,6 +1070,8 @@ the `exclude` config field instead).
 
 ### Dynamic routes and `[locale]`
 
+*New in 0.6.*
+
 A command needs a real URL, so the scan skips routes with a `:param`
 (`/users/:id`, `app/[id]/page.tsx`). To keep routes under a segment you can
 fill at runtime, such as a Next.js `[locale]` folder, name it in
@@ -841,6 +1094,7 @@ useCommandRegister(commands)
 
 ### Config file
 
+<!-- readme-test: typecheck -->
 ```ts
 // cmdk-engine.config.ts
 import { defineConfig } from 'cmdk-engine'
@@ -893,20 +1147,13 @@ Ids keep letters, digits and `-` (`/billing/overview` gives `billing--overview`)
 so `/a_b` and `/ab` would share `ab`. The scan then keeps it for the last of them
 in path order and gives the others `ab-2`, `ab-3`, ...
 
-**Next.js:** for the App Router setup (a `'use client'` palette file,
-`router.push`, `[locale]`), see the
-[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs).
-
 ### Pre-commit hook
 
-```json
-{
-  "husky": {
-    "hooks": {
-      "pre-commit": "npx cmdk-engine scan && git add src/generated/command-routes.json"
-    }
-  }
-}
+With [husky](https://typicode.github.io/husky) 9, run `npx husky init`, then put the
+command in `.husky/pre-commit`:
+
+```sh
+npx cmdk-engine scan && git add src/generated/command-routes.json
 ```
 
 ### GitHub Actions
@@ -947,7 +1194,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 | `cmdk-engine/search/match-sorter` | 0.72 kB | Optional match-sorter search backend |
 | `cmdk-engine/adapters/base-ui` | 1.5 kB | Pre-wired Base UI components |
 
-Sizes are minified + brotli. Entries import the siblings they use (the cmdk
+Sizes are measured with size-limit, minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
@@ -961,8 +1208,12 @@ All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
 ## API Reference
 
+A quick index. The [docs site](https://priyans-hu.github.io/cmdk-engine/docs/api) has
+every option, field and hook.
+
 ### Core
 
+<!-- readme-test: typecheck -->
 ```ts
 import {
   createRegistry,        // Command store (pub/sub, useSyncExternalStore compatible)
@@ -972,31 +1223,47 @@ import {
   createSimpleAccessProvider, // Permission provider from array/Set
   createFrecencyEngine,  // Frecency ranking with exponential decay
   createGroupManager,    // Command group management
-  defineConfig,          // Typed config helper for CLI
+  createContextEngine,   // Scope boosting
+  createSearchHistory,   // Search history (localStorage); createInMemorySearchHistory for tests and SSR
+  createInMemoryStorage, // In-memory frecency storage; createLocalStorageFrecencyStorage for localStorage
+  isCommandVisible,      // Resolve a command's `when` gate; filterVisible filters a list with it
+  getTranslationKeys,    // Every UI string key; createDefaultTranslation is the English `t`
+  pathToId, pathToLabel, pathToGroup, pathSegmentToLabel, // Route path helpers
+  defineConfig,          // Typed config helper for the CLI config file
 } from 'cmdk-engine'
 ```
 
 ### React
 
+<!-- readme-test: typecheck -->
 ```ts
 import {
   CommandEngineProvider, // Context provider
   useCommandPalette,    // Main hook: search + filter + rank
   useCommandRegister,   // Register commands from components
   useFrecency,          // Direct frecency access
+  useSearchHistory,     // Read and edit search history
+  useCommandContext,    // Read the context config (read-only)
+  useEngineContext,     // The engine singletons, for custom UIs; throws outside the provider
+  usePaletteState,      // The shared open, search and path state; throws outside the provider
+  useCommandPaletteEvents, // Report palette events, for analytics
 } from 'cmdk-engine/react'
 ```
 
 ### Adapters
 
+<!-- readme-test: typecheck -->
 ```ts
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
 // The same CommandPalette and useCommandPaletteShortcut, built on Base UI:
 // import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 ```
 
 ### Keyboard shortcut
+
+*New in 0.6: the function form.*
 
 `useCommandPaletteShortcut(shortcut?)` toggles the palette and returns
 `{ isOpen, toggle }`. A string is the key pressed with Cmd or Ctrl (default
@@ -1005,7 +1272,10 @@ Russian or Greek, by the physical key. Holding the keys toggles once. For any
 other shortcut, pass a function that decides the whole match, modifiers
 included. Define it outside the component, or every render re-binds it:
 
-```ts
+<!-- readme-test: typecheck -->
+```tsx
+import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
+
 // Cmd/Ctrl+Shift+P, as in VS Code
 const isPaletteKey = (e: KeyboardEvent) =>
   (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p'
@@ -1018,17 +1288,23 @@ function CommandMenu() {
 
 ### Key hook return values
 
+<!-- readme-test: typecheck -->
 ```ts
+import { useCommandPalette } from 'cmdk-engine/react'
+
 const {
   search,          // Current query
   setSearch,       // Update query
   results,         // ScoredItem[] (flat)
-  flatResults,     // Same as results
+  flatResults,     // The same array as results (an alias; use results)
   groupedResults,  // GroupedResult[] — results grouped by group
   groups,          // CommandGroup[] — active groups
   isOpen,          // Palette visibility
   isLoading,       // True while an async source is loading
   asyncErrors,     // Record<sourceId, Error> — last error per async source
+  breadcrumbs,     // CommandItem[], the sub-menu path (nested commands)
+  depth,           // 0 at the root
+  drillDown, drillUp, resetPath, // Move through nested commands
   open, close, toggle,
   select,          // Select a command (records frecency + runs handler + closes)
   recordUsage,     // Record frecency manually
@@ -1041,6 +1317,7 @@ const {
 
 All types are exported and fully documented:
 
+<!-- readme-test: typecheck -->
 ```ts
 import type {
   CommandItem,
@@ -1056,11 +1333,50 @@ import type {
   CommandGroup,
   SynonymMap,
   RouteCommandMeta,
-  CmdkEngineConfig,
-  CommandEngineConfig,
+  CmdkEngineConfig,    // the CLI config file (cmdk-engine.config.ts)
+  CommandEngineConfig, // the provider's `config` prop
   CommandPaletteState,
+  CommandPaletteEvent,
+  AccessCheckMode,
+  FrecencyEntry,
+  FrecencyStorage,
+  CommandContext,
+  TranslationFn,
+  SearchHistoryConfig,
+  SearchHistoryEntry,
+  Sitemap,
+  SitemapRoute,
 } from 'cmdk-engine'
 ```
+
+---
+
+## Testing
+
+jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need
+stubs. Without them the first render throws `ResizeObserver is not defined`:
+
+<!-- readme-test: typecheck -->
+```ts
+// your test setup file
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Element.prototype.scrollIntoView = () => {}
+```
+
+- Render the palette inside `CommandEngineProvider`. To open a `dialog` palette, dispatch
+  `new KeyboardEvent('keydown', { key: 'k', metaKey: true })` on `document`, or call
+  `toggle()` from `useCommandPalette()`.
+- Frecency and search history persist to `localStorage` (`cmdk-frecency` and
+  `cmdk-search-history`). Clear them between tests, or pass `frecency.storage`, so one
+  test's selections do not rank the next test's results.
+- The cmdk adapter renders the empty state and the loading row right after the list,
+  not inside its `role="listbox"`. Search the palette for them, not the list.
+- The Base UI adapter needs no stubs. Its dialog stays in the DOM for a moment after
+  Escape, so use `waitFor` before asserting that it is gone.
 
 ---
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { DOCS_NAV } from '@/lib/constants'
+import { DOCS_NAV, isCurrentPage } from '@/lib/constants'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -21,7 +21,7 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    pathname === item.href
+                    isCurrentPage(pathname, item.href)
                       ? 'text-accent dark:text-accent-dark bg-accent-light dark:bg-indigo-950/50 font-medium'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}

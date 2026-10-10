@@ -10,29 +10,56 @@ export default function GettingStarted() {
       <p>Get cmdk-engine running in your React project in under 5 minutes.</p>
 
       <h2>Installation</h2>
-      <CodeBlock
-        code="npm install cmdk-engine cmdk react react-dom"
-        language="bash"
-      />
-      <p>
-        Or with other package managers:
-      </p>
+      <CodeBlock code="npm install cmdk-engine cmdk react react-dom" language="bash" />
+      <p>Or with other package managers:</p>
       <CodeBlock
         code={`bun add cmdk-engine cmdk
 pnpm add cmdk-engine cmdk
 yarn add cmdk-engine cmdk`}
         language="bash"
       />
+      <p>
+        Prefer Base UI? Install <code>@base-ui/react</code> instead of <code>cmdk</code> and import
+        the palette from <code>cmdk-engine/adapters/base-ui</code>. See{' '}
+        <Link href="/docs/adapters">Adapters</Link>.
+      </p>
+
+      <h3>Requirements</h3>
+      <ul>
+        <li>
+          <strong>React</strong> 18 or 19.
+        </li>
+        <li>
+          <strong>A UI adapter:</strong> <code>cmdk</code> ^1 for the cmdk adapter, or{' '}
+          <code>@base-ui/react</code> ^1.1 for the Base UI adapter. Or build your own UI with the
+          hooks.
+        </li>
+        <li>
+          <strong>Optional:</strong> <code>react-router</code> 6, 7 or 8 for the route scanner, and{' '}
+          <code>match-sorter</code> 7 or 8 for the match-sorter search backend.
+        </li>
+        <li>
+          <strong>Node.js</strong> 20 or later, needed by the CLI only. The library runs in the
+          browser and during SSR.
+        </li>
+      </ul>
+      <p>
+        <strong>Support:</strong> the latest minor release gets fixes. While the version is 0.x, a
+        minor release can change behavior; each such change is listed as a &quot;Behavior
+        change&quot; in the{' '}
+        <a href="https://github.com/Priyans-hu/cmdk-engine/blob/main/CHANGELOG.md">changelog</a>.
+      </p>
 
       <h2>1. Add the Provider</h2>
       <p>
-        Wrap your app with <code>CommandEngineProvider</code>. This initializes the command registry,
-        search engine, and frecency tracker. Define <code>config</code> once, outside the component:
-        a new object on every render rebuilds the engine.
+        Wrap your app with <code>CommandEngineProvider</code>, for example in a{' '}
+        <code>Providers</code> component rendered once near the root. It initializes the command
+        registry, search engine, and frecency tracker. Define <code>config</code> once, outside the
+        component: a new object on every render rebuilds the engine.
       </p>
       <CodeBlock
         language="tsx"
-        filename="App.tsx"
+        filename="Providers.tsx"
         code={`import { CommandEngineProvider } from 'cmdk-engine/react'
 
 const config = {
@@ -45,19 +72,16 @@ const config = {
   frecency: { showRecent: true },
 }
 
-function App() {
-  return (
-    <CommandEngineProvider config={config}>
-      <YourApp />
-    </CommandEngineProvider>
-  )
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <CommandEngineProvider config={config}>{children}</CommandEngineProvider>
 }`}
       />
 
       <h2>2. Register Commands</h2>
       <p>
-        Use <code>useCommandRegister</code> to register commands from any component.
-        Commands are automatically cleaned up when the component unmounts.
+        Use <code>useCommandRegister</code> to register commands from any component under the
+        provider. Commands are removed when the component unmounts, so register app-wide navigation
+        in a layout that stays mounted, and page-specific commands in the page.
       </p>
       <CodeBlock
         language="tsx"
@@ -93,9 +117,9 @@ function CommandMenu() {
 
       <h2>4. Add Keyboard Shortcut</h2>
       <p>
-        Call <code>useCommandPaletteShortcut</code> in a component inside the provider, such as
-        the <code>CommandMenu</code> from step 3. Calling it in the <code>App</code> that renders
-        the provider throws, because that component sits outside it.
+        Call <code>useCommandPaletteShortcut</code> in a component inside the provider, such as the{' '}
+        <code>CommandMenu</code> from step 3. Calling it in the component that renders the provider
+        throws, because that component sits outside it.
       </p>
       <CodeBlock
         language="tsx"
@@ -110,74 +134,67 @@ function CommandMenu() {
 
       <h2>5. Style the Palette</h2>
       <p>
-        <code>CommandPalette</code> ships no styles. Style cmdk&apos;s <code>[cmdk-*]</code> parts and the
-        adapter&apos;s <code>data-cmdk-engine-*</code> attributes from any global stylesheet:
+        <code>CommandPalette</code> ships no styles, so it looks unstyled until you add some. Copy
+        the starter stylesheet (plain CSS or Tailwind) from the{' '}
+        <Link href="/docs/styling">Styling</Link> page, then press Cmd+K (Ctrl+K on Windows and
+        Linux).
       </p>
-      <CodeBlock
-        language="css"
-        filename="palette.css"
-        code={`[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); }
-[cmdk-dialog] {
-  position: fixed; top: 15vh; left: 50%; z-index: 50; transform: translateX(-50%);
-  width: min(560px, calc(100vw - 32px));
-}
-[cmdk-root] {
-  overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px;
-  background: #fff; color: #111827; font: 14px/1.4 system-ui, sans-serif;
-  box-shadow: 0 16px 48px rgb(0 0 0 / 0.2);
-}
-[cmdk-input] {
-  box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
-  border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
-}
-[cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
-[cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
-[cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
-[cmdk-item][data-selected='true'] { background: #f3f4f6; }
-[cmdk-item][data-disabled='true'] { opacity: 0.5; cursor: default; }
-[data-cmdk-engine-item] { display: flex; align-items: center; gap: 8px; }
-[data-cmdk-engine-item-content] { display: flex; flex: 1; flex-direction: column; }
-[data-cmdk-engine-item-description] { font-size: 12px; color: #6b7280; }
-[data-cmdk-engine-item-shortcut] kbd {
-  margin-left: 4px; padding: 0 6px; border: 1px solid #e5e7eb; border-radius: 4px;
-  font: inherit; font-size: 12px;
-}
-[data-cmdk-engine-empty],
-[data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }`}
-      />
+
+      <h2>Troubleshooting</h2>
+      <h3>
+        <code>... must be used within a &lt;CommandEngineProvider&gt;</code>
+      </h3>
       <p>
-        With Tailwind (v3 or v4), <code>@apply</code> the same utilities to the same selectors in your
-        main CSS file:
+        A cmdk-engine hook or component ran outside the provider. The message starts with the name
+        of the hook that failed, such as <code>useCommandRegister</code>, and lists the usual
+        causes:
       </p>
-      <CodeBlock
-        language="css"
-        code={`[cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
-[cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
-[cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
-[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
-[cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
-[cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
-[cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
-[data-cmdk-engine-item] { @apply flex items-center gap-2; }
-[data-cmdk-engine-item-content] { @apply flex flex-1 flex-col; }
-[data-cmdk-engine-item-description] { @apply text-xs text-gray-500; }
-[data-cmdk-engine-item-shortcut] kbd { @apply ml-1 rounded border border-gray-200 px-1.5 font-sans text-xs; }
-[data-cmdk-engine-empty], [data-cmdk-engine-loading] { @apply p-4 text-center text-gray-500; }`}
-      />
+      <ul>
+        <li>
+          The hook is called in the component that renders <code>CommandEngineProvider</code>. Move
+          it into a child component.
+        </li>
+        <li>
+          Two copies of <code>cmdk-engine</code> are installed (in a monorepo, or at mismatched
+          versions), so the component and the provider use different contexts. Make sure one copy
+          resolves.
+        </li>
+        <li>
+          A bundler or test alias maps <code>cmdk-engine/react</code> or an adapter path but not{' '}
+          <code>cmdk-engine</code>. The entries import each other by package name, so map them all.
+        </li>
+      </ul>
+      <h3>The dialog never opens</h3>
       <p>
-        To style per instance instead, <code>CommandPalette</code> passes <code>className</code>,{' '}
-        <code>overlayClassName</code>, <code>contentClassName</code>, <code>inputClassName</code>,{' '}
-        <code>listClassName</code>, <code>groupClassName</code>, <code>itemClassName</code> and{' '}
-        <code>emptyClassName</code> to those parts. cmdk documents its parts in{' '}
-        <a href="https://github.com/dip/cmdk#parts-and-styling">Parts and styling</a> and has{' '}
-        <a href="https://github.com/dip/cmdk/tree/main/website/styles/cmdk">drop-in stylesheets</a>.
+        A palette with <code>dialog</code> opens only when something toggles it. Call{' '}
+        <code>useCommandPaletteShortcut()</code> in a component inside the provider, or call{' '}
+        <code>toggle()</code> from <code>useCommandPalette()</code>.
+      </p>
+      <h3>Next.js: &quot;Event handlers cannot be passed to Client Component props&quot;</h3>
+      <p>
+        Put <code>&apos;use client&apos;</code> at the top of the file that renders the provider. A
+        Server Component cannot pass functions such as <code>onNavigate</code> to it.
       </p>
 
       <h2>Next Steps</h2>
       <ul>
-        <li>Read the <Link href="/docs/api">API Reference</Link> for all exports</li>
-        <li>See <Link href="/docs/examples">Examples</Link> for common patterns</li>
-        <li>Explore the <a href="https://github.com/Priyans-hu/cmdk-engine">source code on GitHub</a></li>
+        <li>
+          Read the <Link href="/docs/api">API Reference</Link> for all exports
+        </li>
+        <li>
+          Pick an adapter, or switch to Base UI, on the <Link href="/docs/adapters">Adapters</Link>{' '}
+          page
+        </li>
+        <li>
+          Use shadcn/ui or Next.js? Follow the <Link href="/docs/shadcn">shadcn/ui</Link> or{' '}
+          <Link href="/docs/nextjs">Next.js</Link> guide
+        </li>
+        <li>
+          See <Link href="/docs/examples">Examples</Link> for common patterns and runnable apps
+        </li>
+        <li>
+          Explore the <a href="https://github.com/Priyans-hu/cmdk-engine">source code on GitHub</a>
+        </li>
       </ul>
     </>
   )
