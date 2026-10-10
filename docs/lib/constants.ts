@@ -88,6 +88,11 @@ export const DOCS_NAV: NavSection[] = [
 /** Every docs page in reading order. The sidebar, previous/next links and the /docs index follow DOCS_NAV. */
 export const DOCS_ORDER: NavItem[] = DOCS_NAV.flatMap((section) => section.items)
 
+/** usePathname() ends in a slash (next.config.ts sets trailingSlash), so compare without it. */
+export function isCurrentPage(pathname: string, href: string) {
+  return pathname.replace(/\/$/, '') === href
+}
+
 export const FEATURES = [
   {
     icon: '🔍',

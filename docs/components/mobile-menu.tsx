@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
-import { DOCS_NAV, SITE } from '@/lib/constants'
+import { DOCS_NAV, SITE, isCurrentPage } from '@/lib/constants'
 
 interface MobileMenuProps {
   isOpen: boolean
@@ -74,7 +74,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                     key={item.href}
                     href={item.href}
                     className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                      pathname === item.href
+                      isCurrentPage(pathname, item.href)
                         ? 'text-accent dark:text-accent-dark bg-accent-light dark:bg-indigo-950/50 font-medium'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}

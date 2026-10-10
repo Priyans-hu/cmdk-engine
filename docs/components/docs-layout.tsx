@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
-import { DOCS_ORDER } from '@/lib/constants'
+import { DOCS_ORDER, isCurrentPage } from '@/lib/constants'
 
 export function DocsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const currentIndex = DOCS_ORDER.findIndex((item) => item.href === pathname)
+  const currentIndex = DOCS_ORDER.findIndex((item) => isCurrentPage(pathname, item.href))
   const prev = currentIndex > 0 ? DOCS_ORDER[currentIndex - 1] : null
   const next = currentIndex < DOCS_ORDER.length - 1 ? DOCS_ORDER[currentIndex + 1] : null
 
