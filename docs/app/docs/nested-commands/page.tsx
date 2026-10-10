@@ -60,6 +60,11 @@ function ThemeCommands() {
           in.
         </li>
         <li>Children can have children, to any depth. Each level adds a crumb to the trail.</li>
+        <li>
+          Changes to the registered command&apos;s <code>children</code> show up while you are
+          inside the sub-menu. A parent that is no longer registered keeps showing the children it
+          had.
+        </li>
       </ul>
 
       <h3>Breadcrumbs and custom UIs</h3>
@@ -174,8 +179,12 @@ export function Root({ children }: { children: React.ReactNode }) {
           the total number of results across groups.
         </li>
         <li>
-          The Recent group (<code>frecency.showRecent</code>) is a group like any other, labelled
-          with <code>frecency.recentLabel</code>.
+          The Recent group (<code>frecency.showRecent</code>) comes first, above your configured
+          groups, and is labelled with <code>frecency.recentLabel</code>. It lists the most recently
+          used commands that are available on the current page. The palette highlights the first
+          item when it opens, so with groups configured that is the most recent command, and
+          pressing Enter right after opening runs it. To keep your configured groups on top, leave{' '}
+          <code>showRecent</code> off, or render your own list from <code>groupedResults</code>.
         </li>
       </ul>
     </>
