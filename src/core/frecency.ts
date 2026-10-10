@@ -21,9 +21,10 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
   const storage = options.storage ?? createInMemoryStorage()
 
   /**
-   * Record that a command was used.
+   * Record that a command was used. Also removes entries older than `maxAge`.
    */
   function recordUsage(commandId: string): void {
+    cleanup()
     const now = Date.now()
     const existing = storage.get(commandId)
 
@@ -91,11 +92,13 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
       }
     }
 
-    // Blend search score with normalized frecency
+    // Blend search score with normalized frecency. The divisor never drops below
+    // 0.5 (one use, one half-life ago), so when every used result is stale, a
+    // stale entry keeps its decayed share instead of the full boost.
     return items
       .map(({ item, score }) => {
         const rawFrecency = frecencyScores.get(item.id) ?? 0
-        const normalizedFrecency = maxFrecency > 0 ? rawFrecency / maxFrecency : 0
+        const normalizedFrecency = rawFrecency / Math.max(maxFrecency, 0.5)
 
         const blendedScore = Math.min(
           score * (1 - weight) + normalizedFrecency * weight,
@@ -109,11 +112,13 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
 
   /**
    * Get the most recently used command IDs, sorted by last use (newest first).
+   * Entries older than `maxAge` are skipped.
    */
   function getRecent(count = 5): string[] {
+    const cutoff = Date.now() - maxAge * MS_PER_DAY
     return storage
       .getAll()
-      .filter((e) => e.count > 0)
+      .filter((e) => e.count > 0 && e.lastUsed >= cutoff)
       .sort((a, b) => b.lastUsed - a.lastUsed)
       .slice(0, count)
       .map((e) => e.id)
@@ -129,10 +134,11 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
     for (const entry of storage.getAll()) {
       if (entry.lastUsed < cutoff) {
         // Actually remove the entry; fall back to zeroing for custom storages
-        // that don't implement delete().
+        // that don't implement delete(). An entry is zeroed only once, since
+        // this runs on every recordUsage.
         if (storage.delete) {
           storage.delete(entry.id)
-        } else {
+        } else if (entry.count) {
           storage.set(entry.id, { ...entry, count: 0, halfLifeScore: 0 })
         }
       }

@@ -43,7 +43,10 @@ export interface CommandItem {
    * A function is re-evaluated whenever results are recomputed.
    */
   when?: boolean | (() => boolean)
-  /** Keyboard shortcut display (e.g., ["g", "h"]) */
+  /**
+   * Keyboard shortcut shown with the item (e.g., ["g", "h"]). Display only:
+   * nothing binds these keys.
+   */
   shortcut?: string[]
   /** Extensible metadata for consumer use */
   meta?: Record<string, unknown>
@@ -51,7 +54,10 @@ export interface CommandItem {
   scope?: string[]
   /** Child commands for nested/hierarchical menus */
   children?: CommandItem[]
-  /** Parent command ID (set automatically when flattening) */
+  /**
+   * @deprecated Never set or read by cmdk-engine; kept so existing code compiles.
+   * Put your own parent id in `meta` if you need one.
+   */
   parentId?: string
 }
 
@@ -61,13 +67,29 @@ export interface CommandItem {
 
 /** Command registry — the central store for all commands */
 export interface CommandRegistry {
-  /** Register a single command. Returns an unregister function. */
+  /**
+   * Register a single command. Returns an unregister function.
+   *
+   * If the id is already registered, the newest registration is the visible
+   * one. The returned function removes only this registration, so the one it
+   * replaced comes back. To change a registered command, use `update()`.
+   */
   register(command: CommandItem): () => void
-  /** Register multiple commands. Returns an unregister function for all. */
+  /**
+   * Register multiple commands. Returns an unregister function for all of them.
+   *
+   * Same rules as `register()`: the newest registration of an id is visible, and
+   * the returned function removes only this call's registrations. Calling it
+   * again does nothing.
+   */
   registerMany(commands: CommandItem[]): () => void
-  /** Update a command by ID with partial fields (the `id` itself is immutable) */
+  /**
+   * Update the visible command for an id with partial fields (the `id` itself
+   * is immutable). The update belongs to that registration: if it is removed,
+   * the command it replaced comes back without the update.
+   */
   update(id: string, partial: Partial<Omit<CommandItem, 'id'>>): void
-  /** Remove a command by ID */
+  /** Remove a command by ID, including every registration of that id */
   unregister(id: string): void
   /** Get all registered commands */
   getAll(): CommandItem[]
@@ -148,11 +170,20 @@ export interface FrecencyStorage {
 
 /** Frecency engine configuration */
 export interface FrecencyOptions {
-  /** Storage backend (defaults to localStorage) */
+  /**
+   * Storage backend. `CommandEngineProvider` defaults to localStorage (memory
+   * where it is unavailable); `createFrecencyEngine` defaults to memory.
+   */
   storage?: FrecencyStorage
-  /** Full localStorage key, not a prefix (default: 'cmdk-frecency') */
+  /**
+   * Full localStorage key, not a prefix (default: 'cmdk-frecency'). Used by
+   * `CommandEngineProvider` for its default storage; `createFrecencyEngine` ignores it.
+   */
   storageKey?: string
-  /** Max age in days before entries are removed (default: 30) */
+  /**
+   * Days after its last use before an entry leaves "Recent" and is removed from
+   * storage on the next recorded use (default: 30)
+   */
   maxAge?: number
   /** Half-life in days for exponential decay (default: 7) */
   halfLife?: number
@@ -225,6 +256,14 @@ export interface CmdkEngineConfig {
   exclude?: ExcludePattern[]
   /** Synonym dictionary */
   synonyms?: SynonymMap
+  /**
+   * Keep routes with `:name` segments, such as everything under a Next.js
+   * `[locale]` folder: `true` keeps every one, a list keeps routes whose segments
+   * are all named in it (`['locale']`). Fill them at runtime with
+   * `sitemapToCommands(sitemap, { params })`. Catch-all segments are never kept.
+   * Default `false`. The `--include-dynamic` flag overrides it.
+   */
+  includeDynamic?: boolean | string[]
 }
 
 /** Generated route sitemap entry */
@@ -340,7 +379,15 @@ export interface CommandEngineConfig {
   /** Synonym dictionary for keyword expansion */
   synonyms?: SynonymMap
   /** Frecency configuration */
-  frecency?: FrecencyOptions & RecentCommandsConfig
+  frecency?: FrecencyOptions &
+    RecentCommandsConfig & {
+      /**
+       * `false` turns frecency off: nothing is stored or read, results are not
+       * ranked by use, and no "Recent" group shows, even with `showRecent`
+       * (default: true)
+       */
+      enabled?: boolean
+    }
   /** Group definitions and ordering */
   groups?: CommandGroup[]
   /** Maximum results to return */
@@ -359,7 +406,10 @@ export interface CommandEngineConfig {
   contextBoostWeight?: number
   /** Translation function for UI strings (defaults to English) */
   t?: TranslationFn
-  /** Locale for collation-aware operations (default: 'en') */
+  /**
+   * @deprecated Never read: nothing in cmdk-engine depends on the locale. Kept so
+   * existing configs compile. Localize UI strings with `t`.
+   */
   locale?: string
   /** Search history configuration */
   searchHistory?: SearchHistoryConfig
@@ -368,6 +418,13 @@ export interface CommandEngineConfig {
    * search), merged into the root-level results. See `AsyncSource`.
    */
   asyncSources?: AsyncSource[]
+  /**
+   * Called when the handler `select()` runs for a command (`onSelect`, `action`
+   * or `onNavigate`) throws or returns a rejected promise. The palette still
+   * closes. Without it, a throw propagates and a rejection stays unhandled, as
+   * before. Async source failures are reported in `asyncErrors` instead.
+   */
+  onSelectError?: (error: unknown, item: CommandItem) => void
 }
 
 /**
@@ -382,7 +439,12 @@ export interface CommandEngineConfig {
  * or `tel:` is removed when the items arrive (children included). For deep
  * links, return an `action`, or an allowed `href` that `onNavigate` maps.
  * Items without a non-empty string `id` and `label` are dropped and counted in
- * `asyncErrors[id]`, and non-string `keywords` entries are removed.
+ * `asyncErrors[id]`, and non-string `keywords` entries are removed. An object
+ * `icon`, `description` or `group` that is not a React element, a non-array
+ * `shortcut`, `scope` or `children`, and non-string `shortcut` and `scope`
+ * entries are removed too. `permissions` follow the registered-command rules
+ * (null, undefined and `''` mean no restriction): a string is one permission,
+ * array entries become strings, and any other value hides the item.
  */
 export interface AsyncSource {
   /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */
@@ -418,6 +480,27 @@ export interface RecentCommandsConfig {
   /** Label for the recent group (default: "Recent") */
   recentLabel?: string
 }
+
+/**
+ * A palette event reported to `useCommandPaletteEvents()` (from
+ * `cmdk-engine/react`):
+ * - `open`, `close`: the palette opened or closed.
+ * - `search`: the results for a query settled, that is every async source the
+ *   query triggered has loaded or failed. `query` is trimmed and not empty, and
+ *   `resultCount` is the number of results: the query and count search history
+ *   records. `resultCount: 0` is a query that found nothing.
+ * - `select`: a command was selected (drilling into children is not a
+ *   selection); `sourceId` is the async source of a loaded item.
+ * - `asyncError`: an async source failed or dropped items, as in `asyncErrors`.
+ *
+ * New event types may be added in minor releases: ignore types you do not know.
+ */
+export type CommandPaletteEvent =
+  | { type: 'open' }
+  | { type: 'close' }
+  | { type: 'search'; query: string; resultCount: number }
+  | { type: 'select'; item: CommandItem; query: string; sourceId?: string }
+  | { type: 'asyncError'; sourceId: string; error: Error }
 
 // ============================================================
 // Helpers

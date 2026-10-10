@@ -151,6 +151,22 @@ const config = {
 }
 ```
 
+### Errors from commands
+
+A command's `action`, your `onSelect` or your `onNavigate` can throw or return
+a rejected promise. Set `onSelectError` to handle that; the palette still
+closes right away. Without it, errors propagate as before.
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelectError: (error: unknown, item: CommandItem) => {
+    console.error(`"${item.label}" failed`, error) // or show a toast
+  },
+}
+```
+
 ### Or build your own UI with hooks
 
 ```tsx
@@ -374,7 +390,7 @@ A `handle` returned from `lazy()` is not read, because the scanner never calls `
 
 An index route (`index: true` without a `path`) resolves to its parent's URL, so the index route of a pathless root becomes `/` (label "Home", id `home`). It never adds a second command for a URL another route already has: its `handle.command` is merged over that command instead, and the index route's fields win. Only `handle.command` is merged; an index route's `route.title` and `route.icon` fallbacks apply only when it gets its own command. Index routes follow their parent's exclusion and the dynamic-route rule. `index: true` with a `path` is a normal path route.
 
-The CLI scanner (`npx cmdk-engine scan`) is regex-based and unchanged, so it does not resolve index routes.
+The CLI scanner (`npx cmdk-engine scan`) does not resolve index routes.
 
 ---
 
@@ -501,6 +517,12 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > several users can sign in on one browser, namespace both keys per user, e.g.
 > ``storageKey: `cmdk-frecency:${user.id}` ``.
 
+### Turning frecency off
+
+Set `frecency: { enabled: false }` to turn frecency off. Nothing is stored in
+or read from `localStorage`, results are not ranked by past use, and no
+"Recent" group shows, even with `showRecent`.
+
 ---
 
 ## Context / Scope Boosting
@@ -560,6 +582,35 @@ function RecentSearches() {
   return <>{getRecent(5).map((e) => <button key={e.query} onClick={() => setSearch(e.query)}>{e.query}</button>)}</>
 }
 ```
+
+## Palette Events
+
+`useCommandPaletteEvents` reports what happens in the palette, for analytics.
+Call it once, in any component inside the provider:
+
+```tsx
+import { useCommandPaletteEvents } from 'cmdk-engine/react'
+
+function PaletteAnalytics() {
+  useCommandPaletteEvents((event) => {
+    if (event.type === 'search' && event.resultCount === 0) {
+      console.log('no results for', event.query) // your analytics call
+    }
+  })
+  return null
+}
+```
+
+| Event | When | Fields |
+|---|---|---|
+| `open`, `close` | The palette opens or closes | |
+| `search` | The results for a query settle, async sources included | `query` (trimmed), `resultCount` (`0`: nothing found) |
+| `select` | A command is selected (drilling into children is not) | `item`, `query`, `sourceId` (loaded items) |
+| `asyncError` | An async source fails or drops items | `sourceId`, `error` |
+
+`search` fires for every settled query while the user types, so debounce it
+before sending it anywhere. An error thrown by your handler never breaks the
+palette. Without the hook, nothing is reported.
 
 ## Async Command Sources
 
@@ -647,9 +698,33 @@ npx cmdk-engine scan
 # Scan without default auth/error exclusions
 npx cmdk-engine scan --no-default-exclude
 
+# Keep routes under a [locale] folder (or another :param)
+npx cmdk-engine scan --include-dynamic locale
+
 # Validate config
 npx cmdk-engine validate
 ```
+
+### Use the output
+
+`scan` writes `src/generated/command-routes.json`. `sitemapToCommands` turns it
+into commands; register them once, at the app level:
+
+```tsx
+import { useCommandRegister } from 'cmdk-engine/react'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
+import sitemap from './generated/command-routes.json'
+
+const routeCommands = sitemapToCommands(sitemap)
+
+function RouteCommands() {
+  useCommandRegister(routeCommands)
+  return null
+}
+```
+
+Each route becomes `{ id, label, keywords, group, href }`, and selecting one
+calls your `onNavigate`. Commit the JSON, or run the scan in a `prebuild` script.
 
 ### Standalone binary
 
@@ -674,6 +749,28 @@ React Router adapter, so the generated sitemap automatically skips:
 Pass `--no-default-exclude` to opt out (you'll have full control via
 the `exclude` config field instead).
 
+### Dynamic routes and `[locale]`
+
+A command needs a real URL, so the scan skips routes with a `:param`
+(`/users/:id`, `app/[id]/page.tsx`). To keep routes under a segment you can
+fill at runtime, such as a Next.js `[locale]` folder, name it in
+`includeDynamic` (or pass `--include-dynamic locale`). `app/[locale]/billing/page.tsx`
+then becomes `/:locale/billing`, which `params` fills:
+
+```tsx
+const commands = useMemo(() => sitemapToCommands(sitemap, { params: { locale } }), [locale])
+useCommandRegister(commands)
+```
+
+- `params` values are inserted as given, and `''` drops the segment (a default
+  locale served without a prefix).
+- Ids keep the placeholder (`locale--billing`), so frecency is shared across
+  locales.
+- `includeDynamic: true` keeps every `:param` route. A route whose param you do
+  not fill is skipped, and catch-alls (`[...slug]`, `/docs/*`) are never kept.
+- A React Router route with its own `handle.command` is kept, as with the
+  runtime `scanRoutes`.
+
 ### Config file
 
 ```ts
@@ -688,16 +785,49 @@ export default defineConfig({
     '/billing': { keywords: ['money', 'payment'], group: 'Billing' },
   },
   exclude: ['/_*', '/admin/*', /^\/debug\//], // strings, globs, or RegExp
+  includeDynamic: ['locale'], // keep /:locale/... routes
   synonyms: {
     billing: ['money', 'payment', 'credits'],
   },
 })
 ```
 
-> **Next.js:** the CLI **scans** both the App Router (`nextjs-app`) and Pages
-> Router (`nextjs-pages`) to generate a sitemap. A dedicated Next.js *runtime*
-> adapter is not implemented yet — render commands with `<CommandPalette>` from
-> `cmdk-engine/adapters/cmdk` (mark the file `'use client'`).
+The CLI reads `cmdk-engine.config.ts` without running it, so its values must be
+static: strings, numbers, booleans, arrays, objects, RegExp literals and
+top-level `const`s, with `as const` and `satisfies` allowed. For computed values
+such as `process.env`, use `cmdk-engine.config.mjs`. A config the CLI cannot
+read fails `scan` and `validate`, naming the line.
+
+`exclude` takes exact paths, RegExp and globs. In a glob, `*` matches within one
+path segment and `**` across segments. Excluding a path also excludes the paths
+below it, and a trailing `/*` also matches the base: `/admin/*` excludes
+`/admin` and everything under it.
+
+### What the scan reads
+
+The scan reads your files without running them.
+
+- **React Router:**
+  - Reads route objects with a string `path` (as passed to `createBrowserRouter`)
+    and `<Route path="...">` elements, with the `label`, `keywords` and `group`
+    of their own `handle.command`.
+  - Joins relative child paths to their parent route in the same file
+    (`children` arrays, nested `<Route>`s).
+  - Does not read paths built at runtime, routes imported from another file,
+    index routes, or a `handle` returned by `lazy()`.
+- **Next.js:**
+  - Reads `app/**/page.*` (`nextjs-app`) and `pages/**` (`nextjs-pages`).
+  - Route groups and `@slot` folders add no segment.
+  - Private `_folders`, intercepting `(.)` routes and `api/` are skipped.
+  - `[[...slug]]` gives its parent's URL; other dynamic routes need `includeDynamic`.
+
+Ids keep letters, digits and `-` (`/billing/overview` gives `billing--overview`),
+so `/a_b` and `/ab` would share `ab`. The scan then keeps it for the last of them
+in path order and gives the others `ab-2`, `ab-3`, ...
+
+**Next.js:** for the App Router setup (a `'use client'` palette file,
+`router.push`, `[locale]`), see the
+[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs).
 
 ### Pre-commit hook
 

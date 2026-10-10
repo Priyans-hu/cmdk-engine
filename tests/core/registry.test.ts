@@ -198,3 +198,98 @@ describe('createRegistry', () => {
     expect(registry.getById('b')).toBeUndefined()
   })
 })
+
+describe('createRegistry · one id, several registrations', () => {
+  const labels = (registry: ReturnType<typeof createRegistry>) =>
+    registry.getAll().map((c) => `${c.id}:${c.label}`)
+
+  it('keeps the newer registration when the older one is removed', () => {
+    const registry = createRegistry()
+    const removeA = registry.registerMany([makeCommand({ id: 'help', label: 'A' })])
+    registry.registerMany([makeCommand({ id: 'help', label: 'B' })])
+
+    removeA()
+    expect(labels(registry)).toEqual(['help:B'])
+  })
+
+  it('brings the older registration back when the newer one is removed', () => {
+    const registry = createRegistry()
+    registry.registerMany([makeCommand({ id: 'help', label: 'A' })])
+    const removeB = registry.registerMany([makeCommand({ id: 'help', label: 'B' })])
+    expect(labels(registry)).toEqual(['help:B'])
+
+    removeB()
+    expect(labels(registry)).toEqual(['help:A'])
+  })
+
+  it('applies the same rules to register()', () => {
+    const registry = createRegistry()
+    const removeA = registry.register(makeCommand({ id: 'help', label: 'A' }))
+    const removeB = registry.register(makeCommand({ id: 'help', label: 'B' }))
+
+    removeB()
+    expect(registry.getById('help')?.label).toBe('A')
+    removeA()
+    expect(registry.getAll()).toEqual([])
+  })
+
+  it('updates the visible registration; the one it replaced comes back without the update', () => {
+    const registry = createRegistry()
+    registry.register(makeCommand({ id: 'help', label: 'A' }))
+    const removeB = registry.register(makeCommand({ id: 'help', label: 'B' }))
+
+    registry.update('help', { label: 'B2' })
+    expect(registry.getById('help')?.label).toBe('B2')
+    removeB()
+    expect(registry.getById('help')?.label).toBe('A')
+  })
+
+  it('unregister(id) removes every registration of the id', () => {
+    const registry = createRegistry()
+    const removeA = registry.register(makeCommand({ id: 'help', label: 'A' }))
+    registry.register(makeCommand({ id: 'help', label: 'B' }))
+
+    registry.unregister('help')
+    expect(registry.getAll()).toEqual([])
+    removeA()
+    expect(registry.getAll()).toEqual([])
+  })
+
+  it('does nothing when a cleanup runs a second time', async () => {
+    const registry = createRegistry()
+    const removeA = registry.registerMany([
+      makeCommand({ id: 'help', label: 'A' }),
+      makeCommand({ id: 'docs', label: 'A' }),
+    ])
+    registry.registerMany([makeCommand({ id: 'help', label: 'B' })])
+    removeA()
+    const snapshot = registry.getSnapshot()
+    await new Promise<void>((r) => queueMicrotask(r))
+
+    const listener = vi.fn()
+    registry.subscribe(listener)
+    removeA()
+    await new Promise<void>((r) => queueMicrotask(r))
+
+    expect(labels(registry)).toEqual(['help:B'])
+    expect(registry.getSnapshot()).toBe(snapshot)
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('keeps the order of the remaining ids', () => {
+    const registry = createRegistry()
+    const removeA = registry.registerMany([
+      makeCommand({ id: 'a', label: 'A' }),
+      makeCommand({ id: 'b', label: 'A' }),
+      makeCommand({ id: 'c', label: 'A' }),
+    ])
+    const removeB = registry.registerMany([makeCommand({ id: 'b', label: 'B' })])
+    registry.register(makeCommand({ id: 'd', label: 'C' }))
+    expect(labels(registry)).toEqual(['a:A', 'b:B', 'c:A', 'd:C'])
+
+    removeB()
+    expect(labels(registry)).toEqual(['a:A', 'b:A', 'c:A', 'd:C'])
+    removeA()
+    expect(labels(registry)).toEqual(['d:C'])
+  })
+})

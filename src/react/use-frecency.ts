@@ -7,7 +7,7 @@ import { useEngineContext } from './context'
  * @returns Object with recordUsage, getScore, and clear functions
  */
 export function useFrecency() {
-  const { frecency } = useEngineContext()
+  const { frecency } = useEngineContext('useFrecency')
 
   const recordUsage = useCallback(
     (commandId: string) => frecency.recordUsage(commandId),

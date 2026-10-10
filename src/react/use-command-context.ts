@@ -12,7 +12,7 @@ export function useCommandContext(): {
   context: CommandContext | undefined
   boostWeight: number | undefined
 } {
-  const { config } = useEngineContext()
+  const { config } = useEngineContext('useCommandContext')
 
   return {
     context: config.context,

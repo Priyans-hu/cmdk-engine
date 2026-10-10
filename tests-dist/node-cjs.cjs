@@ -9,6 +9,7 @@ checks.checkEntries('node CJS', {
   cmdk: require('cmdk-engine/adapters/cmdk'),
   router: require('cmdk-engine/adapters/react-router'),
   matchSorter: require('cmdk-engine/search/match-sorter'),
+  sitemap: require('cmdk-engine/adapters/sitemap'),
   pkg: require('cmdk-engine/package.json'),
 })
 
