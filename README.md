@@ -8,6 +8,8 @@ Permission-aware command palette engine for React. Works with [cmdk](https://git
 
 ![The cmdk adapter's palette opened with Cmd+K, styled with the CSS from the Styling section](https://raw.githubusercontent.com/Priyans-hu/cmdk-engine/main/.github/assets/palette.png)
 
+**Live demo:** press Cmd+K (Ctrl+K) on the [docs site](https://priyans-hu.github.io/cmdk-engine/). Runnable apps are in [Examples](#examples).
+
 ---
 
 ## Why cmdk-engine?
@@ -78,6 +80,7 @@ release can change behavior; each such change is listed as a "Behavior change" i
 One file, with the cmdk adapter. Paste it into a React app, then press Cmd+K
 (Ctrl+K on Windows and Linux):
 
+<!-- readme-test: render -->
 ```tsx
 // App.tsx
 import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
@@ -153,6 +156,7 @@ instead of `onNavigate`. The `onSelect` prop of `CommandPalette` does the same,
 and wins over the config. To track selections, call the default yourself, or
 leave `onSelect` unset and track inside `onNavigate` and your actions:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { CommandItem } from 'cmdk-engine'
 
@@ -183,6 +187,7 @@ const config = {
 
 ### Or build your own UI with hooks
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandPalette } from 'cmdk-engine/react'
 
@@ -232,6 +237,7 @@ gives the look in the screenshot at the top:
   box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
   border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
 }
+[cmdk-input]:focus-visible { border-bottom-color: #6366f1; box-shadow: inset 0 -1px 0 #6366f1; }
 [cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
 [cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
 [cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
@@ -248,6 +254,10 @@ gives the look in the screenshot at the top:
 [data-cmdk-engine-loading] { padding: 16px; text-align: center; color: #6b7280; }
 ```
 
+The accent underline on `[cmdk-input]:focus-visible` replaces the outline the
+input drops, so keyboard users can see where focus is. Keep a focus style if
+you restyle the input.
+
 Items also carry `data-cmdk-engine-icon` and `data-cmdk-engine-item-label`,
 plus `data-cmdk-engine-item-chevron` when they have children. Nested commands
 add `data-cmdk-engine-breadcrumbs`, with `data-cmdk-engine-breadcrumb-back`,
@@ -263,7 +273,7 @@ your main CSS file:
 [cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
 [cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
 [cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
-[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none focus-visible:border-indigo-500 focus-visible:shadow-[inset_0_-1px_0_#6366f1]; }
 [cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
 [cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
 [cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
@@ -277,6 +287,37 @@ your main CSS file:
 To style per instance instead, `CommandPalette` passes `className`,
 `overlayClassName`, `contentClassName`, `inputClassName`, `listClassName`,
 `groupClassName`, `itemClassName` and `emptyClassName` to those parts.
+
+### shadcn/ui
+
+If your app uses [shadcn/ui](https://ui.shadcn.com), install the palette from
+this project's shadcn registry instead:
+
+```bash
+npx shadcn@latest add https://priyans-hu.github.io/cmdk-engine/r/command-palette.json
+```
+
+It writes `components/command-palette.tsx`, the cmdk adapter's palette styled
+with your theme's tokens, so it follows light and dark mode and is yours to
+edit. Render `<CommandPalette />` once inside `CommandEngineProvider`. For Base
+UI instead of cmdk, add `.../r/command-palette-base-ui.json`. Both need
+cmdk-engine 0.6.0 or later. See the
+[shadcn/ui page](https://priyans-hu.github.io/cmdk-engine/docs/shadcn).
+
+---
+
+## Examples
+
+Runnable apps in [`examples/`](examples). CI builds each one against this
+repo, and each installs `cmdk-engine` from npm, so you can copy one out.
+
+| Example | What it shows | Try it |
+|---|---|---|
+| [Vite + React Router](examples/vite-react-router) | Commands from the route tree with `scanRoutes`, the provider inside the router, this Styling CSS, and the same palette on Base UI with `?adapter=base-ui` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/vite-react-router?file=src/layout.tsx) |
+| [Next.js App Router](examples/nextjs-app-router) | A `'use client'` provider file under a server layout, `router.push` as `onNavigate`, and `[locale]` pages found by `cmdk-engine scan --include-dynamic locale` and filled in with `sitemapToCommands` | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/nextjs-app-router?file=components/command-menu.tsx) |
+| [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
+
+The docs site is a live demo too: Cmd+K there searches its own pages.
 
 ---
 
@@ -324,6 +365,7 @@ npm install cmdk-engine @base-ui/react
 exports `CommandPalette` and `useCommandPaletteShortcut` with the cmdk adapter's
 props, so switching adapters is an import-path change:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 

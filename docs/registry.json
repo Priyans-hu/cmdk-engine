@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "cmdk-engine",
+  "homepage": "https://priyans-hu.github.io/cmdk-engine",
+  "items": [
+    {
+      "name": "command-palette",
+      "type": "registry:component",
+      "title": "Command Palette",
+      "description": "A Cmd+K command palette in your shadcn/ui theme, run by cmdk-engine and rendered with cmdk: fuzzy search with synonyms, permissions, recent commands, nested commands and async sources.",
+      "dependencies": ["cmdk-engine@^0.6.0", "cmdk@^1.1.1"],
+      "files": [
+        {
+          "path": "../examples/shadcn/src/components/command-palette.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "docs": "Render <CommandPalette /> once inside <CommandEngineProvider> from cmdk-engine/react, and register commands with useCommandRegister. Cmd+K or Ctrl+K opens it. In a Next.js App Router project, put the provider in a 'use client' file. Docs: https://priyans-hu.github.io/cmdk-engine/docs/shadcn"
+    },
+    {
+      "name": "command-palette-base-ui",
+      "type": "registry:component",
+      "title": "Command Palette (Base UI)",
+      "description": "The same Cmd+K command palette rendered with Base UI's Autocomplete and Dialog instead of cmdk.",
+      "dependencies": ["cmdk-engine@^0.6.0", "@base-ui/react@^1.1.0"],
+      "files": [
+        {
+          "path": "../examples/shadcn/src/components/command-palette-base-ui.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "docs": "Render <CommandPalette /> once inside <CommandEngineProvider> from cmdk-engine/react, and give your app's root element `isolation: isolate` so the dialog stays on top. Cmd+K or Ctrl+K opens it. Docs: https://priyans-hu.github.io/cmdk-engine/docs/shadcn"
+    }
+  ]
+}

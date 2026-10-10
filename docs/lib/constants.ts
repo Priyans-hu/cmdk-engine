@@ -37,6 +37,11 @@ export const DOCS_NAV: NavSection[] = [
         description: 'Use the palette in the App Router: a client file, router.push and [locale] routes.',
       },
       {
+        label: 'shadcn/ui',
+        href: '/docs/shadcn',
+        description: 'Add the palette to a shadcn project as a registry item, for cmdk or Base UI.',
+      },
+      {
         label: 'Search',
         href: '/docs/search',
         description: 'How results are found and ranked, synonyms, match-sorter and custom engines.',

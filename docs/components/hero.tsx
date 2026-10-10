@@ -60,6 +60,11 @@ export function Hero() {
           <span className="text-slate-500">$</span>
           npm install cmdk-engine cmdk
         </div>
+
+        {/* Live demo hint */}
+        <p className="mt-6 text-sm text-[var(--text-muted)] animate-fade-in" style={{ animationDelay: '0.5s' }}>
+          Try it: press ⌘K or Ctrl+K anywhere on this site.
+        </p>
       </div>
     </section>
   )

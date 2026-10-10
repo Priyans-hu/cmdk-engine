@@ -3,7 +3,17 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**']
+    # The live demo runs this repo's build, and the registry items come from
+    # examples/shadcn, so library changes redeploy too.
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'examples/shadcn/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsup.config.ts'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -29,9 +39,18 @@ jobs:
         with:
           node-version: 20
 
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
       - name: Install docs dependencies
         working-directory: docs
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      # docs/package.json does not list cmdk-engine: this puts the build above in
+      # docs/node_modules, so the site never runs the npm release.
+      - name: Use this repo's build in the docs
+        run: node scripts/local-build.mjs docs
 
       - name: Build docs
         working-directory: docs
