@@ -179,6 +179,7 @@ A command's `action`, your `onSelect` or your `onNavigate` can throw or return
 a rejected promise. Set `onSelectError` to handle that; the palette still
 closes right away. Without it, errors propagate as before.
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { CommandItem } from 'cmdk-engine'
 
@@ -424,6 +425,7 @@ load the adapter with either `import` or `require`, not both, or two copies of
 Auto-discover routes from your React Router config. Register them inside the provider,
 and navigate with the router object, since the provider sits above `RouterProvider`:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
@@ -526,6 +528,7 @@ runnable app.
 
 Filter commands based on user permissions:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { createSimpleAccessProvider } from 'cmdk-engine'
 
@@ -607,6 +610,7 @@ typos, partial words and initials.
 Pass the engine in the provider config, and create it once, outside the
 component:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { createMatchSorterSearch } from 'cmdk-engine/search/match-sorter'
 
@@ -729,6 +733,7 @@ glob matches below `/billing`, not `/billing` itself), or when it equals one of 
 Give a command `children` to make a sub-menu. Selecting it opens its children instead
 of running it:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandRegister } from 'cmdk-engine/react'
 
@@ -773,6 +778,7 @@ A command's `group` string puts it under a heading. Without any config, each dis
 `group` becomes a heading with the same text, and commands without a `group` go under
 "Other", always last. Set `groups` in the provider config to choose labels and order:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { CommandEngineProvider, useCommandRegister } from 'cmdk-engine/react'
 
@@ -821,6 +827,7 @@ export function Root({ children }: { children: React.ReactNode }) {
 Built-in UI strings go through a translation function. Pass your own to
 localize the placeholder, empty state, "Recent" heading, accessible labels, etc:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { getTranslationKeys } from 'cmdk-engine'
 
@@ -862,6 +869,7 @@ const config = { searchHistory: { enabled: true, maxEntries: 20, minQueryLength:
 Read it with `useSearchHistory()`, and set the search box with `setSearch` from
 `useCommandPalette()`:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandPalette, useSearchHistory } from 'cmdk-engine/react'
 
@@ -889,6 +897,7 @@ function RecentSearches() {
 `useCommandPaletteEvents` reports what happens in the palette, for analytics.
 Call it once, in any component inside the provider:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { useCommandPaletteEvents } from 'cmdk-engine/react'
 
@@ -923,6 +932,7 @@ Mix registered commands with results loaded for each query, such as a
 server-side search. The provider runs every source once per query for all
 consumers: it debounces, aborts stale requests and ignores late responses.
 
+<!-- readme-test: typecheck -->
 ```tsx
 import type { AsyncSource } from 'cmdk-engine'
 
@@ -1084,6 +1094,7 @@ useCommandRegister(commands)
 
 ### Config file
 
+<!-- readme-test: typecheck -->
 ```ts
 // cmdk-engine.config.ts
 import { defineConfig } from 'cmdk-engine'
@@ -1202,6 +1213,7 @@ every option, field and hook.
 
 ### Core
 
+<!-- readme-test: typecheck -->
 ```ts
 import {
   createRegistry,        // Command store (pub/sub, useSyncExternalStore compatible)
@@ -1223,6 +1235,7 @@ import {
 
 ### React
 
+<!-- readme-test: typecheck -->
 ```ts
 import {
   CommandEngineProvider, // Context provider
@@ -1239,6 +1252,7 @@ import {
 
 ### Adapters
 
+<!-- readme-test: typecheck -->
 ```ts
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
@@ -1258,6 +1272,7 @@ Russian or Greek, by the physical key. Holding the keys toggles once. For any
 other shortcut, pass a function that decides the whole match, modifiers
 included. Define it outside the component, or every render re-binds it:
 
+<!-- readme-test: typecheck -->
 ```tsx
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 
@@ -1273,6 +1288,7 @@ function CommandMenu() {
 
 ### Key hook return values
 
+<!-- readme-test: typecheck -->
 ```ts
 import { useCommandPalette } from 'cmdk-engine/react'
 
@@ -1301,6 +1317,7 @@ const {
 
 All types are exported and fully documented:
 
+<!-- readme-test: typecheck -->
 ```ts
 import type {
   CommandItem,
@@ -1339,6 +1356,7 @@ import type {
 jsdom lacks two browser APIs that cmdk uses, so tests that render the cmdk adapter need
 stubs. Without them the first render throws `ResizeObserver is not defined`:
 
+<!-- readme-test: typecheck -->
 ```ts
 // your test setup file
 globalThis.ResizeObserver = class {
