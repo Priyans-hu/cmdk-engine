@@ -14,8 +14,11 @@ export default function CoreAPI() {
         <code>cmdk-engine</code> is plain TypeScript with zero runtime dependencies. The React
         provider is built from the pieces on this page. Use them directly to drive another UI, in
         tests, or on the server. For the provider, hooks and the command object, see the{' '}
-        <Link href="/docs/api">API Reference</Link>.
-      </p>
+        <Link href="/docs/api">API Reference</Link>. The type declarations import React&apos;s types
+        for the <code>icon</code> field. Without them in your project, and with{' '}
+        <code>skipLibCheck</code> off, <code>icon</code> is typed <code>any</code> instead of
+        failing to compile.{' '}
+      </p>{' '}
       <CodeBlock
         language="ts"
         code={`import { createRegistry, createFuzzySearch } from 'cmdk-engine'
@@ -28,28 +31,32 @@ const results = createFuzzySearch().search('ho', registry.getAll())
 
 unregister() // remove the command again`}
       />
-
       <h2>
         <code>createRegistry()</code>
       </h2>
       <p>
         The command store. It is a small publish and subscribe store that works with React&apos;s{' '}
         <code>useSyncExternalStore</code>. Subscribers are notified once per microtask, however many
-        changes happened.
+        changes happened. When several registrations share an id, the newest one is visible.
+        Removing it brings back the one it replaced, so two components can register the same id and
+        either can unmount first.{' '}
       </p>
       <ApiTable
         head={['Method', 'Description']}
         rows={[
           [
             'register(command)',
-            'Add a command, or replace the one with the same id. Returns a function that removes it.',
+            'Add a command. Returns a function that removes only this registration. If the id is already registered, the newest registration is the visible one, and removing it brings the older one back. To change a registered command, use update().',
           ],
-          ['registerMany(commands)', 'Add several. Returns a function that removes them all.'],
+          [
+            'registerMany(commands)',
+            "Add several, with the same rules as register(). Returns a function that removes only this call's registrations. Calling it again does nothing.",
+          ],
           [
             'update(id, partial)',
-            'Merge fields into a command. The id cannot change. Does nothing for an unknown id.',
+            'Merge fields into the visible command for an id. The id cannot change. Does nothing for an unknown id. The update belongs to that registration: if it is removed, the command it replaced comes back without the update.',
           ],
-          ['unregister(id)', 'Remove a command.'],
+          ['unregister(id)', 'Remove a command, including every registration of that id.'],
           ['getAll()', 'The registered commands.'],
           ['getById(id)', 'One command, or undefined.'],
           ['getByGroup(groupId)', 'The commands whose group is groupId.'],
@@ -60,7 +67,6 @@ unregister() // remove the command again`}
           ['getSnapshot()', 'A stable array that changes only when the commands change.'],
         ]}
       />
-
       <h2>
         <code>createFuzzySearch()</code>
       </h2>
@@ -69,7 +75,6 @@ unregister() // remove the command again`}
         <code>ScoredItem[]</code>. How it scores is on the <Link href="/docs/search">Search</Link>{' '}
         page, together with <code>createMatchSorterSearch</code> and how to write your own engine.
       </p>
-
       <h2>
         <code>createKeywordEngine(synonyms?, userAliases?)</code>
       </h2>
@@ -90,7 +95,7 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
         rows={[
           [
             'expandQuery(query)',
-            'The query plus its synonyms. An empty query gives an empty array.',
+            'The query plus its synonyms. The lookup ignores case, accents and extra spaces. An empty query gives an empty array.',
           ],
           [
             'enrichItem(item), enrichAll(items)',
@@ -101,7 +106,10 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
             'Add or remove a keyword for one command.',
           ],
           ['getAliases()', 'A copy of the alias map.'],
-          ['setSynonyms(map)', 'Replace the synonym dictionary.'],
+          [
+            'setSynonyms(map)',
+            'Replace the synonym dictionary. It only reads its argument, so a frozen dictionary works, and the dictionary you passed to createKeywordEngine is never changed.',
+          ],
         ]}
       />
       <p>
@@ -109,7 +117,6 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
         is reachable as <code>useEngineContext().keywords</code>. An alias added there shows up at
         the next results update. Adding one does not itself re-render anything.
       </p>
-
       <h2>Access control</h2>
       <ApiTable
         head={['Function', 'Description']}
@@ -148,7 +155,6 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
         ]}
       />
       <p>This is a UI filter, not a security boundary. Enforce permissions on the server.</p>
-
       <h2>Frecency</h2>
       <h3>
         <code>createFrecencyEngine(options?)</code>
@@ -174,7 +180,8 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
             'maxAge',
             '30 days',
             <>
-              Entries last used longer ago than this are removed by <code>cleanup()</code>.
+              Days after its last use before an entry leaves <code>getRecent()</code>.{' '}
+              <code>recordUsage()</code> removes older entries from storage.
             </>,
           ],
         ]}
@@ -187,18 +194,27 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
       <ApiTable
         head={['Method', 'Description']}
         rows={[
-          ['recordUsage(id)', 'Count one use now.'],
+          ['recordUsage(id)', 'Count one use now. Also removes entries older than maxAge.'],
           ['getScore(id)', 'The decayed score, or 0 if the command was never used.'],
-          ['getRecent(count = 5)', 'The most recently used ids, newest first.'],
+          [
+            'getRecent(count = 5)',
+            'The most recently used ids, newest first. Entries older than maxAge are skipped.',
+          ],
           [
             'rank(items, weight = 0.3)',
             <>
-              Blends each result&apos;s search score with its frecency, relative to the highest
-              frecency in the list: <code>score * (1 - weight) + normalized * weight</code>.{' '}
-              <code>weight</code> runs from 0 to 1. Returns the list sorted by the blended score.
+              Blends each result&apos;s search score with its frecency:{' '}
+              <code>score * (1 - weight) + normalized * weight</code>. <code>normalized</code> is
+              the result&apos;s frecency divided by the strongest in the list, but never by less
+              than 0.5 (one use, one half-life ago), so a command used only long ago does not get
+              the full boost when it is the only used result. <code>weight</code> runs from 0 to 1.
+              Returns the list sorted by the blended score.
             </>,
           ],
-          ['cleanup()', 'Remove entries last used more than maxAge days ago.'],
+          [
+            'cleanup()',
+            'Remove entries last used more than maxAge days ago. recordUsage() calls it for you.',
+          ],
           ['clear()', 'Remove all usage.'],
         ]}
       />
@@ -209,7 +225,7 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
           ['createInMemoryStorage()', 'Keeps usage in memory. Good for tests and SSR.'],
           [
             'createLocalStorageFrecencyStorage(storageKey = "cmdk-frecency")',
-            'Keeps usage in localStorage under one full key (not a prefix). Where localStorage is unavailable it does nothing, and data it cannot read is ignored.',
+            'Keeps usage in window.localStorage under one full key (not a prefix). Where that is unavailable (missing, null or throwing) it does nothing, and data it cannot read is ignored.',
           ],
         ]}
       />
@@ -218,7 +234,6 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
         <code>set(key, entry)</code>, <code>getAll()</code>, <code>clear()</code> and, optionally,{' '}
         <code>delete(key)</code>.
       </p>
-
       <h2>
         <code>createGroupManager(groups?)</code>
       </h2>
@@ -244,7 +259,6 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
           ['extractGroups(commands)', 'The distinct groups that at least one command uses.'],
         ]}
       />
-
       <h2>
         <code>createContextEngine(boostWeight = 0.2)</code>
       </h2>
@@ -254,12 +268,13 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
         Commands without a scope are unchanged. The matching rules are under <code>context</code> in
         the <Link href="/docs/api">API Reference</Link>.
       </p>
-
       <h2>Search history</h2>
       <p>
         <code>createSearchHistory(config?)</code> keeps past queries in <code>localStorage</code>;{' '}
         <code>createInMemorySearchHistory(config?)</code> keeps them in memory. Both take a{' '}
-        <code>SearchHistoryConfig</code> and return the same methods:
+        <code>SearchHistoryConfig</code> and return the same methods. The localStorage one reads and
+        writes <code>window.localStorage</code> only, and treats a <code>null</code> value as
+        unavailable.{' '}
       </p>
       <ApiTable
         head={['Method', 'Description']}
@@ -273,14 +288,12 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
           ['clear()', 'Forget all of them.'],
         ]}
       />
-
       <h2>Translations</h2>
       <p>
         <code>createDefaultTranslation()</code> returns the English <code>t</code> function: the
         string for a known key, or the key itself. <code>getTranslationKeys()</code> lists every
         key; the table is in the <Link href="/docs/api">API Reference</Link>.
       </p>
-
       <h2>Route helpers</h2>
       <p>
         The scanners use these to turn a path into a command. They are exported so your own scanner
@@ -293,14 +306,18 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
             'pathToId(path)',
             <>
               <code>/billing/overview</code> gives <code>billing--overview</code>, and{' '}
-              <code>/</code> gives <code>home</code>
+              <code>/</code> gives <code>home</code>. Letters, marks and digits of any script are
+              kept (<code>/設定</code> gives <code>設定</code>) and other characters except{' '}
+              <code>-</code> are dropped, so <code>/a_b</code>, <code>/a.b</code> and{' '}
+              <code>/ab</code> share the id <code>ab</code>. A path with only dropped characters
+              keeps them: only <code>/</code> and an empty path become <code>home</code>.{' '}
             </>,
           ],
           [
             'pathToLabel(path)',
             <>
-              <code>/billing/overview</code> gives &quot;Overview&quot;, and <code>/</code> gives
-              &quot;Home&quot;
+              <code>/billing/overview</code> gives &quot;Overview&quot;, <code>/</code> gives
+              &quot;Home&quot;, and <code>/configuración</code> gives &quot;Configuración&quot;{' '}
             </>,
           ],
           [
@@ -314,12 +331,12 @@ keywords.expandQuery('billing') // ['billing', 'money', 'payment']`}
             'pathSegmentToLabel(segment)',
             <>
               <code>user-settings</code> and <code>userSettings</code> give &quot;User
-              Settings&quot;, and <code>APIKeys</code> gives &quot;API Keys&quot;
+              Settings&quot;, <code>APIKeys</code> gives &quot;API Keys&quot;, and <code>über</code>{' '}
+              gives &quot;Über&quot;{' '}
             </>,
           ],
         ]}
       />
-
       <h2>
         <code>defineConfig(config)</code>
       </h2>
