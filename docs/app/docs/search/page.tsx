@@ -94,8 +94,9 @@ export default function Search() {
         The words of a query can match in any order, and each word can match a different field:
         &quot;overview billing&quot; finds &quot;Billing Overview&quot;, and &quot;invoices
         billing&quot; finds a &quot;Billing&quot; command with the keyword &quot;invoices&quot;.
-        Every word has to match something. These matches come after the commands that match the
-        whole query, which keep their order and scores, and never score above the weakest of them.
+        Every word has to match something, and a repeated word counts once. These matches come after
+        the commands that match the whole query, which keep their order and scores, and never score
+        above the weakest of them.
       </p>
 
       <h3>
@@ -107,8 +108,11 @@ export default function Search() {
         collapsed. So &quot;resume&quot; finds &quot;Résumé&quot;, a decomposed &quot;café&quot;
         finds a composed one, and <code>billing&nbsp; over</code> (two spaces) finds &quot;Billing
         Overview&quot;. Other marks (Indic vowel signs, kana voicing marks) are kept, ß and dotless
-        ı are not folded, and Korean is compared by its letters (jamo). Plain ASCII text scores as
-        before. Pass your own <code>searchEngine</code> if you need accent-sensitive matching.
+        ı are not folded, and the built-in search compares Korean by its letters (jamo), so a
+        partial syllable already matches. ASCII text with single spaces scores as before, while
+        ASCII text with repeated spaces, tabs or line breaks (a multi-line description, for example)
+        now also matches across them. Pass your own <code>searchEngine</code> if you need
+        accent-sensitive matching.
       </p>
 
       <h2>Synonyms</h2>
@@ -195,7 +199,8 @@ export const config = { searchEngine }`}
 
       <ul>
         <li>
-          The query is folded the same way as in the built-in search (accents and extra spaces).
+          The query&apos;s accents, Unicode forms and extra spaces are folded the same way as in the
+          built-in search, but its case is kept: an exact-case match ranks first.
         </li>
         <li>
           A command also matches its synonym keywords, ranked at most CONTAINS so they stay below
@@ -204,8 +209,14 @@ export const config = { searchEngine }`}
           out.
         </li>
         <li>
-          Words in any order work too, appended after the whole-query matches. On a large list, a
-          keystroke can take up to about twice as long as match-sorter alone.
+          Words in any order work too, appended after the whole-query matches. A keystroke with
+          several words takes about 1.5 to 2 times as long as match-sorter alone on Node 22 and 2 to
+          3 times on Node 20, the most for three or more words.
+        </li>
+        <li>
+          match-sorter becomes part of the bundle that imports this entry, so import the entry
+          lazily to keep it out of your main bundle. Server-side rendering loads it with the module.
+          Without the package installed, the import fails at build or server start.
         </li>
       </ul>
 
