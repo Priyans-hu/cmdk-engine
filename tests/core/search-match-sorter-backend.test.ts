@@ -66,6 +66,24 @@ describe('createMatchSorterSearch · words in any order', () => {
     expect(ids(engine.search('overview team', items))).toEqual([])
   })
 
+  it('checks a repeated word once', () => {
+    let reads = 0
+    const item = {
+      id: 'billing',
+      get label() {
+        reads++
+        return 'Billing Area'
+      },
+    }
+    const engine = createMatchSorterSearch()
+    expect(ids(engine.search('area area billing', [item]))).toEqual(['billing'])
+    expect(ids(engine.search('billing billing', [item]))).toEqual(['billing'])
+    reads = 0
+    expect(ids(engine.search(`${'a '.repeat(500)}billing`, [item]))).toEqual(['billing'])
+    // A few reads per distinct word, not per word typed.
+    expect(reads).toBeLessThan(20)
+  })
+
   it('keeps scores decreasing down the list', async () => {
     const engine = createMatchSorterSearch()
     await tick()

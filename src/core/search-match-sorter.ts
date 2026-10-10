@@ -61,24 +61,31 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
         ...(options?.keys ?? []),
       ]
 
-      const sort = (list: CommandItem[], value: string) =>
+      const sort = (
+        list: CommandItem[],
+        value: string,
+        sorter?: SorterOptions<CommandItem>['sorter'],
+      ) =>
         matchSorter(list, value, {
           keys,
           // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
           // plain number (Ranking values are numeric), so bridge at this boundary.
           threshold: options?.threshold as SorterOptions<CommandItem>['threshold'],
+          sorter,
         })
 
       let matched = sort(items, q)
-      // Words in any order: commands that match every word follow the
+      // Words in any order: commands that match every distinct word follow the
       // whole-query matches, ranked by the first word. The longest word
-      // filters first, so the others only check its few matches.
-      const words = q.split(' ')
-      if (words.length > 1) {
+      // filters first, so the others only check its few matches, and these
+      // filter passes skip sorting.
+      if (q.includes(' ')) {
+        const words = [...new Set(q.split(' '))]
         const [first] = words
         const seen = new Set(matched)
         const rest = items.filter((item) => !seen.has(item))
-        const hits = words.sort((a, b) => b.length - a.length).reduce(sort, rest)
+        const filter = (list: CommandItem[], word: string) => sort(list, word, (ranked) => ranked)
+        const hits = words.sort((a, b) => b.length - a.length).reduce(filter, rest)
         matched = matched.concat(sort(hits, first))
       }
 

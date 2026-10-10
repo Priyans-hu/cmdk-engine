@@ -67,8 +67,10 @@ export function createFuzzySearch(): SearchEngine {
       const normalizedQuery = foldText(query)
       // Only marks or a spacing accent (a dead key while typing): nothing to match.
       if (!normalizedQuery) return []
-      // Longest word first: most items fail the any-order check on it.
-      const words = normalizedQuery.split(' ').sort((a, b) => b.length - a.length)
+      // Distinct words, longest first: most items fail the any-order check on
+      // it, and a repeated word is checked once.
+      const words = [...new Set(normalizedQuery.split(' '))].sort((a, b) => b.length - a.length)
+      const severalWords = normalizedQuery.includes(' ')
       const results: ScoredItem[] = []
       const anyOrder: ScoredItem[] = []
       let floor = 1
@@ -80,7 +82,7 @@ export function createFuzzySearch(): SearchEngine {
         if (score > 0) {
           results.push({ item, score })
           floor = Math.min(floor, score)
-        } else if (words.length > 1) {
+        } else if (severalWords) {
           // Every word must match some field, in any order.
           score = 1
           for (const word of words) {

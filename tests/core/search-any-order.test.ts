@@ -62,6 +62,23 @@ describe('createFuzzySearch · words in any order', () => {
     expect(find('', list)).toEqual([])
   })
 
+  it('checks a repeated word once', () => {
+    let reads = 0
+    const item = {
+      id: 'billing',
+      get label() {
+        reads++
+        return 'Billing Area'
+      },
+    }
+    expect(find('area area billing', [item])).toEqual(['billing'])
+    expect(find('billing billing', [item])).toEqual(['billing'])
+    reads = 0
+    expect(find(`${'a '.repeat(500)}billing`, [item])).toEqual(['billing'])
+    // A few reads per distinct word, not per word typed.
+    expect(reads).toBeLessThan(20)
+  })
+
   it('matches a query of one word exactly as before, with no extra results', () => {
     const list: CommandItem[] = [
       { id: 'a', label: 'Overview' },
