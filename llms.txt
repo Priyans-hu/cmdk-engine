@@ -30,7 +30,7 @@ Peers, all optional (install what you use): react and react-dom 18 or 19, cmdk ^
 - `cmdk-engine/adapters/react-router` — React Router route auto-discovery
 - `cmdk-engine/search/match-sorter` — Optional match-sorter search backend
 - `cmdk-engine/adapters/base-ui` — Base UI integration (Autocomplete + Dialog), with the cmdk adapter's props except vimBindings; optional peer `@base-ui/react` ^1.1.0
-- `cmdk-engine/adapters/sitemap` — `sitemapToCommands(sitemap, { params })`: turns the `command-routes.json` written by `cmdk-engine scan` into commands
+- `cmdk-engine/adapters/sitemap`: `sitemapToCommands(sitemap, { params })` turns the `command-routes.json` written by `cmdk-engine scan` into commands
 
 ## CLI
 
