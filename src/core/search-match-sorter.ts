@@ -1,37 +1,40 @@
+import { matchSorter, rankings } from 'match-sorter'
+import type { MatchSorterOptions as SorterOptions } from 'match-sorter'
 import type { CommandItem, SearchEngine, ScoredItem } from './types'
+
+// The built-in search's folding (accents U+0300 to U+036F, compatibility
+// forms, repeated spaces), recomposed (NFC) and with case kept: match-sorter
+// compares the query with the command values as written (Hangul syllables,
+// voiced kana) and ranks an exact-case match first.
+function foldQuery(query: string): string {
+  return query
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 /**
  * Create a search engine backed by match-sorter.
- * Requires `match-sorter` as a peer dependency.
+ * Requires `match-sorter` (7 or 8): an optional peer dependency of cmdk-engine
+ * that this entry imports, so install it to use this entry.
  *
  * match-sorter provides excellent ranking for "type what you remember" UX,
- * with configurable thresholds and multi-key support.
+ * with configurable thresholds and multi-key support. It ranks every search,
+ * including the first, so results do not change once it loads.
  *
- * @param options.threshold - match-sorter threshold (default: CONTAINS)
+ * The query's accents, Unicode compatibility forms and repeated spaces are
+ * folded like the built-in search's, keeping its case; command values keep
+ * match-sorter's own accent handling. Synonym keywords
+ * from the keyword engine match too, ranked at most CONTAINS, so below direct
+ * label, description and keyword matches (a `threshold` above CONTAINS drops
+ * them).
+ *
+ * @param options.threshold - match-sorter threshold (default: match-sorter's, MATCHES)
  * @param options.keys - Additional keys to search beyond defaults
  */
 export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEngine {
-  // Lazy import to avoid bundling match-sorter in core
-  type MatchSorterFn = <T>(
-    items: T[],
-    value: string,
-    options?: { keys?: string[]; threshold?: number },
-  ) => T[]
-  let matchSorterFn: MatchSorterFn | null = null
-
-  async function loadMatchSorter() {
-    if (!matchSorterFn) {
-      const mod = await import('match-sorter')
-      // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
-      // plain number (Ranking values are numeric), so bridge at this boundary.
-      matchSorterFn = mod.matchSorter as unknown as MatchSorterFn
-    }
-    return matchSorterFn
-  }
-
-  // Pre-load on creation so match-sorter is ready before the first search.
-  void loadMatchSorter()
-
   return {
     search(query: string, items: CommandItem[]): ScoredItem[] {
       if (!query || query.trim() === '') {
@@ -44,46 +47,47 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
 
       // With a non-empty query, hidden items stay searchable (searchable but
       // not browsable) — matching createFuzzySearch()'s documented contract.
-      if (!matchSorterFn) {
-        // Fallback: if match-sorter hasn't loaded yet, basic ranked filter.
-        // Differentiate scores so the first paint is at least roughly ordered:
-        //   exact label match     → 1.0
-        //   label prefix match    → 0.9
-        //   label substring match → 0.7
-        //   keyword substring     → 0.5
-        const q = query.toLowerCase()
-        const ranked: ScoredItem[] = []
-        for (const item of items) {
-          // Fields that are not strings (plain JS or JSON input) are skipped.
-          const label = typeof item.label === 'string' ? item.label.toLowerCase() : ''
-          let score = 0
-          if (label === q) score = 1
-          else if (label.startsWith(q)) score = 0.9
-          else if (label.includes(q)) score = 0.7
-          else if (
-            Array.isArray(item.keywords) &&
-            item.keywords.some((k) => typeof k === 'string' && k.toLowerCase().includes(q))
-          ) {
-            score = 0.5
-          }
-          if (score > 0) ranked.push({ item, score })
-        }
-        ranked.sort((a, b) => {
-          const diff = b.score - a.score
-          if (diff !== 0) return diff
-          return (b.item.priority ?? 0) - (a.item.priority ?? 0)
-        })
-        return ranked
-      }
-
-      const keys: string[] = [
+      const q = foldQuery(query)
+      // Only marks or a spacing accent (a dead key while typing): nothing to match.
+      if (!q) return []
+      const keys = [
         'label',
         'description',
         'keywords',
+        {
+          key: (item: CommandItem) => (item.meta?._synonymKeywords as string[] | undefined) ?? [],
+          maxRanking: rankings.CONTAINS,
+        },
         ...(options?.keys ?? []),
       ]
 
-      const matched = matchSorterFn(items, query, { keys, threshold: options?.threshold })
+      const sort = (
+        list: CommandItem[],
+        value: string,
+        sorter?: SorterOptions<CommandItem>['sorter'],
+      ) =>
+        matchSorter(list, value, {
+          keys,
+          // match-sorter types `threshold` as its `Ranking` enum; we expose it as a
+          // plain number (Ranking values are numeric), so bridge at this boundary.
+          threshold: options?.threshold as SorterOptions<CommandItem>['threshold'],
+          sorter,
+        })
+
+      let matched = sort(items, q)
+      // Words in any order: commands that match every distinct word follow the
+      // whole-query matches, ranked by the first word. The longest word
+      // filters first, so the others only check its few matches, and these
+      // filter passes skip sorting.
+      if (q.includes(' ')) {
+        const words = [...new Set(q.split(' '))]
+        const [first] = words
+        const seen = new Set(matched)
+        const rest = items.filter((item) => !seen.has(item))
+        const filter = (list: CommandItem[], word: string) => sort(list, word, (ranked) => ranked)
+        const hits = words.sort((a, b) => b.length - a.length).reduce(filter, rest)
+        matched = matched.concat(sort(hits, first))
+      }
 
       // Convert to scored items (position-based scoring)
       return matched.map((item, index) => ({

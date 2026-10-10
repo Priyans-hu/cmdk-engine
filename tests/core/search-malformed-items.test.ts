@@ -73,9 +73,9 @@ describe('createKeywordEngine · malformed items', () => {
 describe('createMatchSorterSearch · malformed items', () => {
   const items = [noLabel, badKeywords, billing]
 
-  it('fallback path (pre-load) treats a missing label as empty and skips non-string keywords', () => {
+  it('first search treats a missing label as empty and skips non-string keywords', () => {
     const engine = createMatchSorterSearch()
-    expect(ids(engine.search('bill', items))).toEqual(['billing', 'no-label'])
+    expect(ids(engine.search('bill', items)).sort()).toEqual(['billing', 'no-label'])
     expect(ids(engine.search('sales', items))).toEqual(['bad-keywords'])
   })
 
