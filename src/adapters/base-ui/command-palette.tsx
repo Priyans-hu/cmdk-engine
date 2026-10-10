@@ -376,7 +376,8 @@ export function useCommandPaletteShortcut(
   shortcut: string | ((event: KeyboardEvent) => boolean) = 'k',
 ) {
   // Palette state only: the results pipeline runs once, in the palette.
-  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } = usePaletteState()
+  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } =
+    usePaletteState('useCommandPaletteShortcut')
   // The same toggle as useCommandPalette()'s.
   const toggle = useCallback(() => {
     // Clear query/path when closing; keep setState updaters side-effect free.
