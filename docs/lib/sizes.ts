@@ -5,14 +5,15 @@
  * code, without the sibling entries and peers it imports.
  */
 export const SIZES = {
-  core: '3.4 kB',
-  react: '3.6 kB',
-  cmdkAdapter: '1.4 kB',
-  reactRouterAdapter: '1.0 kB',
-  baseUiAdapter: '1.5 kB',
-  matchSorter: '0.72 kB',
+  core: '3.7 kB',
+  react: '4.4 kB',
+  cmdkAdapter: '1.6 kB',
+  reactRouterAdapter: '1.1 kB',
+  baseUiAdapter: '1.8 kB',
+  sitemapAdapter: '0.23 kB',
+  matchSorter: '0.55 kB',
   /** Provider, register hook, cmdk adapter and shortcut, without react, react-dom and cmdk */
-  quickStartStack: '7.2 kB',
+  quickStartStack: '8.2 kB',
   /** Base UI Autocomplete alone, with Dialog, and cmdk with its Radix dialog */
   baseUiAutocomplete: '44 kB',
   baseUiWithDialog: '48 kB',

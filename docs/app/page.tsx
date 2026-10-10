@@ -102,6 +102,11 @@ export default function Home() {
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.baseUiAdapter}</td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired Base UI components</td>
               </tr>
+              <tr className="hover:bg-[var(--surface-hover)] transition-colors">
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/sitemap</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.sitemapAdapter}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">Turns the CLI route sitemap into commands</td>
+              </tr>
             </tbody>
           </table>
         </div>

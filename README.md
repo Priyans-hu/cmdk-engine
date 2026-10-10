@@ -1,6 +1,6 @@
 # cmdk-engine
 
-Permission-aware command palette engine for React. Works with [cmdk](https://github.com/dip/cmdk) or [Base UI](https://base-ui.com). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 7.2 kB min + brotli on top of React and cmdk.
+Permission-aware command palette engine for React. Works with [cmdk](https://github.com/dip/cmdk) or [Base UI](https://base-ui.com). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 8.2 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -309,7 +309,7 @@ with your theme's tokens, so it follows light and dark mode and is yours to
 edit. Render `<CommandPalette />` once inside `CommandEngineProvider`. For Base
 UI instead of cmdk, add `.../r/command-palette-base-ui.json`. Both need
 cmdk-engine 0.6.0 or later. See the
-[shadcn/ui page](https://priyans-hu.github.io/cmdk-engine/docs/shadcn).
+[shadcn/ui page](https://priyans-hu.github.io/cmdk-engine/docs/shadcn/).
 
 ---
 
@@ -325,7 +325,7 @@ repo, and each installs `cmdk-engine` from npm, so you can copy one out.
 | [shadcn/ui](examples/shadcn) | Both shadcn registry items in an app set up with `shadcn init`, in light and dark mode | [StackBlitz](https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/shadcn?file=src/App.tsx) |
 
 The docs site is a live demo too: Cmd+K there searches its own pages. Its
-[Examples page](https://priyans-hu.github.io/cmdk-engine/docs/examples) has more
+[Examples page](https://priyans-hu.github.io/cmdk-engine/docs/examples/) has more
 recipes: RBAC, a custom UI and a pre-commit hook.
 
 ---
@@ -518,7 +518,7 @@ shortcut in one file that starts with `'use client'`, pass `router.push` as
 `onNavigate`, and render it from your root layout. `npx cmdk-engine scan` reads
 App Router and Pages Router files; for `[locale]` pages see
 [Dynamic routes and `[locale]`](#dynamic-routes-and-locale). The
-[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs) has the
+[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs/) has the
 full files, and [`examples/nextjs-app-router`](examples/nextjs-app-router) is a
 runnable app.
 
@@ -618,7 +618,7 @@ const config = { searchEngine: createMatchSorterSearch() }
 ```
 
 Any object with a `search(query, items)` method works as `searchEngine` too.
-The [Search page](https://priyans-hu.github.io/cmdk-engine/docs/search) has the
+The [Search page](https://priyans-hu.github.io/cmdk-engine/docs/search/) has the
 scoring tiers, the `threshold` and `keys` options and a custom engine.
 
 ---
@@ -1187,18 +1187,19 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 
 | Import | Size (own code; siblings and peers excluded) | Purpose |
 |--------|------|---------|
-| `cmdk-engine` | 3.4 kB | Core engine (types, registry, search, keywords, access control, frecency) |
-| `cmdk-engine/react` | 3.6 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
-| `cmdk-engine/adapters/cmdk` | 1.4 kB | Pre-wired cmdk components |
-| `cmdk-engine/adapters/react-router` | 1.0 kB | React Router v6/v7/v8 route scanner |
-| `cmdk-engine/search/match-sorter` | 0.72 kB | Optional match-sorter search backend |
-| `cmdk-engine/adapters/base-ui` | 1.5 kB | Pre-wired Base UI components |
+| `cmdk-engine` | 3.7 kB | Core engine (types, registry, search, keywords, access control, frecency) |
+| `cmdk-engine/react` | 4.4 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
+| `cmdk-engine/adapters/cmdk` | 1.6 kB | Pre-wired cmdk components |
+| `cmdk-engine/adapters/react-router` | 1.1 kB | React Router v6/v7/v8 route scanner |
+| `cmdk-engine/search/match-sorter` | 0.55 kB | Optional match-sorter search backend |
+| `cmdk-engine/adapters/base-ui` | 1.8 kB | Pre-wired Base UI components |
+| `cmdk-engine/adapters/sitemap` | 0.23 kB | `sitemapToCommands()`: turns the CLI route sitemap into commands |
 
 Sizes are measured with size-limit, minified + brotli. Entries import the siblings they use (the cmdk
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **7.2 kB** in total, without the `react`,
+`useCommandPaletteShortcut`) is **8.2 kB** in total, without the `react`,
 `react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
 slightly above these figures.
 
@@ -1208,7 +1209,7 @@ All entry points are tree-shakeable. The core has **zero runtime dependencies**.
 
 ## API Reference
 
-A quick index. The [docs site](https://priyans-hu.github.io/cmdk-engine/docs/api) has
+A quick index. The [docs site](https://priyans-hu.github.io/cmdk-engine/docs/api/) has
 every option, field and hook.
 
 ### Core
