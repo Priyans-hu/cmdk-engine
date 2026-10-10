@@ -106,4 +106,9 @@ describe('createKeywordEngine · synonyms whatever the accents and spaces', () =
     const keywords = createKeywordEngine({ résumé: ['cv'] })
     expect(keywords.enrichItem({ id: 'r', label: 'Resume' }).meta?._synonymKeywords).toEqual(['cv'])
   })
+
+  it('enriches an accented label from a plain key', () => {
+    const keywords = createKeywordEngine({ resume: ['cv'] })
+    expect(keywords.enrichItem({ id: 'r', label: 'Résumé' }).meta?._synonymKeywords).toEqual(['cv'])
+  })
 })

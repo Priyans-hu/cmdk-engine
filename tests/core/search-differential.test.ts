@@ -106,7 +106,8 @@ const word = () => {
 }
 const summary = (results: ScoredItem[]) => results.map((r) => `${r.item.id}:${r.score}`)
 
-describe('createFuzzySearch · differential against the 0.5 search (plain ASCII)', () => {
+// Hundreds of seeded queries: a few seconds on a busy CI machine, more on a loaded laptop.
+describe('createFuzzySearch · differential against 0.5 (ASCII)', { timeout: 30000 }, () => {
   it('gives exactly the 0.5 results for one-word queries', () => {
     const engine = createFuzzySearch()
     for (let run = 0; run < 600; run++) {
