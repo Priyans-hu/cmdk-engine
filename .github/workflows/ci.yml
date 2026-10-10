@@ -15,16 +15,21 @@ jobs:
   lint-test-build:
     runs-on: ubuntu-latest
     strategy:
+      # The ruleset requires the 20 and 22 jobs. Node 24 is not required, and a
+      # failure there must not cancel them.
+      fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
+      # Pinned to the same version in every workflow except canary.yml. Bump
+      # them together.
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -43,3 +48,41 @@ jobs:
       - run: bun run lint:package
 
       - run: bun run size
+
+  # Runs the built CLI on Windows, with its config in a folder whose name has a
+  # space and a #. Not a required check.
+  windows-cli-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: 'Validate and scan with the config in a path with a space and a #'
+        shell: pwsh
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $cli = Join-Path $env:GITHUB_WORKSPACE 'dist\cli\index.cjs'
+          $dir = Join-Path $env:RUNNER_TEMP 'smoke dir #1'
+          $config = Join-Path $dir 'cmdk-engine.config.mjs'
+          New-Item -ItemType Directory -Force -Path "$dir\app\settings" | Out-Null
+          Set-Content -LiteralPath "$dir\app\page.tsx" -Value 'export default function Page() {}'
+          Set-Content -LiteralPath "$dir\app\settings\page.tsx" -Value 'export default function Page() {}'
+          Set-Content -LiteralPath $config -Value "export default { framework: 'nextjs-app', routesDir: 'app', output: 'routes.json' }"
+          Set-Location -LiteralPath $dir
+          node $cli validate -c $config
+          node $cli scan -c $config
+          $routes = (Get-Content -Raw -LiteralPath routes.json | ConvertFrom-Json).routes
+          $found = "$($routes.path -join ',') $($routes.source -join ',')"
+          if ($found -ne '/,/settings app/page.tsx,app/settings/page.tsx') { throw "Unexpected scan output: $found" }
