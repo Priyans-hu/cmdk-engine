@@ -64,6 +64,20 @@ describe('createFuzzySearch · accents, Unicode forms and spaces', () => {
     expect(foldText('हिंदी')).toBe('हिंदी'.normalize('NFKD'))
   })
 
+  it('matches Hangul and voiced kana, composed or not', () => {
+    const settings = '설정'.normalize('NFC')
+    const password = 'パスワード'.normalize('NFC')
+    const items = [
+      { id: 'settings', label: settings },
+      { id: 'password', label: password },
+    ]
+    expect(find(settings, items)).toEqual(['settings'])
+    expect(find(settings.slice(0, 1), items)).toEqual(['settings'])
+    expect(find(password, items)).toEqual(['password'])
+    expect(find(password.slice(0, 2), items)).toEqual(['password'])
+    expect(find(password.normalize('NFD'), items)).toEqual(['password'])
+  })
+
   it('a query that folds to nothing matches nothing', () => {
     const items = [
       { id: 'alpha', label: 'Alpha' },

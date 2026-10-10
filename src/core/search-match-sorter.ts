@@ -1,7 +1,19 @@
 import { matchSorter, rankings } from 'match-sorter'
 import type { MatchSorterOptions as SorterOptions } from 'match-sorter'
-import { foldText } from './search'
 import type { CommandItem, SearchEngine, ScoredItem } from './types'
+
+// The built-in search's folding (accents U+0300 to U+036F, compatibility
+// forms, repeated spaces), recomposed (NFC) and with case kept: match-sorter
+// compares the query with the command values as written (Hangul syllables,
+// voiced kana) and ranks an exact-case match first.
+function foldQuery(query: string): string {
+  return query
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 /**
  * Create a search engine backed by match-sorter.
@@ -12,8 +24,9 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  * with configurable thresholds and multi-key support. It ranks every search,
  * including the first, so results do not change once it loads.
  *
- * The query is folded like the built-in search's (see `createFuzzySearch`);
- * command values keep match-sorter's own accent handling. Synonym keywords
+ * The query's accents, Unicode compatibility forms and repeated spaces are
+ * folded like the built-in search's, keeping its case; command values keep
+ * match-sorter's own accent handling. Synonym keywords
  * from the keyword engine match too, ranked at most CONTAINS, so below direct
  * label, description and keyword matches (a `threshold` above CONTAINS drops
  * them).
@@ -34,7 +47,7 @@ export function createMatchSorterSearch(options?: MatchSorterOptions): SearchEng
 
       // With a non-empty query, hidden items stay searchable (searchable but
       // not browsable) — matching createFuzzySearch()'s documented contract.
-      const q = foldText(query)
+      const q = foldQuery(query)
       // Only marks or a spacing accent (a dead key while typing): nothing to match.
       if (!q) return []
       const keys = [

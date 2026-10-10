@@ -75,3 +75,34 @@ describe('createMatchSorterSearch · words in any order', () => {
     expect(scores).toEqual([...scores].sort((a, b) => b - a))
   })
 })
+
+describe('createMatchSorterSearch · scripts and case', () => {
+  // Composed, as typed and as command text is usually written.
+  const settings = '설정'.normalize('NFC')
+  const password = 'パスワード'.normalize('NFC')
+  const guide = 'ガイド'.normalize('NFC')
+  const list: CommandItem[] = [
+    { id: 'settings', label: settings },
+    { id: 'password', label: password },
+    { id: 'guide', label: guide },
+  ]
+
+  it('matches Hangul and voiced kana as written', () => {
+    const engine = createMatchSorterSearch()
+    expect(ids(engine.search(settings, list))).toEqual(['settings'])
+    expect(ids(engine.search(settings.slice(0, 1), list))).toEqual(['settings'])
+    expect(ids(engine.search(password, list))).toEqual(['password'])
+    expect(ids(engine.search(password.slice(0, 2), list))).toEqual(['password'])
+    expect(ids(engine.search(guide, list))).toEqual(['guide'])
+  })
+
+  it('ranks an exact-case match first', () => {
+    const engine = createMatchSorterSearch()
+    const cased = [
+      { id: 'lower', label: 'api' },
+      { id: 'upper', label: 'API' },
+    ]
+    expect(ids(engine.search('API', cased))).toEqual(['upper', 'lower'])
+    expect(ids(engine.search('api', cased))).toEqual(['lower', 'upper'])
+  })
+})
