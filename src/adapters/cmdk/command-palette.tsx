@@ -209,13 +209,28 @@ export function CommandPalette({
 
   // cmdk's Dialog has no Radix trigger to return focus to on close, so give it
   // back to what had it before, unless something outside took it meanwhile.
-  const dialogRootRef = useRef<HTMLDivElement>(null)
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
   useEffect(() => {
     const focused = document.activeElement
-    if (!isOpen && (focused === document.body || dialogRootRef.current?.contains(focused))) {
+    if (!isOpen && (focused === document.body || root?.contains(focused))) {
       returnFocusTo.current?.focus({ preventScroll: true })
     }
   }, [isOpen])
+
+  // Runs a command. While the dialog is open, Radix's focus trap undoes a focus()
+  // the command makes outside it, so note that element: the close then focuses
+  // it instead of the opener.
+  const run = (item: CommandItem) => {
+    const note = (e: FocusEvent) => {
+      if (!root?.contains(e.target as Node)) returnFocusTo.current = e.target as HTMLElement
+    }
+    document.addEventListener('focusin', note, true)
+    try {
+      select(item, { onSelect })
+    } finally {
+      document.removeEventListener('focusin', note, true)
+    }
+  }
 
   // Fall back to the first enabled item whenever the active id is no longer
   // rendered (e.g. the previously-highlighted item was filtered out mid-list)
@@ -246,7 +261,7 @@ export function CommandPalette({
         // The hook's select() drills into children, records frecency and search
         // history, applies onSelect/action/onNavigate/href, and closes. Bound to
         // the item: cmdk reports values trimmed, so they cannot look it up.
-        onSelect={() => select(item, { onSelect })}
+        onSelect={() => run(item)}
         className={itemClassName}
         keywords={item.keywords}
       >
@@ -312,7 +327,7 @@ export function CommandPalette({
         container={container}
         value={effectiveValue}
         onValueChange={setActiveValue}
-        ref={dialogRootRef}
+        ref={setRoot}
       >
         {content}
       </Cmdk.Dialog>
