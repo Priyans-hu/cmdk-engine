@@ -1,0 +1,13 @@
+# Markdown stays as written: the README's compact code fences, and the
+# CHANGELOG that `changeset version` writes.
+*.md
+
+# Lockfiles (root and docs/)
+bun.lock
+
+# Generated output
+dist
+docs/out
+docs/public/r
+.next
+node_modules
