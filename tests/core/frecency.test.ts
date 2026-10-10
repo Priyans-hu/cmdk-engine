@@ -210,3 +210,83 @@ describe('createInMemoryStorage', () => {
     expect(storage.get('a')).toBeNull()
   })
 })
+
+describe('createFrecencyEngine · rank with stale usage', () => {
+  const DAY = 86_400_000
+
+  it('gives a lone stale entry its decayed share, not the full boost', () => {
+    const storage = createInMemoryStorage()
+    storage.set('stale', {
+      id: 'stale',
+      count: 1,
+      lastUsed: Date.now() - 29 * DAY,
+      halfLifeScore: 0,
+    })
+    const engine = createFrecencyEngine({ storage })
+
+    const ranked = engine.rank([scored('unused', 0.8), scored('stale', 0.6)])
+    expect(ranked.map((r) => r.item.id)).toEqual(['unused', 'stale'])
+    expect(ranked[1].score).toBeLessThan(0.5)
+  })
+
+  it('still gives the full boost to one use within the last half-life', () => {
+    const storage = createInMemoryStorage()
+    storage.set('used', { id: 'used', count: 1, lastUsed: Date.now() - 3 * DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage })
+
+    const ranked = engine.rank([scored('unused', 0.8), scored('used', 0.6)])
+    expect(ranked.map((r) => r.item.id)).toEqual(['used', 'unused'])
+    expect(ranked[0].score).toBeCloseTo(0.6 * 0.7 + 0.3, 6)
+  })
+})
+
+describe('createFrecencyEngine · maxAge', () => {
+  const DAY = 86_400_000
+
+  it('leaves entries older than maxAge out of getRecent', () => {
+    const storage = createInMemoryStorage()
+    storage.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    storage.set('fresh', { id: 'fresh', count: 1, lastUsed: Date.now() - DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage, maxAge: 30 })
+
+    expect(engine.getRecent()).toEqual(['fresh'])
+  })
+
+  it('removes entries older than maxAge from storage on the next recordUsage', () => {
+    const storage = createInMemoryStorage()
+    storage.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    const engine = createFrecencyEngine({ storage, maxAge: 30 })
+
+    engine.recordUsage('new')
+    expect(storage.getAll().map((e) => e.id)).toEqual(['new'])
+  })
+})
+
+describe('createFrecencyEngine · maxAge with a storage without delete', () => {
+  const DAY = 86_400_000
+
+  it('zeroes a stale entry once, so a later recordUsage writes only its own entry', () => {
+    const inner = createInMemoryStorage()
+    inner.set('old', { id: 'old', count: 3, lastUsed: Date.now() - 100 * DAY, halfLifeScore: 0 })
+    const writes: string[] = []
+    const engine = createFrecencyEngine({
+      maxAge: 30,
+      storage: {
+        get: inner.get,
+        getAll: inner.getAll,
+        clear: inner.clear,
+        set: (key, entry) => {
+          writes.push(key)
+          inner.set(key, entry)
+        },
+      },
+    })
+
+    engine.recordUsage('a')
+    expect(writes).toEqual(['old', 'a'])
+    expect(inner.get('old')?.count).toBe(0)
+
+    engine.recordUsage('b')
+    expect(writes).toEqual(['old', 'a', 'b'])
+  })
+})
