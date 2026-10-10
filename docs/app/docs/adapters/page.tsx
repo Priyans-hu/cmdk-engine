@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ApiTable } from '@/components/api-table'
 import { CodeBlock } from '@/components/code-block'
 import { Since } from '@/components/since'
