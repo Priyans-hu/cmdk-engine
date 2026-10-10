@@ -490,6 +490,33 @@ useCommandRegister([
 
 ---
 
+## Search
+
+The built-in search matches labels, descriptions and keywords, and tolerates
+typos, partial words and initials.
+
+- **Words in any order:** "overview billing" finds "Billing Overview", and each
+  word can match a different field. These matches come after the ones that
+  match the whole query, and never score above the weakest of them.
+- **Accents, Unicode forms and spaces:** the query and the commands are
+  compared after Unicode compatibility decomposition (NFKD), with the combining
+  accents U+0300 to U+036F removed, in lowercase, with repeated whitespace
+  collapsed. "resume" finds "Résumé" and `billing  over` (two spaces) finds
+  "Billing Overview". Other marks (Indic vowel signs, kana voicing marks) are
+  kept, ß and dotless ı are not folded, and the built-in search compares
+  Korean by its letters (jamo), so a partial syllable already matches.
+- **match-sorter:** `createMatchSorterSearch()` from
+  `cmdk-engine/search/match-sorter` needs `match-sorter` (7 or 8) installed;
+  it is part of the bundle that imports this entry. It folds the query's
+  accents, compatibility forms and spaces the same way but keeps its case
+  (an exact-case match ranks first), and also matches synonym keywords
+  (ranked at most CONTAINS, below direct matches) and words in any order.
+  A keystroke with several words takes about 1.5 to 2 times as long as
+  match-sorter alone on Node 22 and 2 to 3 times on Node 20, the most for
+  three or more words.
+
+---
+
 ## Synonyms
 
 Synonyms work both ways. With this config, typing "money" or "payment" finds
@@ -504,21 +531,20 @@ const config = {
 }
 ```
 
-- **Query:** when the whole query (trimmed, any case) equals a key or a value,
-  the other terms are searched too: a key brings its values, a value its key.
-  Commands found only this way are listed after the direct matches and never
-  score above the weakest one. Frecency and context boosts apply afterwards,
-  so a command you use often can still move up.
-- **Commands:** with the built-in fuzzy search, a command whose keyword or
-  whole label equals a key or a value also matches the other terms, at a lower
-  weight.
+- **Query:** when the whole query (ignoring case, accents and extra spaces)
+  equals a key or a value, the other terms are searched too: a key brings its
+  values, a value its key. Commands found only this way are listed after the
+  direct matches and never score above the weakest one. Frecency and context
+  boosts apply afterwards, so a command you use often can still move up.
+- **Commands:** a command whose keyword or whole label equals a key or a value
+  also matches the other terms, at a lower weight (with match-sorter, ranked at
+  most CONTAINS).
 - **Not expanded:** the query, while it is a partial word ("mon" is searched
   as typed until "money" is complete) or a longer phrase that contains a
   synonym ("money transfer").
 
-match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
-matches, so only the query side works with it. When the query expands, a
-custom `searchEngine` is called once more for each extra term.
+When the query expands, a custom `searchEngine` is called once more for each
+extra term.
 
 ---
 

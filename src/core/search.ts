@@ -1,6 +1,41 @@
 import type { CommandItem, SearchEngine, ScoredItem } from './types'
 
 /**
+ * Fold text for matching: compatibility decomposition (NFKD), combining
+ * accents U+0300 to U+036F removed, lowercased, whitespace runs collapsed to
+ * one space, trimmed. "Résumé" folds to "resume", full-width letters and
+ * ligatures to plain ones, a no-break space to a space. Other marks (Indic
+ * vowel signs, kana voicing marks) are kept; ß and dotless ı are unchanged.
+ */
+export function foldText(text: string): string {
+  return text
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Folded text and word initials per field string, shared by every engine, so
+// a string is folded once instead of on every keystroke. Cleared when it
+// reaches 50,000 strings.
+const folded = new Map<string, [text: string, initials: string]>()
+
+function fold(value: string): [text: string, initials: string] {
+  let entry = folded.get(value)
+  if (!entry) {
+    const text = foldText(value)
+    const initials = text
+      .split(/[\s\-_]+/)
+      .map((w) => w[0])
+      .join('')
+    if (folded.size >= 50000) folded.clear()
+    folded.set(value, (entry = [text, initials]))
+  }
+  return entry
+}
+
+/**
  * Built-in lightweight fuzzy search engine.
  * Searches label, description, and keywords fields.
  * No external dependencies. Target: < 1KB gzipped.
@@ -9,6 +44,16 @@ import type { CommandItem, SearchEngine, ScoredItem } from './types'
  * - Exact prefix match (highest)
  * - Word boundary match
  * - Consecutive character matches
+ *
+ * Query and fields are compared folded: Unicode compatibility decomposition
+ * (NFKD), accents U+0300 to U+036F removed, lowercased, repeated spaces
+ * collapsed, so accents, compatibility forms, case and extra spaces do not
+ * matter.
+ *
+ * A query of several words also matches items where every word matches some
+ * field, in any order ("overview billing" finds "Billing Overview"), scored
+ * 0.9 × the weakest word. They come after the items that match the whole
+ * query, and never score above the lowest of those.
  */
 export function createFuzzySearch(): SearchEngine {
   return {
@@ -21,32 +66,57 @@ export function createFuzzySearch(): SearchEngine {
           .sort((a, b) => (b.item.priority ?? 0) - (a.item.priority ?? 0))
       }
 
-      const normalizedQuery = query.toLowerCase().trim()
+      const normalizedQuery = foldText(query)
+      // Only marks or a spacing accent (a dead key while typing): nothing to match.
+      if (!normalizedQuery) return []
+      // Distinct words, longest first: most items fail the any-order check on
+      // it, and a repeated word is checked once.
+      const words = [...new Set(normalizedQuery.split(' '))].sort((a, b) => b.length - a.length)
+      const severalWords = normalizedQuery.includes(' ')
       const results: ScoredItem[] = []
+      const anyOrder: ScoredItem[] = []
+      let floor = 1
 
       for (const item of items) {
         // `hidden` only excludes items from the empty-query browse list (handled above).
         // With a non-empty query, hidden items are still searchable — just not browsable.
-        const score = scoreItem(normalizedQuery, item)
+        let score = scoreItem(normalizedQuery, item)
         if (score > 0) {
           results.push({ item, score })
+          floor = Math.min(floor, score)
+        } else if (severalWords) {
+          // Every word must match some field, in any order.
+          score = 1
+          for (const word of words) {
+            score = Math.min(score, scoreItem(word, item))
+            if (!score) break
+          }
+          if ((score *= 0.9) >= 0.15) anyOrder.push({ item, score })
         }
       }
 
-      // Sort by score descending, then by priority descending.
-      // Scores are rounded to a fixed grid first so "approximately equal"
-      // is a transitive relation (an epsilon compare is not, and can produce
-      // inconsistent orderings under TimSort).
-      results.sort((a, b) => {
-        const aScore = Math.round(a.score * 1000)
-        const bScore = Math.round(b.score * 1000)
-        if (aScore !== bScore) return bScore - aScore
-        return (b.item.priority ?? 0) - (a.item.priority ?? 0)
-      })
+      // Any-order matches follow, best first, scored at most the lowest
+      // whole-query match so the list stays sorted by score.
+      results.sort(byScore)
+      for (const scored of anyOrder.sort(byScore)) {
+        scored.score = Math.min(scored.score, floor)
+        results.push(scored)
+      }
 
       return results
     },
   }
+}
+
+// Sort by score descending, then by priority descending.
+// Scores are rounded to a fixed grid first so "approximately equal"
+// is a transitive relation (an epsilon compare is not, and can produce
+// inconsistent orderings under TimSort).
+function byScore(a: ScoredItem, b: ScoredItem): number {
+  const aScore = Math.round(a.score * 1000)
+  const bScore = Math.round(b.score * 1000)
+  if (aScore !== bScore) return bScore - aScore
+  return (b.item.priority ?? 0) - (a.item.priority ?? 0)
 }
 
 /**
@@ -65,19 +135,19 @@ function scoreItem(query: string, item: CommandItem): number {
   // Score against label (highest weight). Items from plain JS or JSON can lack
   // a string label, description or keywords: those fields are skipped.
   if (typeof item.label === 'string') {
-    bestScore = Math.max(bestScore, fuzzyScore(query, item.label.toLowerCase()) * 1.0)
+    bestScore = Math.max(bestScore, fuzzyScore(query, fold(item.label)) * 1.0)
   }
 
   // Score against description (medium weight)
   if (typeof item.description === 'string') {
-    bestScore = Math.max(bestScore, fuzzyScore(query, item.description.toLowerCase()) * 0.7)
+    bestScore = Math.max(bestScore, fuzzyScore(query, fold(item.description)) * 0.7)
   }
 
   // Score against original keywords (medium-high weight)
   if (Array.isArray(item.keywords)) {
     for (const kw of item.keywords) {
       if (typeof kw !== 'string') continue
-      bestScore = Math.max(bestScore, fuzzyScore(query, kw.toLowerCase()) * 0.85)
+      bestScore = Math.max(bestScore, fuzzyScore(query, fold(kw)) * 0.85)
     }
   }
 
@@ -85,7 +155,7 @@ function scoreItem(query: string, item: CommandItem): number {
   const synonymKeywords = (item.meta?._synonymKeywords as string[] | undefined)
   if (synonymKeywords) {
     for (const kw of synonymKeywords) {
-      bestScore = Math.max(bestScore, fuzzyScore(query, kw.toLowerCase()) * 0.55)
+      bestScore = Math.max(bestScore, fuzzyScore(query, fold(kw)) * 0.55)
     }
   }
 
@@ -98,7 +168,7 @@ function scoreItem(query: string, item: CommandItem): number {
 }
 
 /**
- * Fuzzy match a query against a target string.
+ * Fuzzy match a query against a folded target string and its word initials.
  * Returns a score between 0 and 1.
  *
  * Scoring tiers:
@@ -109,14 +179,12 @@ function scoreItem(query: string, item: CommandItem): number {
  * - Fuzzy (consecutive chars): up to 0.6
  * - Fuzzy (scattered chars): heavily penalized, often rejected
  */
-function fuzzyScore(query: string, target: string): number {
+function fuzzyScore(query: string, [target, wordInitials]: [string, string]): number {
   if (query === target) return 1 // Exact match
   if (target.startsWith(query)) return 0.95 // Prefix match
   if (target.includes(query)) return 0.8 // Substring match
 
   // Check word boundary matches
-  const words = target.split(/[\s\-_]+/)
-  const wordInitials = words.map((w) => w[0]).join('')
   if (wordInitials.includes(query)) return 0.7 // Initials match (e.g., "bs" matches "Billing Settings")
 
   // Fuzzy character-by-character matching

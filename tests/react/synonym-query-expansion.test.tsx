@@ -162,17 +162,17 @@ describe('synonym query expansion', () => {
     expect(queriesFor('mon')).toEqual(['mon'])
   })
 
-  it('works with match-sorter before it loads (fallback ranker)', () => {
+  it('works with match-sorter right after it is created', () => {
     const engine = createMatchSorterSearch()
-    // Synchronous from here on, so match-sorter cannot finish loading.
+    // Synchronous from here on: match-sorter is imported statically.
     const { result } = renderPalette({ searchEngine: engine, synonyms: README_SYNONYMS }, [
       BILLING_OVERVIEW,
     ])
 
     act(() => result.current.setSearch('money'))
     expect(ids(result.current)).toEqual(['billing-overview'])
-    // Still the fallback: a label prefix scores 0.9 there.
-    expect(engine.search('bill', [BILLING_OVERVIEW])[0].score).toBe(0.9)
+    // Already match-sorter, no fallback: a single hit scores 1.
+    expect(engine.search('bill', [BILLING_OVERVIEW])[0].score).toBe(1)
   })
 
   it('works with match-sorter once loaded', async () => {
