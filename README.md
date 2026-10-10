@@ -10,6 +10,8 @@ Permission-aware command palette engine for React. Works with [cmdk](https://git
 
 **Live demo:** press Cmd+K (Ctrl+K) on the [docs site](https://priyans-hu.github.io/cmdk-engine/). Runnable apps are in [Examples](#examples).
 
+**Contents:** [Installation](#installation), [Quick Start](#quick-start), [Styling](#styling), [Examples](#examples), [Search](#search), [Nested Commands](#nested-commands), [Async Command Sources](#async-command-sources), [CLI Tool](#cli-tool), [API Reference](#api-reference), [Testing](#testing).
+
 ---
 
 ## Why cmdk-engine?
@@ -215,6 +217,8 @@ function CustomCommandMenu() {
 
 > `select()` records frecency + search history, runs `onSelect` → `action` →
 > `onNavigate`/`href`, and closes the palette — all in one call.
+
+---
 
 ## Styling
 
@@ -501,6 +505,19 @@ The CLI scanner (`npx cmdk-engine scan`) does not resolve index routes.
 
 ---
 
+## Next.js
+
+The palette needs a Client Component. Put the provider, the palette and the
+shortcut in one file that starts with `'use client'`, pass `router.push` as
+`onNavigate`, and render it from your root layout. `npx cmdk-engine scan` reads
+App Router and Pages Router files; for `[locale]` pages see
+[Dynamic routes and `[locale]`](#dynamic-routes-and-locale). The
+[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs) has the
+full files, and [`examples/nextjs-app-router`](examples/nextjs-app-router) is a
+runnable app.
+
+---
+
 ## RBAC / Access Control
 
 Filter commands based on user permissions:
@@ -682,6 +699,8 @@ A `scope` entry matches when it equals the current `context.path` or is a parent
 glob matches below `/billing`, not `/billing` itself), or when it equals one of the
 `context.tags`.
 
+---
+
 ## Nested Commands
 
 Give a command `children` to make a sub-menu. Selecting it opens its children instead
@@ -722,6 +741,8 @@ function ThemeCommands() {
   `renderBreadcrumbs(crumbs, onBack)` and mark the chevron and the trail with
   `data-cmdk-engine-item-chevron` and `data-cmdk-engine-breadcrumbs` (see
   [Styling](#styling)).
+
+---
 
 ## Groups
 
@@ -770,6 +791,8 @@ export function Root({ children }: { children: React.ReactNode }) {
   is the most recent command. To keep your groups on top, leave `showRecent` off, or
   render your own list from `groupedResults`.
 
+---
+
 ## Internationalization (i18n)
 
 Built-in UI strings go through a translation function. Pass your own to
@@ -801,6 +824,8 @@ Base UI adapter's dialog. `palette.list` (default "Suggestions") names the
 results listbox in both adapters. A `t` that returns the key unchanged, like the
 one above, or an empty string keeps "Suggestions".
 
+---
+
 ## Search History
 
 Opt-in tracking of past queries (persisted to `localStorage`). A query is recorded when
@@ -831,6 +856,8 @@ function RecentSearches() {
 }
 ```
 
+---
+
 ## Palette Events
 
 `useCommandPaletteEvents` reports what happens in the palette, for analytics.
@@ -859,6 +886,8 @@ function PaletteAnalytics() {
 `search` fires for every settled query while the user types, so debounce it
 before sending it anywhere. An error thrown by your handler never breaks the
 palette. Without the hook, nothing is reported.
+
+---
 
 ## Async Command Sources
 
@@ -1076,10 +1105,6 @@ The scan reads your files without running them.
 Ids keep letters, digits and `-` (`/billing/overview` gives `billing--overview`),
 so `/a_b` and `/ab` would share `ab`. The scan then keeps it for the last of them
 in path order and gives the others `ab-2`, `ab-3`, ...
-
-**Next.js:** for the App Router setup (a `'use client'` palette file,
-`router.push`, `[locale]`), see the
-[Next.js guide](https://priyans-hu.github.io/cmdk-engine/docs/nextjs).
 
 ### Pre-commit hook
 
