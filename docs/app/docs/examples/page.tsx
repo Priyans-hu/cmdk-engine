@@ -1,4 +1,10 @@
+import Link from 'next/link'
+import { ApiTable } from '@/components/api-table'
 import { CodeBlock } from '@/components/code-block'
+import { SITE } from '@/lib/constants'
+
+const EXAMPLES = `${SITE.github}/tree/main/examples`
+const STACKBLITZ = 'https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples'
 
 export const metadata = { title: 'Examples' }
 
@@ -7,6 +13,61 @@ export default function Examples() {
     <>
       <h1>Examples</h1>
       <p>Common patterns and integration examples for cmdk-engine.</p>
+
+      <h2>Runnable apps</h2>
+      <p>
+        The <a href={EXAMPLES}>examples folder</a> has three apps. Each one installs{' '}
+        <code>cmdk-engine</code> from npm, so you can copy it out of the repo or open it in
+        StackBlitz.
+      </p>
+      <ApiTable
+        head={['Example', 'What it shows', 'Try it']}
+        rows={[
+          [
+            <a key="vite" href={`${EXAMPLES}/vite-react-router`}>
+              Vite + React Router
+            </a>,
+            <>
+              Commands from the route tree with <code>scanRoutes</code>, the provider inside the
+              router, the CSS from <Link href="/docs/styling">Styling</Link>, and the same palette
+              on Base UI with <code>?adapter=base-ui</code>.
+            </>,
+            <a key="vite-sb" href={`${STACKBLITZ}/vite-react-router?file=src/layout.tsx`}>
+              StackBlitz
+            </a>,
+          ],
+          [
+            <a key="next" href={`${EXAMPLES}/nextjs-app-router`}>
+              Next.js App Router
+            </a>,
+            <>
+              A <code>&apos;use client&apos;</code> provider file under a server layout,{' '}
+              <code>router.push</code> as <code>onNavigate</code>, and <code>[locale]</code> pages
+              found by <code>cmdk-engine scan --include-dynamic locale</code> and filled in with{' '}
+              <code>sitemapToCommands</code>. See the <Link href="/docs/nextjs">Next.js</Link>{' '}
+              guide.
+            </>,
+            <a
+              key="next-sb"
+              href={`${STACKBLITZ}/nextjs-app-router?file=components/command-menu.tsx`}
+            >
+              StackBlitz
+            </a>,
+          ],
+          [
+            <a key="shadcn" href={`${EXAMPLES}/shadcn`}>
+              shadcn/ui
+            </a>,
+            <>
+              Both registry items from the <Link href="/docs/shadcn">shadcn/ui</Link> page, in an
+              app set up with <code>shadcn init</code>, in light and dark mode.
+            </>,
+            <a key="shadcn-sb" href={`${STACKBLITZ}/shadcn?file=src/App.tsx`}>
+              StackBlitz
+            </a>,
+          ],
+        ]}
+      />
 
       <h2>React Router Integration</h2>
       <p>Auto-discover routes from your React Router config and register them as commands.</p>
