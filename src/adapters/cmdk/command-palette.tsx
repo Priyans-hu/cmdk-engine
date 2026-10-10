@@ -209,6 +209,7 @@ export function CommandPalette({
 
   // cmdk's Dialog has no Radix trigger to return focus to on close, so give it
   // back to what had it before, unless something outside took it meanwhile.
+  // State, not a ref: in dialog mode the root mounts after this component does.
   const [root, setRoot] = useState<HTMLDivElement | null>(null)
   useEffect(() => {
     const focused = document.activeElement
@@ -248,6 +249,21 @@ export function CommandPalette({
   useEffect(() => {
     if (!activeValueValid) setActiveValue(firstEnabledId)
   }, [activeValueValid, firstEnabledId])
+
+  // cmdk points aria-activedescendant at an item only when it moves the highlight
+  // itself, not when this adapter does (open, drill-down, a highlighted item
+  // filtered out), so it can name an item that is gone. Name the highlighted one.
+  useEffect(() => {
+    const id = root
+      ? [...root.querySelectorAll('[cmdk-item]')].find(
+          (el) => el.getAttribute('data-value') === effectiveValue.trim(),
+        )?.id
+      : undefined
+    root?.querySelectorAll('[cmdk-input],[cmdk-list]').forEach((el) => {
+      if (id) el.setAttribute('aria-activedescendant', id)
+      else el.removeAttribute('aria-activedescendant')
+    })
+  })
 
   // groupedResults comes memoized from the hook (was recomputed here on every
   // keystroke / arrow-key render).
@@ -344,6 +360,7 @@ export function CommandPalette({
       vimBindings={vimBindings}
       value={effectiveValue}
       onValueChange={setActiveValue}
+      ref={setRoot}
     >
       {content}
     </Cmdk>
