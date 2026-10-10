@@ -32,6 +32,11 @@ export const DOCS_NAV: NavSection[] = [
     title: 'Guides',
     items: [
       {
+        label: 'Next.js',
+        href: '/docs/nextjs',
+        description: 'Use the palette in the App Router: a client file, router.push and [locale] routes.',
+      },
+      {
         label: 'Search',
         href: '/docs/search',
         description: 'How results are found and ranked, synonyms, match-sorter and custom engines.',

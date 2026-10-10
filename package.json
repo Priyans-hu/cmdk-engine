@@ -46,7 +46,7 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "cmdk-engine": "./dist/cli/index.cjs"
+    "cmdk-engine": "dist/cli/index.cjs"
   },
   "exports": {
     ".": {
@@ -109,6 +109,16 @@
         "default": "./dist/core/search-match-sorter.cjs"
       }
     },
+    "./adapters/sitemap": {
+      "import": {
+        "types": "./dist/adapters/sitemap/index.d.ts",
+        "default": "./dist/adapters/sitemap/index.js"
+      },
+      "require": {
+        "types": "./dist/adapters/sitemap/index.d.cts",
+        "default": "./dist/adapters/sitemap/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/core/index.cjs",
@@ -130,6 +140,9 @@
       ],
       "search/match-sorter": [
         "./dist/core/search-match-sorter.d.ts"
+      ],
+      "adapters/sitemap": [
+        "./dist/adapters/sitemap/index.d.ts"
       ]
     }
   },
@@ -198,7 +211,7 @@
     {
       "name": "cmdk-engine/react (own code)",
       "path": "dist/react/index.js",
-      "limit": "4.35 KB",
+      "limit": "4.45 KB",
       "ignore": [
         "cmdk-engine",
         "react",
@@ -243,7 +256,12 @@
         "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
         "dist/adapters/cmdk/index.js": "{ CommandPalette, useCommandPaletteShortcut }"
       },
-      "limit": "8 KB"
+      "limit": "8.25 KB"
+    },
+    {
+      "name": "cmdk-engine/adapters/sitemap",
+      "path": "dist/adapters/sitemap/index.js",
+      "limit": "0.3 KB"
     }
   ],
   "engines": {

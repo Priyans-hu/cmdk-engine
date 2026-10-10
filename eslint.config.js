@@ -8,6 +8,7 @@ export default [
       'src/**/*.tsx',
       'tests/**/*.ts',
       'tests/**/*.tsx',
+      'tests-dist/**/*.ts',
       'tests-dist/**/*.tsx',
       'tests-dist/**/*.mjs',
       'tests-dist/**/*.cjs',

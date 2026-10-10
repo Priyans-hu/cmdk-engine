@@ -61,7 +61,23 @@ export const validateCommand = new Command('validate')
       if (config.exclude) {
         if (!Array.isArray(config.exclude)) {
           errors.push('Exclude must be an array of strings')
+        } else {
+          for (const pattern of config.exclude) {
+            if (typeof pattern !== 'string' && !(pattern instanceof RegExp)) {
+              errors.push(`Exclude patterns must be strings or RegExp: ${JSON.stringify(pattern)}`)
+            }
+          }
         }
+      }
+
+      // Validate includeDynamic: true/false, or the :param names to keep
+      const { includeDynamic } = config
+      if (
+        includeDynamic !== undefined &&
+        typeof includeDynamic !== 'boolean' &&
+        !(Array.isArray(includeDynamic) && includeDynamic.every((n) => typeof n === 'string'))
+      ) {
+        errors.push('includeDynamic must be true, false or an array of :param names')
       }
 
       // Validate synonyms
