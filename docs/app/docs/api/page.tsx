@@ -237,7 +237,8 @@ export default function APIReference() {
         Commands you use often and recently rank higher. Usage is saved to <code>localStorage</code>{' '}
         and falls back to memory where it is unavailable: during SSR, in sandboxed iframes, when the
         browser blocks cookies, or when <code>window.localStorage</code> is <code>null</code> or
-        rejects writes.
+        rejects writes. To test storage, the provider writes and removes a{' '}
+        <code>cmdk-engine-probe</code> key once when it mounts.
       </p>
       <ApiTable
         head={['Option', 'Default', 'Description']}
@@ -306,7 +307,9 @@ export default function APIReference() {
       </h3>
       <p>
         Off by default. When enabled, a query is recorded when the user selects a command, and kept
-        in <code>localStorage</code>. Read it with <code>useSearchHistory()</code>.
+        in <code>localStorage</code>, or in memory where that is unavailable. The in-memory history
+        keeps the options it was created with until the provider remounts. Read it with{' '}
+        <code>useSearchHistory()</code>.
       </p>
       <ApiTable
         head={['Option', 'Default', 'Description']}
