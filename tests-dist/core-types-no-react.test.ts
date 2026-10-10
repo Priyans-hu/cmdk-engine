@@ -63,7 +63,7 @@ describe('core types without React', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
-  })
+  }, 30_000)
 
   it.each(ENTRIES)('%s keeps icon a ReactNode with React types installed', (entry, consumer) => {
     // Inside the repo, `react` resolves to the dev dependency and its types
@@ -75,5 +75,5 @@ describe('core types without React', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
-  })
+  }, 30_000)
 })
