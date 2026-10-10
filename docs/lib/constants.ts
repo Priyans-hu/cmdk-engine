@@ -82,12 +82,12 @@ export const FEATURES = [
   {
     icon: '🔍',
     title: 'Route Discovery',
-    description: 'Auto-scan React Router, Next.js App Router, and Pages Router. CLI generates your command sitemap.',
+    description: 'Auto-scan React Router and Next.js routes. The CLI writes a sitemap, and sitemapToCommands turns it into commands.',
   },
   {
     icon: '⚡',
     title: 'Fuzzy Search',
-    description: 'Built-in lightweight fuzzy search with scoring: exact > prefix > substring > word-boundary > fuzzy.',
+    description: 'Built-in lightweight fuzzy search: exact > prefix > substring > word initials > fuzzy. Words match in any order, and accents are ignored.',
   },
   {
     icon: '🔐',
@@ -102,7 +102,7 @@ export const FEATURES = [
   {
     icon: '🔤',
     title: 'Keyword Synonyms',
-    description: 'Bidirectional synonym engine. "money" finds "billing". User aliases supported.',
+    description: 'Bidirectional synonym engine. "money" finds "billing", and a synonym match never outranks a direct match.',
   },
   {
     icon: '📦',
