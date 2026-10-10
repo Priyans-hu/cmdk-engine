@@ -24,6 +24,7 @@ export default function APIReference() {
           ['cmdk-engine/adapters/cmdk', 'CommandPalette and useCommandPaletteShortcut for cmdk'],
           ['cmdk-engine/adapters/base-ui', 'The same two exports for Base UI'],
           ['cmdk-engine/adapters/react-router', 'scanRoutes'],
+          ['cmdk-engine/adapters/sitemap', 'sitemapToCommands'],
           ['cmdk-engine/search/match-sorter', 'createMatchSorterSearch'],
         ]}
       />
@@ -82,7 +83,7 @@ export default function APIReference() {
           [
             'parentId',
             c('string'),
-            'Not set or read by the engine. Kept so existing code compiles.',
+            'Deprecated. Never set or read by the engine; kept so existing code compiles. Keep your own parent id in meta.',
           ],
         ]}
       />
@@ -132,9 +133,9 @@ export default function APIReference() {
           ],
           [
             'frecency',
-            c('FrecencyOptions & RecentCommandsConfig'),
+            c('FrecencyOptions & RecentCommandsConfig & { enabled?: boolean }'),
             'on',
-            'Usage-based ranking and the Recent group. Options below.',
+            'Usage-based ranking and the Recent group. Set enabled: false to turn it off. Options below.',
           ],
           [
             'groups',
@@ -161,7 +162,20 @@ export default function APIReference() {
             c('window.location.href = href'),
             <>
               Runs for a selected command that has an <code>href</code> and no <code>action</code>.
-              Pass your router here to navigate without a reload.
+              Pass your router here to navigate without a reload.{' '}
+            </>,
+          ],
+          [
+            <>
+              onSelectError <Since />
+            </>,
+            c('(error: unknown, item: CommandItem) => void'),
+            'none',
+            <>
+              Called when the handler a selection runs (<code>onSelect</code>, <code>action</code>{' '}
+              or <code>onNavigate</code>) throws or returns a rejected promise. The palette still
+              closes. Without it, a throw propagates and a rejection stays unhandled. Async source
+              failures go to <code>asyncErrors</code> instead.
             </>,
           ],
           [
@@ -188,7 +202,7 @@ export default function APIReference() {
             'locale',
             c('string'),
             'none',
-            'Not used by the engine. Accepted so existing configs compile.',
+            'Deprecated. Never read: nothing in cmdk-engine depends on the locale. Kept so existing configs compile. Localize UI strings with t.',
           ],
           [
             'searchHistory',
@@ -221,25 +235,50 @@ export default function APIReference() {
       </h3>
       <p>
         Commands you use often and recently rank higher. Usage is saved to <code>localStorage</code>{' '}
-        and falls back to memory where it is unavailable (SSR, sandboxed iframes, blocked cookies).
+        and falls back to memory where it is unavailable: during SSR, in sandboxed iframes, when the
+        browser blocks cookies, or when <code>window.localStorage</code> is <code>null</code> or
+        rejects writes.
       </p>
       <ApiTable
         head={['Option', 'Default', 'Description']}
         rows={[
-          ['storage', c('localStorage'), 'A custom FrecencyStorage backend.'],
+          [
+            <>
+              enabled <Since />
+            </>,
+            c('true'),
+            'false turns frecency off: nothing is stored or read, results are not ranked by past use, and no Recent group shows, even with showRecent.',
+          ],
+          [
+            'storage',
+            c('localStorage'),
+            'A custom FrecencyStorage backend. The provider defaults to localStorage, and to memory where it is unavailable.',
+          ],
           [
             'storageKey',
             c("'cmdk-frecency'"),
-            'The full localStorage key, not a prefix. Every app on the origin shares the default, so namespace it per user if several people sign in on one browser.',
+            "The full localStorage key, not a prefix. Every app on the origin shares the default, so namespace it per user if several people sign in on one browser. Only the provider's default storage uses it.",
           ],
           [
             'halfLife',
             '7 days',
             'How fast old usage decays: a use counts half as much after this long.',
           ],
-          ['maxAge', '30 days', 'Entries last used longer ago than this are cleaned up.'],
-          ['showRecent', c('false'), 'Show a Recent group when the search box is empty.'],
-          ['recentCount', c('5'), 'How many recent commands to show.'],
+          [
+            'maxAge',
+            '30 days',
+            'Days after its last use before an entry leaves Recent. It is removed from storage on the next recorded use.',
+          ],
+          [
+            'showRecent',
+            c('false'),
+            'Show a Recent group when the search box is empty. It comes first, above any groups you configured.',
+          ],
+          [
+            'recentCount',
+            c('5'),
+            'How many recent commands to show: the most recently used ones that are available on the current page.',
+          ],
           [
             'recentLabel',
             c('"Recent"'),
@@ -257,6 +296,10 @@ export default function APIReference() {
   },
 }`}
       />
+      <p>
+        To turn frecency off, set <code>enabled: false</code>:
+      </p>
+      <CodeBlock language="tsx" code={`const config = { frecency: { enabled: false } }`} />
 
       <h3>
         <code>searchHistory</code>
@@ -355,8 +398,14 @@ export const config = { asyncSources: [issueSearch] }`}
           Loaded items need a non-empty string <code>id</code> and <code>label</code>. Items without
           them (children included) are dropped, the rest still show, and{' '}
           <code>asyncErrors[id]</code> says so, for example &quot;2 items dropped: missing
-          label&quot;. A numeric <code>id</code> counts as a missing id. Non-string{' '}
-          <code>keywords</code> entries are removed.
+          label&quot;. A numeric <code>id</code> counts as a missing id. Other fields are checked
+          too: non-string <code>keywords</code> entries are removed; an object <code>icon</code>,{' '}
+          <code>description</code> or <code>group</code> that is not a React element is removed;{' '}
+          <code>shortcut</code> and <code>scope</code> keep only their string entries; and an item
+          whose <code>children</code> is not an array becomes a plain item. <code>permissions</code>{' '}
+          follow the rules for registered commands: null, undefined and an empty string mean no
+          restriction, a string is one permission, array entries become strings, and any other value
+          hides the item.
         </li>
         <li>
           <code>when</code>, permissions and <code>hidden</code> apply to loaded items too.
@@ -391,7 +440,8 @@ export const config = { asyncSources: [issueSearch] }`}
       </p>
       <ol>
         <li>
-          If the command has <code>children</code>, open them and stop. Nothing else runs.
+          If the command has <code>children</code>, open them and stop. Nothing else runs, and it is
+          not reported as a selection.
         </li>
         <li>
           Record frecency (not for loaded items), and the query in search history if it is enabled.
@@ -405,9 +455,26 @@ export const config = { asyncSources: [issueSearch] }`}
         <li>Close the palette and clear the query.</li>
       </ol>
       <p>
+        If a handler throws, or returns a rejected promise (an async <code>action</code>, say), the
+        error goes to <code>onSelectError(error, item)</code> when you set it. The palette closes
+        right away and does not wait for an async handler. Without <code>onSelectError</code>, a
+        throw propagates and a rejection stays unhandled, as before.
+      </p>
+      <CodeBlock
+        language="tsx"
+        code={`import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelectError: (error: unknown, item: CommandItem) => {
+    console.error(item.label, 'failed', error) // or show a toast
+  },
+}`}
+      />
+      <p>
         Because <code>config.onSelect</code> replaces the default handling, adding one for analytics
         silently stops every <code>action</code> and <code>href</code> from running. To track
-        selections, call the default yourself:
+        selections without replacing anything, use <code>useCommandPaletteEvents</code> below. If
+        you do want one handler for everything, call the default yourself:
       </p>
       <CodeBlock
         language="tsx"
@@ -486,14 +553,16 @@ const config = {
       </p>
       <ul>
         <li>
-          Without <code>deps</code>, it re-registers when the shape of the commands changes (ids,
-          text, hrefs, groups, priority, disabled, hidden, keywords, permissions, shortcut,
-          children). An <code>action</code> always calls the latest closure, so it never goes stale.
+          Without <code>deps</code>, it re-registers whenever a registered field changes: ids, text,
+          hrefs, groups, priority, disabled, hidden, keywords, permissions, access mode, shortcut,
+          scope, text icons, children, or the result of <code>when</code>, which is evaluated on
+          each render, so keep it pure. An <code>action</code> always calls the latest closure, so
+          it never goes stale.
         </li>
         <li>
-          Changes to <code>when</code>, <code>scope</code>, <code>icon</code> and <code>meta</code>{' '}
-          are not picked up without <code>deps</code>. Pass <code>deps</code>, such as{' '}
-          <code>{'[flags.beta]'}</code>, to take control of when it re-registers.
+          Element icons and <code>meta</code> are not compared: pass <code>deps</code> when they
+          change. Pass <code>deps</code>, such as <code>{'[flags.beta]'}</code>, to take control of
+          when it re-registers.
         </li>
       </ul>
       <CodeBlock
@@ -501,10 +570,8 @@ const config = {
         code={`import { useCommandRegister } from 'cmdk-engine/react'
 
 function SettingsCommands({ plan }: { plan: string }) {
-  useCommandRegister(
-    [{ id: 'sso', label: 'SSO Settings', when: () => plan === 'enterprise' }],
-    [plan],
-  )
+  // when is evaluated on each render, so the command appears and disappears with plan
+  useCommandRegister([{ id: 'sso', label: 'SSO Settings', when: () => plan === 'enterprise' }])
   return null
 }`}
       />
@@ -531,22 +598,25 @@ function SettingsCommands({ plan }: { plan: string }) {
         new <code>config.context</code> to the provider.
       </p>
       <h3>
-        <code>useEngineContext()</code>
+        <code>useEngineContext(caller?)</code>
       </h3>
       <p>
         The engine singletons, for custom UIs and advanced use: <code>registry</code>,{' '}
         <code>search</code>, <code>keywords</code>, <code>accessFilter</code>, <code>frecency</code>
         , <code>groupManager</code>, <code>contextEngine</code>, <code>searchHistory</code>,{' '}
         <code>t</code> and the current <code>config</code>. For example,{' '}
-        <code>registry.registerMany(commands)</code> registers commands outside a component.
+        <code>registry.registerMany(commands)</code> registers commands outside a component. It
+        throws outside the provider. The optional <code>caller</code> is the name the error message
+        shows; the built-in hooks pass their own.
       </p>
       <h3>
-        <code>usePaletteState()</code>
+        <code>usePaletteState(caller?)</code>
       </h3>
       <p>
         The shared UI state, which every palette and shortcut under the provider reads and writes:{' '}
         <code>isOpen</code>, <code>setIsOpen</code>, <code>search</code>, <code>setSearch</code>,{' '}
-        <code>activePath</code> and <code>setActivePath</code>. It is the light way to open the
+        <code>activePath</code> and <code>setActivePath</code>. It takes the same optional{' '}
+        <code>caller</code> as <code>useEngineContext</code>. It is the light way to open the
         palette from your own button, without running the results pipeline:
       </p>
       <CodeBlock
@@ -558,6 +628,66 @@ function OpenPaletteButton() {
   return <button onClick={() => setIsOpen(true)}>Search</button>
 }`}
       />
+
+      <h3>
+        <code>useCommandPaletteEvents(onEvent)</code> <Since />
+      </h3>
+      <p>
+        Reports what happens in the palette, for analytics, without any telemetry in the package.
+        Call it once, in any component inside the provider. Without it, nothing is reported. The
+        latest <code>onEvent</code> is always called, so it can be an inline function. An error it
+        throws never breaks the palette: it is rethrown on a timer, where it reaches the console and
+        error trackers.
+      </p>
+      <CodeBlock
+        language="tsx"
+        code={`import { useCommandPaletteEvents } from 'cmdk-engine/react'
+
+function PaletteAnalytics() {
+  useCommandPaletteEvents((event) => {
+    if (event.type === 'search' && event.resultCount === 0) {
+      console.log('no results for', event.query) // your analytics call
+    }
+  })
+  return null
+}`}
+      />
+      <ApiTable
+        head={['Event', 'When', 'Fields']}
+        rows={[
+          ['open', 'The palette opens.', 'none'],
+          ['close', 'The palette closes.', 'none'],
+          [
+            'search',
+            'The results for a query settle: every async source it triggered has loaded or failed.',
+            <>
+              <code>query</code> (trimmed, never empty), <code>resultCount</code> (<code>0</code>:
+              nothing found)
+            </>,
+          ],
+          [
+            'select',
+            'A command is selected. Opening a sub-menu is not a selection.',
+            <>
+              <code>item</code>, <code>query</code>, <code>sourceId</code> (the async source of a
+              loaded item)
+            </>,
+          ],
+          [
+            'asyncError',
+            'An async source fails or drops items.',
+            <>
+              <code>sourceId</code>, <code>error</code>
+            </>,
+          ],
+        ]}
+      />
+      <p>
+        <code>search</code> fires for every settled query while the user types, so debounce it
+        before sending it anywhere. New event types may be added in minor releases, so ignore types
+        you do not know. The events are typed as <code>CommandPaletteEvent</code>, exported from{' '}
+        <code>cmdk-engine</code>.
+      </p>
 
       <h2>Translations</h2>
       <p>
@@ -571,20 +701,31 @@ function OpenPaletteButton() {
           ['palette.placeholder', 'Type a command or search...', 'The input placeholder.'],
           ['palette.empty', 'No results found.', 'The empty state.'],
           ['palette.loading', 'Loading...', 'The loading row while async sources load.'],
+          [
+            'palette.list',
+            'Suggestions',
+            'The accessible name of the results list, in both adapters.',
+          ],
           ['palette.close', 'Close', 'The visually hidden close button of the Base UI dialog.'],
           ['breadcrumbs.back', 'Go back', 'The back button in a sub-menu.'],
           ['group.recent', 'Recent', 'The Recent group heading.'],
           [
             'group.other',
             'Other',
-            'Listed, but nothing reads it yet. The ungrouped heading is fixed English.',
+            'For your own UI. The built-in palettes do not show it; the ungrouped heading is always Other.',
           ],
-          ['search.history', 'Recent Searches', 'Listed, but nothing reads it yet.'],
+          [
+            'search.history',
+            'Recent Searches',
+            'For your own UI. The built-in palettes do not show it.',
+          ],
         ]}
       />
       <p>
         A <code>t</code> that returns the key for a key it does not know shows that key as the text,
-        so give every key you use a string.
+        so give every key you use a string. The one exception is <code>palette.list</code>: if{' '}
+        <code>t</code> returns its key unchanged (the <code>dictionary[key] ?? key</code> pattern)
+        or an empty string, the list keeps its default name, &quot;Suggestions&quot;.
       </p>
 
       <h2>Types</h2>
@@ -601,6 +742,7 @@ function OpenPaletteButton() {
   CommandGroup,
   CommandContext,
   CommandPaletteState,
+  CommandPaletteEvent,
   CommandEngineConfig, // the provider's config prop
   CmdkEngineConfig, // the CLI config file
   SearchEngine,
