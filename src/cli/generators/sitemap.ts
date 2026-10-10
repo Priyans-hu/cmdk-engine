@@ -12,8 +12,14 @@ export function generateSitemap(
     version: 1,
     generatedAt,
     framework,
-    // Non-mutating, locale-independent (ordinal) sort so generated output is
-    // byte-identical across machines/CI regardless of the system locale.
-    routes: [...routes].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)),
+    routes: sortRoutes(routes),
   }
+}
+
+/**
+ * Sort routes by path. Non-mutating and locale-independent (ordinal), so generated
+ * output is byte-identical across machines/CI regardless of the system locale.
+ */
+export function sortRoutes(routes: SitemapRoute[]): SitemapRoute[] {
+  return [...routes].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 }

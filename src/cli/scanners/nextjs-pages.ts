@@ -2,7 +2,14 @@ import { readdirSync, statSync, realpathSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { SitemapRoute } from '../../core/types'
 import { pathToLabel, pathToGroup, pathToId } from '../../core/utils'
-import { SOURCE_FILE_RE, deduplicateRoutes, isIgnoredDir, toSource } from './shared'
+import {
+  SOURCE_FILE_RE,
+  allowsDynamicPath,
+  deduplicateRoutes,
+  isIgnoredDir,
+  toSource,
+  type ScanOptions,
+} from './shared'
 
 /**
  * Scan a Next.js pages/ directory for routes.
@@ -11,13 +18,14 @@ import { SOURCE_FILE_RE, deduplicateRoutes, isIgnoredDir, toSource } from './sha
  * - pages/index.tsx → /
  * - pages/dashboard.tsx → /dashboard
  * - pages/billing/overview.tsx → /billing/overview
- * - pages/[id].tsx → /:id (dynamic)
+ * - pages/[id].tsx → /:id (dynamic: kept only with `includeDynamic`)
+ * - pages/shop/[[...slug]].tsx → /shop (the optional catch-all's own URL)
  * - pages/_app.tsx, pages/_document.tsx → skipped
  * - pages/api/ → skipped
  */
-export function scanNextJsPagesDir(dir: string): SitemapRoute[] {
+export function scanNextJsPagesDir(dir: string, options: ScanOptions = {}): SitemapRoute[] {
   const routes: SitemapRoute[] = []
-  walkPagesDir(dir, dir, routes)
+  walkPagesDir(dir, dir, routes, options)
   return deduplicateRoutes(routes)
 }
 
@@ -25,6 +33,7 @@ function walkPagesDir(
   currentDir: string,
   baseDir: string,
   routes: SitemapRoute[],
+  options: ScanOptions,
   visited = new Set<string>(),
 ): void {
   let entries: string[]
@@ -50,13 +59,13 @@ function walkPagesDir(
       const stat = statSync(fullPath)
 
       if (stat.isDirectory()) {
-        walkPagesDir(fullPath, baseDir, routes, visited)
+        walkPagesDir(fullPath, baseDir, routes, options, visited)
       } else if (SOURCE_FILE_RE.test(entry)) {
         const relativePath = relative(baseDir, fullPath)
         const routePath = fileToRoutePath(relativePath)
 
-        // Skip dynamic routes
-        if (routePath.includes(':') || routePath.includes('*')) continue
+        // Dynamic routes need params: keep only those `includeDynamic` names
+        if (!allowsDynamicPath(routePath, options.includeDynamic)) continue
 
         routes.push({
           id: pathToId(routePath || '/'),
@@ -84,13 +93,13 @@ function fileToRoutePath(filePath: string): string {
     // A trailing "index" file maps to its parent directory.
     if (segment === 'index' && index === segments.length - 1) return
 
-    // Dynamic segments: [id] → :id, [[...slug]] / [...slug] → *slug
+    // Dynamic segments: [id] → :id, [...slug] → *slug. An optional catch-all,
+    // [[...slug]], also matches its parent's URL: no segment
     if (segment.startsWith('[') && segment.endsWith(']')) {
-      let param = segment.slice(1, -1)
-      if (param.startsWith('[') && param.endsWith(']')) param = param.slice(1, -1) // optional catch-all
+      const param = segment.slice(1, -1)
       if (param.startsWith('...')) {
         routeSegments.push(`*${param.slice(3)}`)
-      } else {
+      } else if (!param.startsWith('[')) {
         routeSegments.push(`:${param}`)
       }
       return

@@ -23,6 +23,10 @@ export default defineConfig({
   // Routes to exclude from scanning
   exclude: ['/404', '/500', '/_*'],
 
+  // Keep routes under dynamic segments, e.g. a Next.js [locale] folder
+  // (fill them at runtime with sitemapToCommands from 'cmdk-engine/adapters/sitemap')
+  // includeDynamic: ['locale'],
+
   // Synonym dictionary
   synonyms: {
     // billing: ['money', 'payment', 'credits', 'recharge'],

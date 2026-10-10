@@ -11,6 +11,7 @@ checks.checkEntries('node ESM', {
   cmdk: await import('cmdk-engine/adapters/cmdk'),
   router: await import('cmdk-engine/adapters/react-router'),
   matchSorter: await import('cmdk-engine/search/match-sorter'),
+  sitemap: await import('cmdk-engine/adapters/sitemap'),
   // JSON import attributes need Node 20.10+; engines allows any Node 20.
   pkg: createRequire(import.meta.url)('cmdk-engine/package.json'),
 })

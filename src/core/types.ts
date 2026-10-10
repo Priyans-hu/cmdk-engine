@@ -256,6 +256,14 @@ export interface CmdkEngineConfig {
   exclude?: ExcludePattern[]
   /** Synonym dictionary */
   synonyms?: SynonymMap
+  /**
+   * Keep routes with `:name` segments, such as everything under a Next.js
+   * `[locale]` folder: `true` keeps every one, a list keeps routes whose segments
+   * are all named in it (`['locale']`). Fill them at runtime with
+   * `sitemapToCommands(sitemap, { params })`. Catch-all segments are never kept.
+   * Default `false`. The `--include-dynamic` flag overrides it.
+   */
+  includeDynamic?: boolean | string[]
 }
 
 /** Generated route sitemap entry */
