@@ -28,8 +28,12 @@ export const DEFAULT_EXCLUDE: ExcludePattern[] = [
 ]
 
 /**
- * Check if a path matches an exclude pattern.
- * Supports exact strings, globs with `*` (e.g. `/admin/*`), and RegExp.
+ * Check if a path matches an exclude pattern: an exact string, a glob or a RegExp.
+ *
+ * In a glob, `*` matches within one path segment and `**` across segments, so a
+ * `*` between two slashes stands for exactly one segment. A match also covers
+ * every path below it, and a trailing `/*` also matches the base path:
+ * `/admin/*` matches `/admin` and `/admin/a/b`, and `/_*` matches `/_internal`.
  */
 export function matchesExcludePattern(path: string, pattern: ExcludePattern): boolean {
   if (pattern instanceof RegExp) {
@@ -42,11 +46,29 @@ export function matchesExcludePattern(path: string, pattern: ExcludePattern): bo
   if (pattern === '*') {
     return path === '*'
   }
-  // Glob: '/admin/*' matches '/admin/anything' and '/admin/deep/nested'
   if (pattern.includes('*')) {
-    const prefix = pattern.replace(/\/?\*.*$/, '')
-    return path === prefix || path.startsWith(prefix + '/')
+    return globToRegExp(pattern).test(path)
   }
   // Exact match
   return path === pattern
+}
+
+function globToRegExp(glob: string): RegExp {
+  const source = glob
+    // A trailing '/*' or '/**' also matches the base path
+    .replace(/\/\*\*?$/, '')
+    // Odd parts are the wildcards: '/**/' (any depth, none included), '**', '*'
+    .split(/(\/\*\*(?=\/)|\*\*|\*)/)
+    .map((part, k) =>
+      k % 2 === 0
+        ? part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        : part === '*'
+          ? '[^/]*'
+          : part === '**'
+            ? '.*'
+            : '(?:/.*)?',
+    )
+    .join('')
+  // A match also covers every path below it
+  return new RegExp(`^${source}(?:/.*)?$`)
 }

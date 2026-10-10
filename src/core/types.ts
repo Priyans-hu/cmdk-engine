@@ -256,6 +256,14 @@ export interface CmdkEngineConfig {
   exclude?: ExcludePattern[]
   /** Synonym dictionary */
   synonyms?: SynonymMap
+  /**
+   * Keep routes with `:name` segments, such as everything under a Next.js
+   * `[locale]` folder: `true` keeps every one, a list keeps routes whose segments
+   * are all named in it (`['locale']`). Fill them at runtime with
+   * `sitemapToCommands(sitemap, { params })`. Catch-all segments are never kept.
+   * Default `false`. The `--include-dynamic` flag overrides it.
+   */
+  includeDynamic?: boolean | string[]
 }
 
 /** Generated route sitemap entry */
@@ -371,7 +379,15 @@ export interface CommandEngineConfig {
   /** Synonym dictionary for keyword expansion */
   synonyms?: SynonymMap
   /** Frecency configuration */
-  frecency?: FrecencyOptions & RecentCommandsConfig
+  frecency?: FrecencyOptions &
+    RecentCommandsConfig & {
+      /**
+       * `false` turns frecency off: nothing is stored or read, results are not
+       * ranked by use, and no "Recent" group shows, even with `showRecent`
+       * (default: true)
+       */
+      enabled?: boolean
+    }
   /** Group definitions and ordering */
   groups?: CommandGroup[]
   /** Maximum results to return */
@@ -402,6 +418,13 @@ export interface CommandEngineConfig {
    * search), merged into the root-level results. See `AsyncSource`.
    */
   asyncSources?: AsyncSource[]
+  /**
+   * Called when the handler `select()` runs for a command (`onSelect`, `action`
+   * or `onNavigate`) throws or returns a rejected promise. The palette still
+   * closes. Without it, a throw propagates and a rejection stays unhandled, as
+   * before. Async source failures are reported in `asyncErrors` instead.
+   */
+  onSelectError?: (error: unknown, item: CommandItem) => void
 }
 
 /**
@@ -416,7 +439,12 @@ export interface CommandEngineConfig {
  * or `tel:` is removed when the items arrive (children included). For deep
  * links, return an `action`, or an allowed `href` that `onNavigate` maps.
  * Items without a non-empty string `id` and `label` are dropped and counted in
- * `asyncErrors[id]`, and non-string `keywords` entries are removed.
+ * `asyncErrors[id]`, and non-string `keywords` entries are removed. An object
+ * `icon`, `description` or `group` that is not a React element, a non-array
+ * `shortcut`, `scope` or `children`, and non-string `shortcut` and `scope`
+ * entries are removed too. `permissions` follow the registered-command rules
+ * (null, undefined and `''` mean no restriction): a string is one permission,
+ * array entries become strings, and any other value hides the item.
  */
 export interface AsyncSource {
   /** Unique source id. Keys `asyncErrors`; changing the set of ids restarts loading. */
@@ -452,6 +480,27 @@ export interface RecentCommandsConfig {
   /** Label for the recent group (default: "Recent") */
   recentLabel?: string
 }
+
+/**
+ * A palette event reported to `useCommandPaletteEvents()` (from
+ * `cmdk-engine/react`):
+ * - `open`, `close`: the palette opened or closed.
+ * - `search`: the results for a query settled, that is every async source the
+ *   query triggered has loaded or failed. `query` is trimmed and not empty, and
+ *   `resultCount` is the number of results: the query and count search history
+ *   records. `resultCount: 0` is a query that found nothing.
+ * - `select`: a command was selected (drilling into children is not a
+ *   selection); `sourceId` is the async source of a loaded item.
+ * - `asyncError`: an async source failed or dropped items, as in `asyncErrors`.
+ *
+ * New event types may be added in minor releases: ignore types you do not know.
+ */
+export type CommandPaletteEvent =
+  | { type: 'open' }
+  | { type: 'close' }
+  | { type: 'search'; query: string; resultCount: number }
+  | { type: 'select'; item: CommandItem; query: string; sourceId?: string }
+  | { type: 'asyncError'; sourceId: string; error: Error }
 
 // ============================================================
 // Helpers
