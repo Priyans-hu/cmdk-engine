@@ -168,6 +168,20 @@ describe.each([
       expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'note' }))
     })
 
+    it('leaves focus on what a command focuses while it runs', async () => {
+      const focusNote: CommandItem = {
+        id: 'note',
+        label: 'Focus the note',
+        action: () => document.getElementById('note')?.focus(),
+      }
+      renderApp([focusNote], <textarea id="note" aria-label="note" />)
+      await openFrom(screen.getByRole('button', { name: 'opener' }))
+      await pressInPalette('Enter')
+      await settle()
+      expect(isOpen()).toBe(false)
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'note' }))
+    })
+
     it('does not throw when the opener is gone', async () => {
       function App() {
         const { isOpen } = usePaletteState()

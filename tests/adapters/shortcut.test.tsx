@@ -217,6 +217,18 @@ describe.each([
     expect(state()).toEqual({ isOpen: false, search: '', depth: 0 })
   })
 
+  it('names itself when used outside a provider', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function Outside() {
+      useCommandPaletteShortcut()
+      return null
+    }
+    expect(() => render(<Outside />)).toThrow(
+      /^useCommandPaletteShortcut must be used within a <CommandEngineProvider>/,
+    )
+    error.mockRestore()
+  })
+
   it('runs no search of its own: one search per keystroke', async () => {
     const fuzzy = createFuzzySearch()
     const search = vi.fn(fuzzy.search)

@@ -209,13 +209,29 @@ export function CommandPalette({
 
   // cmdk's Dialog has no Radix trigger to return focus to on close, so give it
   // back to what had it before, unless something outside took it meanwhile.
-  const dialogRootRef = useRef<HTMLDivElement>(null)
+  // State, not a ref: in dialog mode the root mounts after this component does.
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
   useEffect(() => {
     const focused = document.activeElement
-    if (!isOpen && (focused === document.body || dialogRootRef.current?.contains(focused))) {
+    if (!isOpen && (focused === document.body || root?.contains(focused))) {
       returnFocusTo.current?.focus({ preventScroll: true })
     }
   }, [isOpen])
+
+  // Runs a command. While the dialog is open, Radix's focus trap undoes a focus()
+  // the command makes outside it, so note that element: the close then focuses
+  // it instead of the opener.
+  const run = (item: CommandItem) => {
+    const note = (e: FocusEvent) => {
+      if (!root?.contains(e.target as Node)) returnFocusTo.current = e.target as HTMLElement
+    }
+    document.addEventListener('focusin', note, true)
+    try {
+      select(item, { onSelect })
+    } finally {
+      document.removeEventListener('focusin', note, true)
+    }
+  }
 
   // Fall back to the first enabled item whenever the active id is no longer
   // rendered (e.g. the previously-highlighted item was filtered out mid-list)
@@ -234,6 +250,21 @@ export function CommandPalette({
     if (!activeValueValid) setActiveValue(firstEnabledId)
   }, [activeValueValid, firstEnabledId])
 
+  // cmdk points aria-activedescendant at an item only when it moves the highlight
+  // itself, not when this adapter does (open, drill-down, a highlighted item
+  // filtered out), so it can name an item that is gone. Name the highlighted one.
+  useEffect(() => {
+    const id = root
+      ? [...root.querySelectorAll('[cmdk-item]')].find(
+          (el) => el.getAttribute('data-value') === effectiveValue.trim(),
+        )?.id
+      : undefined
+    root?.querySelectorAll('[cmdk-input],[cmdk-list]').forEach((el) => {
+      if (id) el.setAttribute('aria-activedescendant', id)
+      else el.removeAttribute('aria-activedescendant')
+    })
+  })
+
   // groupedResults comes memoized from the hook (was recomputed here on every
   // keystroke / arrow-key render).
 
@@ -246,7 +277,7 @@ export function CommandPalette({
         // The hook's select() drills into children, records frecency and search
         // history, applies onSelect/action/onNavigate/href, and closes. Bound to
         // the item: cmdk reports values trimmed, so they cannot look it up.
-        onSelect={() => select(item, { onSelect })}
+        onSelect={() => run(item)}
         className={itemClassName}
         keywords={item.keywords}
       >
@@ -312,7 +343,7 @@ export function CommandPalette({
         container={container}
         value={effectiveValue}
         onValueChange={setActiveValue}
-        ref={dialogRootRef}
+        ref={setRoot}
       >
         {content}
       </Cmdk.Dialog>
@@ -329,6 +360,7 @@ export function CommandPalette({
       vimBindings={vimBindings}
       value={effectiveValue}
       onValueChange={setActiveValue}
+      ref={setRoot}
     >
       {content}
     </Cmdk>
@@ -364,7 +396,8 @@ export function useCommandPaletteShortcut(
   shortcut: string | ((event: KeyboardEvent) => boolean) = 'k',
 ) {
   // Palette state only: the results pipeline runs once, in the palette.
-  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } = usePaletteState()
+  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } =
+    usePaletteState('useCommandPaletteShortcut')
   // The same toggle as useCommandPalette()'s.
   const toggle = useCallback(() => {
     // Clear query/path when closing; keep setState updaters side-effect free.

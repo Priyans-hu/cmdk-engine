@@ -7,13 +7,13 @@
 export const SIZES = {
   core: '3.7 kB',
   react: '4.4 kB',
-  cmdkAdapter: '1.6 kB',
+  cmdkAdapter: '1.8 kB',
   reactRouterAdapter: '1.1 kB',
   baseUiAdapter: '1.8 kB',
   sitemapAdapter: '0.23 kB',
   matchSorter: '0.55 kB',
   /** Provider, register hook, cmdk adapter and shortcut, without react, react-dom and cmdk */
-  quickStartStack: '8.2 kB',
+  quickStartStack: '8.3 kB',
   /** Base UI Autocomplete alone, with Dialog, and cmdk with its Radix dialog */
   baseUiAutocomplete: '44 kB',
   baseUiWithDialog: '48 kB',

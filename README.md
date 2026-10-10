@@ -1,6 +1,6 @@
 # cmdk-engine
 
-Permission-aware command palette engine for React. Works with [cmdk](https://github.com/dip/cmdk) or [Base UI](https://base-ui.com). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 8.2 kB min + brotli on top of React and cmdk.
+Permission-aware command palette engine for React. Works with [cmdk](https://github.com/dip/cmdk) or [Base UI](https://base-ui.com). Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. The Quick Start stack (provider, register hook, cmdk adapter and shortcut) is about 8.3 kB min + brotli on top of React and cmdk.
 
 [![npm version](https://img.shields.io/npm/v/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
 [![npm downloads](https://img.shields.io/npm/dm/cmdk-engine.svg)](https://www.npmjs.com/package/cmdk-engine)
@@ -1191,7 +1191,7 @@ Route Config ─→ Route Adapter ─→ Command Registry ─→ Keyword Engine
 |--------|------|---------|
 | `cmdk-engine` | 3.7 kB | Core engine (types, registry, search, keywords, access control, frecency) |
 | `cmdk-engine/react` | 4.4 kB | React hooks (provider, useCommandPalette, useCommandRegister) |
-| `cmdk-engine/adapters/cmdk` | 1.6 kB | Pre-wired cmdk components |
+| `cmdk-engine/adapters/cmdk` | 1.8 kB | Pre-wired cmdk components |
 | `cmdk-engine/adapters/react-router` | 1.1 kB | React Router v6/v7/v8 route scanner |
 | `cmdk-engine/search/match-sorter` | 0.55 kB | Optional match-sorter search backend |
 | `cmdk-engine/adapters/base-ui` | 1.8 kB | Pre-wired Base UI components |
@@ -1201,7 +1201,7 @@ Sizes are measured with size-limit, minified + brotli. Entries import the siblin
 adapter imports `cmdk-engine/react`, which imports `cmdk-engine`) instead of
 bundling them, so each one's code ships once. The Quick Start stack
 (`CommandEngineProvider`, `useCommandRegister`, `CommandPalette`,
-`useCommandPaletteShortcut`) is **8.2 kB** in total, without the `react`,
+`useCommandPaletteShortcut`) is **8.3 kB** in total, without the `react`,
 `react-dom` and `cmdk` peers. CI enforces a size budget for each entry, set
 slightly above these figures.
 
