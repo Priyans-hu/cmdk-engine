@@ -34,8 +34,11 @@ export function pathSegmentToLabel(segment: string): string {
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       // Replace hyphens and underscores with spaces
       .replace(/[-_]/g, ' ')
-      // Capitalize first letter of each word
-      .replace(/\b\w/g, (c) => c.toUpperCase())
+      // Capitalize the first letter of each word, in any script ("über" -> "Über")
+      .replace(
+        /(^|[^\p{L}\p{M}\p{N}_])([\p{L}\p{N}_])/gu,
+        (_, before: string, c: string) => before + c.toUpperCase(),
+      )
       .trim()
   )
 }
@@ -81,13 +84,14 @@ export function pathToGroup(path: string): string | undefined {
 
 /**
  * Generate a stable ID from a route path.
- * "/billing/overview" -> "billing-overview"
+ * "/billing/overview" -> "billing--overview"
+ *
+ * Letters, marks and digits of any script are kept ("/設定" -> "設定"), and
+ * other characters except "-" are dropped, so "/a_b", "/a.b" and "/ab" share
+ * the id "ab". A path with only dropped characters keeps them, so only "/"
+ * and "" become "home".
  */
 export function pathToId(path: string): string {
-  return path
-    .replace(/^\//, '')
-    .replace(/\/$/, '')
-    .replace(/\//g, '--')
-    .replace(/[^a-zA-Z0-9-]/g, '')
-    .toLowerCase() || 'home'
+  const id = path.replace(/^\//, '').replace(/\/$/, '').replace(/\//g, '--')
+  return (id.replace(/[^\p{L}\p{M}\p{N}-]/gu, '') || id).toLowerCase() || 'home'
 }

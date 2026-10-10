@@ -1,4 +1,5 @@
 import type { FrecencyEntry, FrecencyStorage } from './types'
+import { getLocalStorage } from './local-storage'
 
 function isEntry(value: unknown): value is FrecencyEntry {
   if (typeof value !== 'object' || value === null) return false
@@ -19,20 +20,11 @@ function isEntry(value: unknown): value is FrecencyEntry {
 export function createLocalStorageFrecencyStorage(
   storageKey = 'cmdk-frecency',
 ): FrecencyStorage {
-  function isAvailable(): boolean {
-    try {
-      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-    } catch {
-      return false
-    }
-  }
-
   // The key is shared by every app on the origin, so it can hold anything.
   // Malformed data is ignored, and the next write replaces it.
   function readAll(): Record<string, FrecencyEntry> {
-    if (!isAvailable()) return {}
     try {
-      const raw = localStorage.getItem(storageKey)
+      const raw = getLocalStorage()?.getItem(storageKey)
       const data: unknown = raw ? JSON.parse(raw) : {}
       if (typeof data !== 'object' || data === null || Array.isArray(data)) return {}
       const entries = data as Record<string, unknown>
@@ -46,9 +38,8 @@ export function createLocalStorageFrecencyStorage(
   }
 
   function writeAll(data: Record<string, FrecencyEntry>): void {
-    if (!isAvailable()) return
     try {
-      localStorage.setItem(storageKey, JSON.stringify(data))
+      getLocalStorage()?.setItem(storageKey, JSON.stringify(data))
     } catch {
       // localStorage full or unavailable — silently fail
     }
@@ -77,9 +68,8 @@ export function createLocalStorageFrecencyStorage(
     },
 
     clear(): void {
-      if (!isAvailable()) return
       try {
-        localStorage.removeItem(storageKey)
+        getLocalStorage()?.removeItem(storageKey)
       } catch {
         // silently fail
       }
