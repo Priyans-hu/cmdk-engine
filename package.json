@@ -206,12 +206,12 @@
     {
       "name": "cmdk-engine",
       "path": "dist/core/index.js",
-      "limit": "3.95 KB"
+      "limit": "3.81 KB"
     },
     {
       "name": "cmdk-engine/react (own code)",
       "path": "dist/react/index.js",
-      "limit": "4.45 KB",
+      "limit": "4.51 KB",
       "ignore": [
         "cmdk-engine",
         "react",
@@ -221,7 +221,7 @@
     {
       "name": "cmdk-engine/adapters/cmdk (own code)",
       "path": "dist/adapters/cmdk/index.js",
-      "limit": "1.75 KB",
+      "limit": "1.7 KB",
       "ignore": [
         "cmdk-engine",
         "cmdk",
@@ -232,17 +232,17 @@
     {
       "name": "cmdk-engine/adapters/react-router",
       "path": "dist/adapters/react-router/index.js",
-      "limit": "1.2 KB"
+      "limit": "1.17 KB"
     },
     {
       "name": "cmdk-engine/search/match-sorter",
       "path": "dist/core/search-match-sorter.js",
-      "limit": "0.9 KB"
+      "limit": "0.57 KB"
     },
     {
       "name": "cmdk-engine/adapters/base-ui (own code)",
       "path": "dist/adapters/base-ui/index.js",
-      "limit": "1.9 KB",
+      "limit": "1.83 KB",
       "ignore": [
         "cmdk-engine",
         "@base-ui/react",
@@ -256,12 +256,12 @@
         "dist/react/index.js": "{ CommandEngineProvider, useCommandRegister }",
         "dist/adapters/cmdk/index.js": "{ CommandPalette, useCommandPaletteShortcut }"
       },
-      "limit": "8.25 KB"
+      "limit": "8.41 KB"
     },
     {
       "name": "cmdk-engine/adapters/sitemap",
       "path": "dist/adapters/sitemap/index.js",
-      "limit": "0.3 KB"
+      "limit": "0.24 KB"
     }
   ],
   "engines": {
