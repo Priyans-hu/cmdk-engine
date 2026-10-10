@@ -186,7 +186,11 @@ function CommandMenu() {
           page
         </li>
         <li>
-          See <Link href="/docs/examples">Examples</Link> for common patterns
+          Use shadcn/ui or Next.js? Follow the <Link href="/docs/shadcn">shadcn/ui</Link> or{' '}
+          <Link href="/docs/nextjs">Next.js</Link> guide
+        </li>
+        <li>
+          See <Link href="/docs/examples">Examples</Link> for common patterns and runnable apps
         </li>
         <li>
           Explore the <a href="https://github.com/Priyans-hu/cmdk-engine">source code on GitHub</a>

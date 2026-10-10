@@ -57,6 +57,10 @@ export default function Styling() {
         stylesheet. The Base UI adapter has no <code>[cmdk-*]</code> attributes: style its parts
         with the <code>*ClassName</code> props and the attributes below.
       </p>
+      <p>
+        In a shadcn/ui project, the <Link href="/docs/shadcn">shadcn/ui</Link> registry item already
+        styles the palette with your theme&apos;s tokens, so you can skip the stylesheet.
+      </p>
 
       <h2>Starter stylesheet</h2>
       <p>

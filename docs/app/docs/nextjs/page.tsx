@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import { CodeBlock } from '@/components/code-block'
+import { SITE } from '@/lib/constants'
 
 export const metadata = { title: 'Next.js' }
 
@@ -152,6 +154,16 @@ export default defineConfig({
         Scan with <code>--framework nextjs-pages</code>, render the provider in{' '}
         <code>pages/_app.tsx</code>, and navigate with <code>useRouter</code> from{' '}
         <code>next/router</code>. The Pages Router needs no <code>&apos;use client&apos;</code>.
+      </p>
+
+      <h2>A runnable example</h2>
+      <p>
+        The <a href={`${SITE.github}/tree/main/examples/nextjs-app-router`}>Next.js App Router</a>{' '}
+        example has these files, with <code>[locale]</code> pages. Copy the folder, or{' '}
+        <a href="https://stackblitz.com/github/Priyans-hu/cmdk-engine/tree/main/examples/nextjs-app-router?file=components/command-menu.tsx">
+          open it in StackBlitz
+        </a>
+        . More patterns are on the <Link href="/docs/examples">Examples</Link> page.
       </p>
     </>
   )
