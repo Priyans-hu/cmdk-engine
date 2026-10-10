@@ -45,8 +45,10 @@ function fold(value: string): [text: string, initials: string] {
  * - Word boundary match
  * - Consecutive character matches
  *
- * Query and fields are compared folded (see `foldText`): accents, Unicode
- * compatibility forms, case and repeated spaces do not matter.
+ * Query and fields are compared folded: Unicode compatibility decomposition
+ * (NFKD), accents U+0300 to U+036F removed, lowercased, repeated spaces
+ * collapsed, so accents, compatibility forms, case and extra spaces do not
+ * matter.
  *
  * A query of several words also matches items where every word matches some
  * field, in any order ("overview billing" finds "Billing Overview"), scored

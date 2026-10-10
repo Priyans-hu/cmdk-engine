@@ -444,13 +444,17 @@ typos, partial words and initials.
   accents U+0300 to U+036F removed, in lowercase, with repeated whitespace
   collapsed. "resume" finds "Résumé" and `billing  over` (two spaces) finds
   "Billing Overview". Other marks (Indic vowel signs, kana voicing marks) are
-  kept, ß and dotless ı are not folded, and Korean is compared by its letters
-  (jamo).
+  kept, ß and dotless ı are not folded, and the built-in search compares
+  Korean by its letters (jamo), so a partial syllable already matches.
 - **match-sorter:** `createMatchSorterSearch()` from
-  `cmdk-engine/search/match-sorter` needs `match-sorter` (7 or 8) installed.
-  It folds the query the same way, also matches synonym keywords (ranked at
-  most CONTAINS, below direct matches) and words in any order. On a large list
-  a keystroke can take up to about twice as long as match-sorter alone.
+  `cmdk-engine/search/match-sorter` needs `match-sorter` (7 or 8) installed;
+  it is part of the bundle that imports this entry. It folds the query's
+  accents, compatibility forms and spaces the same way but keeps its case
+  (an exact-case match ranks first), and also matches synonym keywords
+  (ranked at most CONTAINS, below direct matches) and words in any order.
+  A keystroke with several words takes about 1.5 to 2 times as long as
+  match-sorter alone on Node 22 and 2 to 3 times on Node 20, the most for
+  three or more words.
 
 ---
 
