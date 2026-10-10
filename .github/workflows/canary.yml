@@ -1,0 +1,105 @@
+name: Canary
+
+# Weekly: runs the tests and the build against the latest react, react-dom,
+# cmdk, react-router, @base-ui/react and match-sorter instead of the locked
+# versions, so an upstream release that breaks the package shows up early.
+# A failure opens one issue (label `canary`), or comments on it while it is
+# open. Never runs on pull requests and is not a required check.
+on:
+  schedule:
+    - cron: '23 5 * * 1' # Mondays 05:23 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  PACKAGES: react react-dom cmdk react-router @base-ui/react match-sorter
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Unpinned on purpose: the canary tests what a new install gets.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # `bun add pkg@latest` keeps the locked react, so each package is set to
+      # its latest version in package.json (react and react-dom are only peer
+      # dependencies, so they are added). `--no-save` leaves bun.lock as is.
+      - name: Install the latest peer dependencies
+        run: |
+          node -e '
+            const fs = require("fs")
+            const { execFileSync } = require("child_process")
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+            for (const name of process.env.PACKAGES.split(" ")) {
+              pkg.devDependencies[name] = execFileSync("npm", ["view", name, "version"], { encoding: "utf8" }).trim()
+            }
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n")
+          '
+          bun install --no-save
+
+      - name: Check that the latest versions are installed
+        run: |
+          node -e '
+            const fs = require("fs")
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+            let stale = false
+            const rows = process.env.PACKAGES.split(" ").map((name) => {
+              const latest = pkg.devDependencies[name]
+              const installed = JSON.parse(fs.readFileSync("node_modules/" + name + "/package.json", "utf8")).version
+              if (installed !== latest) stale = true
+              return "| " + [name, latest, installed].join(" | ") + " |"
+            })
+            const table = ["| Package | Latest | Installed |", "|---|---|---|", ...rows].join("\n")
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, table + "\n")
+            console.log(table)
+            if (stale) process.exit(1)
+          '
+
+      - run: bun run test
+
+      - run: bun run build
+
+      - run: bun run test:dist
+
+  report:
+    needs: canary
+    # The triggers above already exclude pull requests; this keeps PR runs from
+    # opening issues if a trigger is ever added.
+    if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    # Two failing runs at once must not both open an issue.
+    concurrency: canary-report
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TITLE: 'Canary: the latest peer dependencies fail the tests'
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the canary issue
+        run: |
+          number=$(gh issue list --label canary --state open --limit 100 --json number,title \
+            --jq 'map(select(.title == env.TITLE)) | .[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "Failed again on ${GITHUB_REF_NAME}: ${RUN_URL}"
+          else
+            gh label create canary --color FBCA04 --description 'Weekly canary failures' 2> /dev/null || true
+            gh issue create --title "$TITLE" --label canary --body "The canary failed on ${GITHUB_REF_NAME}: ${RUN_URL}
+
+          It runs test, build and test:dist with the latest ${PACKAGES// /, } instead of the locked versions. The run summary lists the versions it installed."
+          fi
