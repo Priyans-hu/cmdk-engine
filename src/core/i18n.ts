@@ -1,12 +1,17 @@
 import type { TranslationFn } from './types'
 
-/** Default English UI strings */
+/**
+ * Default English UI strings. The built-in palettes do not show `group.other`
+ * (the ungrouped heading is always "Other") or `search.history`; they are for
+ * your own UI.
+ */
 const DEFAULT_STRINGS: Record<string, string> = {
   'palette.label': 'Command palette',
   'palette.placeholder': 'Type a command or search...',
   'palette.empty': 'No results found.',
   'palette.loading': 'Loading...',
   'palette.close': 'Close',
+  'palette.list': 'Suggestions',
   'breadcrumbs.back': 'Go back',
   'group.recent': 'Recent',
   'group.other': 'Other',

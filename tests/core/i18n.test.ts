@@ -56,3 +56,10 @@ describe('i18n', () => {
     })
   })
 })
+
+describe('i18n · palette.list', () => {
+  it('names the results list "Suggestions" by default and lists the key', () => {
+    expect(createDefaultTranslation()('palette.list')).toBe('Suggestions')
+    expect(getTranslationKeys()).toContain('palette.list')
+  })
+})

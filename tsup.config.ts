@@ -61,13 +61,23 @@ function prependUseClient(files: string[]) {
   }
 }
 
+// The core and match-sorter types use React's `ReactNode` (for `icon`), and the
+// bundled .d.ts imports it on its first line. React is an optional peer, so
+// without its types that import fails type checks that have `skipLibCheck` off.
+// This banner lands right above the import; with React's types installed it
+// changes nothing, and without them `ReactNode` is `any`. Checked by
+// tests-dist/core-types-no-react.test.ts.
+const OPTIONAL_REACT_TYPES = {
+  banner: '// @ts-ignore react is an optional peer: without its types, ReactNode is any',
+}
+
 export default defineConfig([
   // Core (framework-agnostic, zero deps). The `build` script empties dist/ first:
   // `clean` here would race the other configs, which build in parallel.
   {
     entry: { 'core/index': 'src/core/index.ts' },
     format: ['esm', 'cjs'],
-    dts: true,
+    dts: OPTIONAL_REACT_TYPES,
     treeshake: true,
     splitting: false,
     sourcemap: false,
@@ -131,7 +141,7 @@ export default defineConfig([
   {
     entry: { 'core/search-match-sorter': 'src/core/search-match-sorter.ts' },
     format: ['esm', 'cjs'],
-    dts: true,
+    dts: OPTIONAL_REACT_TYPES,
     treeshake: true,
     splitting: false,
     sourcemap: false,

@@ -43,7 +43,10 @@ export interface CommandItem {
    * A function is re-evaluated whenever results are recomputed.
    */
   when?: boolean | (() => boolean)
-  /** Keyboard shortcut display (e.g., ["g", "h"]) */
+  /**
+   * Keyboard shortcut shown with the item (e.g., ["g", "h"]). Display only:
+   * nothing binds these keys.
+   */
   shortcut?: string[]
   /** Extensible metadata for consumer use */
   meta?: Record<string, unknown>
@@ -51,7 +54,10 @@ export interface CommandItem {
   scope?: string[]
   /** Child commands for nested/hierarchical menus */
   children?: CommandItem[]
-  /** Parent command ID (set automatically when flattening) */
+  /**
+   * @deprecated Never set or read by cmdk-engine; kept so existing code compiles.
+   * Put your own parent id in `meta` if you need one.
+   */
   parentId?: string
 }
 
@@ -61,13 +67,29 @@ export interface CommandItem {
 
 /** Command registry — the central store for all commands */
 export interface CommandRegistry {
-  /** Register a single command. Returns an unregister function. */
+  /**
+   * Register a single command. Returns an unregister function.
+   *
+   * If the id is already registered, the newest registration is the visible
+   * one. The returned function removes only this registration, so the one it
+   * replaced comes back. To change a registered command, use `update()`.
+   */
   register(command: CommandItem): () => void
-  /** Register multiple commands. Returns an unregister function for all. */
+  /**
+   * Register multiple commands. Returns an unregister function for all of them.
+   *
+   * Same rules as `register()`: the newest registration of an id is visible, and
+   * the returned function removes only this call's registrations. Calling it
+   * again does nothing.
+   */
   registerMany(commands: CommandItem[]): () => void
-  /** Update a command by ID with partial fields (the `id` itself is immutable) */
+  /**
+   * Update the visible command for an id with partial fields (the `id` itself
+   * is immutable). The update belongs to that registration: if it is removed,
+   * the command it replaced comes back without the update.
+   */
   update(id: string, partial: Partial<Omit<CommandItem, 'id'>>): void
-  /** Remove a command by ID */
+  /** Remove a command by ID, including every registration of that id */
   unregister(id: string): void
   /** Get all registered commands */
   getAll(): CommandItem[]
@@ -148,11 +170,20 @@ export interface FrecencyStorage {
 
 /** Frecency engine configuration */
 export interface FrecencyOptions {
-  /** Storage backend (defaults to localStorage) */
+  /**
+   * Storage backend. `CommandEngineProvider` defaults to localStorage (memory
+   * where it is unavailable); `createFrecencyEngine` defaults to memory.
+   */
   storage?: FrecencyStorage
-  /** Full localStorage key, not a prefix (default: 'cmdk-frecency') */
+  /**
+   * Full localStorage key, not a prefix (default: 'cmdk-frecency'). Used by
+   * `CommandEngineProvider` for its default storage; `createFrecencyEngine` ignores it.
+   */
   storageKey?: string
-  /** Max age in days before entries are removed (default: 30) */
+  /**
+   * Days after its last use before an entry leaves "Recent" and is removed from
+   * storage on the next recorded use (default: 30)
+   */
   maxAge?: number
   /** Half-life in days for exponential decay (default: 7) */
   halfLife?: number
@@ -359,7 +390,10 @@ export interface CommandEngineConfig {
   contextBoostWeight?: number
   /** Translation function for UI strings (defaults to English) */
   t?: TranslationFn
-  /** Locale for collation-aware operations (default: 'en') */
+  /**
+   * @deprecated Never read: nothing in cmdk-engine depends on the locale. Kept so
+   * existing configs compile. Localize UI strings with `t`.
+   */
   locale?: string
   /** Search history configuration */
   searchHistory?: SearchHistoryConfig

@@ -1,4 +1,5 @@
 import type { SearchHistoryConfig, SearchHistoryEntry } from './types'
+import { getLocalStorage } from './local-storage'
 
 const DEFAULT_MAX_ENTRIES = 20
 const DEFAULT_STORAGE_KEY = 'cmdk-search-history'
@@ -25,20 +26,11 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
   const storageKey = config.storageKey ?? DEFAULT_STORAGE_KEY
   const minQueryLength = config.minQueryLength ?? DEFAULT_MIN_QUERY_LENGTH
 
-  function isAvailable(): boolean {
-    try {
-      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-    } catch {
-      return false
-    }
-  }
-
   // The key is shared by every app on the origin, so it can hold anything.
   // Malformed data is ignored, and the next save replaces it.
   function load(): SearchHistoryEntry[] {
-    if (!isAvailable()) return []
     try {
-      const raw = localStorage.getItem(storageKey)
+      const raw = getLocalStorage()?.getItem(storageKey)
       const data: unknown = raw ? JSON.parse(raw) : []
       return Array.isArray(data) ? data.filter(isEntry) : []
     } catch {
@@ -47,9 +39,8 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
   }
 
   function save(entries: SearchHistoryEntry[]): void {
-    if (!isAvailable()) return
     try {
-      localStorage.setItem(storageKey, JSON.stringify(entries))
+      getLocalStorage()?.setItem(storageKey, JSON.stringify(entries))
     } catch {
       // Silently fail (quota exceeded, SSR, etc.)
     }
@@ -84,9 +75,8 @@ export function createSearchHistory(config: SearchHistoryConfig = {}) {
 
     /** Clear all search history. */
     clear(): void {
-      if (!isAvailable()) return
       try {
-        localStorage.removeItem(storageKey)
+        getLocalStorage()?.removeItem(storageKey)
       } catch {
         // Silently fail
       }
