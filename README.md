@@ -173,6 +173,8 @@ const config = {
 
 ### Errors from commands
 
+*New in 0.6.*
+
 A command's `action`, your `onSelect` or your `onNavigate` can throw or return
 a rejected promise. Set `onSelectError` to handle that; the palette still
 closes right away. Without it, errors propagate as before.
@@ -575,6 +577,8 @@ useCommandRegister([
 
 ## Search
 
+*New in 0.6: words in any order, and folding of accents and spaces.*
+
 The built-in search matches labels, descriptions and keywords, and tolerates
 typos, partial words and initials.
 
@@ -669,6 +673,8 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > ``storageKey: `cmdk-frecency:${user.id}` ``.
 
 ### Turning frecency off
+
+*New in 0.6.*
 
 Set `frecency: { enabled: false }` to turn frecency off. Nothing is stored in
 or read from `localStorage`, results are not ranked by past use, and no
@@ -860,6 +866,8 @@ function RecentSearches() {
 
 ## Palette Events
 
+*New in 0.6.*
+
 `useCommandPaletteEvents` reports what happens in the palette, for analytics.
 Call it once, in any component inside the provider:
 
@@ -988,6 +996,8 @@ npx cmdk-engine validate
 
 ### Use the output
 
+*New in 0.6.*
+
 `scan` writes `src/generated/command-routes.json`. `sitemapToCommands` turns it
 into commands; register them once, at the app level:
 
@@ -1031,6 +1041,8 @@ Pass `--no-default-exclude` to opt out (you'll have full control via
 the `exclude` config field instead).
 
 ### Dynamic routes and `[locale]`
+
+*New in 0.6.*
 
 A command needs a real URL, so the scan skips routes with a `:param`
 (`/users/:id`, `app/[id]/page.tsx`). To keep routes under a segment you can
@@ -1218,6 +1230,8 @@ import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
 ```
 
 ### Keyboard shortcut
+
+*New in 0.6: the function form.*
 
 `useCommandPaletteShortcut(shortcut?)` toggles the palette and returns
 `{ isOpen, toggle }`. A string is the key pressed with Cmd or Ctrl (default
