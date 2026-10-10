@@ -3,6 +3,7 @@ import type { CommandItem, CommandGroup, CommandPaletteState, ScoredItem } from 
 import type { GroupedResult } from '../core/grouping'
 import { filterVisible } from '../core/access-control'
 import { useEngineContext, usePaletteState } from './context'
+import type { EngineInternals } from './context'
 import { ASYNC_SOURCE, AsyncSourcesContext, mergeAsyncItems } from './async-sources'
 import { searchWithSynonyms } from './synonym-search'
 
@@ -28,7 +29,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
   /**
    * Select a command — records frecency + search history, runs
    * onSelect/action/href, closes palette. An optional per-call `onSelect`
-   * takes priority over the provider-level `onSelect`.
+   * takes priority over the provider-level `onSelect`. A handler that throws
+   * or rejects is reported to `onSelectError` when the provider sets it.
    */
   select: (itemOrId: CommandItem | string, options?: SelectOptions) => void
   /** Flat list of all result items (ungrouped) */
@@ -57,8 +59,8 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
 export function useCommandPalette(): UseCommandPaletteReturn {
   const {
     registry, search, keywords, accessFilter, frecency,
-    groupManager, contextEngine, searchHistory, t, config,
-  } = useEngineContext()
+    groupManager, contextEngine, searchHistory, t, config, observer,
+  } = useEngineContext('useCommandPalette') as EngineInternals
 
   // Shared across all consumers under the same provider (see context.tsx).
   const {
@@ -76,11 +78,16 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   // Loaded async items join the root level (registered ids win, then source order).
   const asyncItems = useMemo(() => mergeAsyncItems(commands, loaded), [commands, loaded])
 
-  // Determine which commands to search: root or nested children
+  // Determine which commands to search: root or nested children. Each parent
+  // on the path is looked up in the live commands, so registry updates show
+  // while drilled in; a parent that is gone (async items only load at the
+  // root) keeps the children it had.
   const activeCommands = useMemo(() => {
-    if (activePath.length === 0) return asyncItems.commands
-    const parent = activePath[activePath.length - 1]
-    return parent.children ?? []
+    let level = asyncItems.commands
+    for (const parent of activePath) {
+      level = (level.find((c) => c.id === parent.id) ?? parent).children ?? []
+    }
+    return level
   }, [asyncItems.commands, activePath])
 
   // Enrichment is query-independent and the most expensive stage, so memoize
@@ -90,6 +97,12 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     () => keywords.enrichAll(activeCommands),
     [activeCommands, keywords],
   )
+
+  // Label of the "Recent" group while it can show (empty query with showRecent)
+  const recentLabel =
+    config.frecency?.showRecent && !searchQuery.trim()
+      ? (config.frecency.recentLabel ?? t('group.recent'))
+      : undefined
 
   // Pipeline: visibility → access → search → rank by frecency → context boost.
   // (Visibility + access stay here so they see live `when`/permission state.)
@@ -119,11 +132,13 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     }
 
     // 5. Inject "Recent" group when search is empty
-    const frecencyConfig = config.frecency
-    if (frecencyConfig?.showRecent) {
-      const recentCount = frecencyConfig.recentCount ?? 5
-      const recentLabel = frecencyConfig.recentLabel ?? t('group.recent')
-      const recentIds = frecency.getRecent(recentCount)
+    if (recentLabel) {
+      // Only commands available here count toward recentCount.
+      const available = new Set(searched.map((s) => s.item.id))
+      const recentIds = frecency
+        .getRecent(Infinity)
+        .filter((id) => available.has(id))
+        .slice(0, config.frecency?.recentCount ?? 5)
 
       if (recentIds.length > 0) {
         const recentItems: ScoredItem[] = []
@@ -155,8 +170,10 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     // float to the top on empty query (README: frecency > priority > registration order).
     return frecency.rank(searched, 0.3)
   }, [
+    // activePath: close() always sets a fresh [], so the next open shows the
+    // usage recorded by a pick made without typing.
     enrichedCommands, searchQuery, search, keywords, accessFilter, frecency,
-    contextEngine, t, config.context, config.frecency,
+    contextEngine, recentLabel, config.context, config.frecency, activePath,
   ])
 
   // Limit results
@@ -193,10 +210,18 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     [limitedResults, unfilteredResults],
   )
 
+  // For `search` events: written while rendering, so it is current before any
+  // effect of the same commit reads it.
+  observer.count = finalResults.length
+
   // Group results by group field (for consumers building custom UIs)
   const groupedResults = useMemo<GroupedResult[]>(() => {
-    return groupManager.groupResults(finalResults, searchQuery)
-  }, [finalResults, groupManager, searchQuery])
+    const grouped = groupManager.groupResults(finalResults, searchQuery)
+    // "Recent" leads the browse list, above the configured groups.
+    const recent = grouped.findIndex((g) => g.group.id === recentLabel)
+    if (recent > 0) grouped.unshift(...grouped.splice(recent, 1))
+    return grouped
+  }, [finalResults, groupManager, searchQuery, recentLabel])
 
   // Extract active groups
   const groups = useMemo<CommandGroup[]>(() => {
@@ -264,23 +289,42 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         searchHistory.record(searchQuery, finalResults.length)
       }
 
+      observer.onSelected?.(item, searchQuery.trim())
+
       // Precedence: per-call onSelect → provider onSelect → action → href
       const handler = options?.onSelect ?? config.onSelect
-      if (handler) {
-        handler(item)
-      } else if (item.action) {
-        item.action(item)
-      } else if (item.href) {
-        if (config.onNavigate) {
-          config.onNavigate(item.href, item)
-        } else if (typeof window !== 'undefined') {
-          window.location.href = item.href
+      const { onSelectError } = config
+      let result: unknown
+      try {
+        if (handler) {
+          result = handler(item)
+        } else if (item.action) {
+          result = item.action(item)
+        } else if (item.href) {
+          if (config.onNavigate) {
+            result = config.onNavigate(item.href, item)
+          } else if (typeof window !== 'undefined') {
+            window.location.href = item.href
+          }
         }
+      } catch (error) {
+        // Without onSelectError a throw propagates and the palette stays open, as before.
+        if (!onSelectError) throw error
+        onSelectError(error, item)
+      }
+      // Without onSelectError a rejection stays unhandled, as before.
+      if (
+        onSelectError &&
+        typeof (result as PromiseLike<unknown> | undefined)?.then === 'function'
+      ) {
+        ;(result as PromiseLike<unknown>).then(undefined, (error: unknown) =>
+          onSelectError(error, item),
+        )
       }
 
       close()
     },
-    [finalResults, frecency, searchHistory, config, searchQuery, close, drillDown],
+    [finalResults, frecency, searchHistory, config, searchQuery, close, drillDown, observer],
   )
 
   return {
