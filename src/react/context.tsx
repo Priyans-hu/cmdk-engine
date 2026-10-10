@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useRef, useMemo, useState } from 'react'
-import type { CommandEngineConfig, CommandItem, CommandRegistry, TranslationFn } from '../core/types'
+import { createContext, useContext, useRef, useMemo, useState } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type {
+  CommandEngineConfig,
+  CommandItem,
+  CommandRegistry,
+  FrecencyStorage,
+  TranslationFn,
+} from '../core/types'
 import { createRegistry } from '../core/registry'
 import { createFuzzySearch } from '../core/search'
 import { createKeywordEngine } from '../core/keywords'
@@ -27,7 +34,21 @@ export interface EngineContextValue {
   config: CommandEngineConfig
 }
 
-const EngineContext = createContext<EngineContextValue | null>(null)
+/**
+ * What `useCommandPaletteEvents()` reads from the palette. One per provider and
+ * not part of the public context type.
+ */
+export interface PaletteObserver {
+  /** Result count of the latest `useCommandPalette()` render */
+  count?: number
+  /** Called by `select()` before it runs a command */
+  onSelected?: (item: CommandItem, query: string) => void
+}
+
+/** The context value as the package's own hooks see it (internal) */
+export type EngineInternals = EngineContextValue & { observer: PaletteObserver }
+
+const EngineContext = createContext<EngineInternals | null>(null)
 
 /**
  * Shared palette UI state. Lives on the provider (not per-hook-call) so that
@@ -36,28 +57,42 @@ const EngineContext = createContext<EngineContextValue | null>(null)
  */
 export interface PaletteStateValue {
   isOpen: boolean
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setIsOpen: Dispatch<SetStateAction<boolean>>
   search: string
-  setSearch: React.Dispatch<React.SetStateAction<string>>
+  setSearch: Dispatch<SetStateAction<string>>
   activePath: CommandItem[]
-  setActivePath: React.Dispatch<React.SetStateAction<CommandItem[]>>
+  setActivePath: Dispatch<SetStateAction<CommandItem[]>>
 }
 
 const PaletteStateContext = createContext<PaletteStateValue | null>(null)
 
-// The same guard as the core storage helpers (which `cmdk-engine` does not
-// export): reading `window.localStorage` throws in sandboxed iframes and when
-// the browser blocks cookies, and it is missing during SSR.
+// One object for every provider without a `config` prop, so the context value
+// does not change on each render of the provider (each keystroke).
+const EMPTY: CommandEngineConfig = {}
+
+// `frecency.enabled: false`: an empty storage that ignores writes, so nothing
+// is stored, read or ranked.
+const NO_FRECENCY: FrecencyStorage = { ...createInMemoryStorage(), set() {} }
+
+// Reading `window.localStorage` throws in sandboxed iframes and when the
+// browser blocks cookies, it is missing during SSR and can be null, and writes
+// can throw. Full storage still reads, so a quota error with data counts as
+// available.
 function canUseLocalStorage(): boolean {
+  const probe = 'cmdk-engine-probe'
+  let storage: Storage | null = null
   try {
-    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-  } catch {
-    return false
+    storage = window.localStorage
+    storage.setItem(probe, probe)
+    storage.removeItem(probe)
+    return true
+  } catch (error) {
+    return (error as Error).name === 'QuotaExceededError' && storage!.length > 0
   }
 }
 
 export interface CommandEngineProviderProps {
-  children: React.ReactNode
+  children: ReactNode
   config?: CommandEngineConfig
 }
 
@@ -65,11 +100,23 @@ export interface CommandEngineProviderProps {
  * Provider that initializes the command engine and makes it available
  * to all child hooks (useCommandPalette, useCommandRegister).
  */
-export function CommandEngineProvider({ children, config = {} }: CommandEngineProviderProps) {
+export function CommandEngineProvider({ children, config = EMPTY }: CommandEngineProviderProps) {
   const registryRef = useRef<CommandRegistry | null>(null)
   if (!registryRef.current) {
     registryRef.current = createRegistry()
   }
+
+  // In-memory fallbacks outlive engine rebuilds, so an inline config does not
+  // wipe frecency and search history where storage is unavailable. (The search
+  // history fallback keeps the options it was created with.) The storage probe
+  // runs once: each probe writes to localStorage, which fires a `storage` event
+  // in the site's other tabs.
+  const memory = useRef<{
+    persist?: boolean
+    frecency?: FrecencyStorage
+    history?: ReturnType<typeof createInMemorySearchHistory>
+  }>({}).current
+  const observer = useRef<PaletteObserver>({}).current
 
   // Palette UI state is shared across all consumers under this provider.
   const [isOpen, setIsOpen] = useState(false)
@@ -91,7 +138,7 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   // unrelated field — e.g. `context` on every route change — doesn't rebuild
   // the search/keyword/frecency engines on every render.
   const engines = useMemo(() => {
-    const persist = canUseLocalStorage()
+    const persist = (memory.persist ??= canUseLocalStorage())
     return {
       search: config.searchEngine ?? createFuzzySearch(),
       keywords: createKeywordEngine(config.synonyms ?? {}),
@@ -102,14 +149,16 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       // documented, and to memory where storage is unavailable. Consumers can
       // still pass their own `frecency.storage`.
       frecency: createFrecencyEngine(
-        config.frecency?.storage
-          ? config.frecency
-          : {
-              ...config.frecency,
-              storage: persist
-                ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
-                : createInMemoryStorage(),
-            },
+        config.frecency?.enabled === false
+          ? { storage: NO_FRECENCY }
+          : config.frecency?.storage
+            ? config.frecency
+            : {
+                ...config.frecency,
+                storage: persist
+                  ? createLocalStorageFrecencyStorage(config.frecency?.storageKey)
+                  : (memory.frecency ??= createInMemoryStorage()),
+              },
       ),
       groupManager: createGroupManager(config.groups),
       contextEngine: createContextEngine(config.contextBoostWeight),
@@ -118,15 +167,15 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
       // works, as documented); fall back to in-memory where it is unavailable.
       searchHistory: persist
         ? createSearchHistory(config.searchHistory)
-        : createInMemorySearchHistory(config.searchHistory),
+        : (memory.history ??= createInMemorySearchHistory(config.searchHistory)),
     }
   }, [
     config.searchEngine, config.synonyms, config.accessControl, config.accessCheckMode,
     config.frecency, config.groups, config.contextBoostWeight, config.t, config.searchHistory,
   ])
 
-  const value = useMemo<EngineContextValue>(
-    () => ({ registry: registryRef.current!, ...engines, config }),
+  const value = useMemo(
+    () => ({ registry: registryRef.current!, ...engines, config, observer }),
     [engines, config],
   )
 
@@ -141,24 +190,34 @@ export function CommandEngineProvider({ children, config = {} }: CommandEnginePr
   )
 }
 
+function outsideProvider(caller: string): Error {
+  return new Error(
+    `${caller} must be used within a <CommandEngineProvider> (not in the component that renders it; two copies of cmdk-engine also cause this)`,
+  )
+}
+
 /**
  * Hook to access the engine context. Throws if used outside provider.
+ *
+ * @param caller - Name the error shows (default: `useEngineContext`)
  */
-export function useEngineContext(): EngineContextValue {
+export function useEngineContext(caller = 'useEngineContext'): EngineContextValue {
   const ctx = useContext(EngineContext)
   if (!ctx) {
-    throw new Error('useEngineContext must be used within a <CommandEngineProvider>')
+    throw outsideProvider(caller)
   }
   return ctx
 }
 
 /**
  * Hook to access the shared palette UI state. Throws if used outside provider.
+ *
+ * @param caller - Name the error shows (default: `usePaletteState`)
  */
-export function usePaletteState(): PaletteStateValue {
+export function usePaletteState(caller = 'usePaletteState'): PaletteStateValue {
   const ctx = useContext(PaletteStateContext)
   if (!ctx) {
-    throw new Error('usePaletteState must be used within a <CommandEngineProvider>')
+    throw outsideProvider(caller)
   }
   return ctx
 }

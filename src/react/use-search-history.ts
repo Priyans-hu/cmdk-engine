@@ -13,7 +13,7 @@ export function useSearchHistory(): {
   /** Remove a specific query from history */
   remove: (query: string) => void
 } {
-  const { searchHistory } = useEngineContext()
+  const { searchHistory } = useEngineContext('useSearchHistory')
 
   return {
     getRecent: (count?: number) => searchHistory.getRecent(count),

@@ -1,10 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Autocomplete } from '@base-ui/react/autocomplete'
 import { Dialog } from '@base-ui/react/dialog'
 import { useCommandPalette } from '../../react/use-command-palette'
-import { useEngineContext } from '../../react/context'
-import type { CommandItem, ScoredItem, CommandGroup } from '../../core/types'
-import type { GroupedResult } from '../../core/grouping'
+import { useEngineContext, usePaletteState } from '../../react/context'
+import type { CommandItem, CommandGroup } from '../../core/types'
 
 // ============================================================
 // Types
@@ -16,15 +16,15 @@ import type { GroupedResult } from '../../core/grouping'
  */
 export interface CommandPaletteProps {
   /** Render function for each command item */
-  renderItem?: (item: CommandItem, score: number) => React.ReactNode
+  renderItem?: (item: CommandItem, score: number) => ReactNode
   /** Render function for empty state */
-  renderEmpty?: () => React.ReactNode
+  renderEmpty?: () => ReactNode
   /** Render function for the loading state while async sources load (default: `palette.loading`) */
-  renderLoading?: () => React.ReactNode
+  renderLoading?: () => ReactNode
   /** Render function for group heading */
-  renderGroupHeading?: (group: CommandGroup) => React.ReactNode
+  renderGroupHeading?: (group: CommandGroup) => ReactNode
   /** Render function for breadcrumbs (nested commands) */
-  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => React.ReactNode
+  renderBreadcrumbs?: (crumbs: CommandItem[], onBack: () => void) => ReactNode
   /** Callback when a command is selected */
   onSelect?: (item: CommandItem) => void
   /** Enable keyboard loop navigation */
@@ -56,7 +56,7 @@ export interface CommandPaletteProps {
   /** Disable pointer-based selection */
   disablePointerSelection?: boolean
   /** Footer content rendered below the list */
-  footer?: React.ReactNode
+  footer?: ReactNode
 }
 
 // ============================================================
@@ -128,7 +128,7 @@ function DefaultBreadcrumbs({
 // Layout effects warn during server rendering on React 18; they never run there.
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
-const visuallyHidden: React.CSSProperties = {
+const visuallyHidden: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,
@@ -193,11 +193,24 @@ export function CommandPalette({
   // Use i18n for defaults
   const resolvedLabel = label ?? t('palette.label')
   const resolvedPlaceholder = placeholder ?? t('palette.placeholder')
+  // Names the results listbox. A `t` without a string for the key, which echoes
+  // it (`dictionary[key] ?? key`) or returns '', keeps today's "Suggestions".
+  const listLabel = t('palette.list')
+  const resolvedListLabel = (listLabel !== 'palette.list' && listLabel) || 'Suggestions'
   const resolvedRenderEmpty =
     renderEmpty ?? (() => <div data-cmdk-engine-empty="">{t('palette.empty')}</div>)
   const resolvedRenderLoading =
     renderLoading ?? (() => <div data-cmdk-engine-loading="">{t('palette.loading')}</div>)
   const showEmpty = results.length === 0 && !isLoading
+
+  // Base UI highlights its first item and lets the arrow keys reach every item,
+  // with no way to skip disabled ones. So it only gets the enabled items, and
+  // disabled ones render as inert rows: never highlighted, skipped by the arrows,
+  // as with cmdk.
+  const enabledResults = useMemo(
+    () => groupedResults.map((g) => ({ ...g, items: g.items.filter((r) => !r.item.disabled) })),
+    [groupedResults],
+  )
 
   // Base UI keeps the highlighted index when the items change, so each depth gets
   // a fresh Autocomplete (key={depth}) that starts on its first item. The remount
@@ -223,7 +236,7 @@ export function CommandPalette({
         ))}
       <Autocomplete.Root
         key={depth}
-        items={groupedResults}
+        items={enabledResults}
         value={search}
         // Only typing writes the query; item presses, Escape and clears never do.
         onValueChange={(value, { reason }) => {
@@ -256,36 +269,49 @@ export function CommandPalette({
         <Autocomplete.Empty className={showEmpty ? emptyClassName : undefined}>
           {showEmpty && resolvedRenderEmpty()}
         </Autocomplete.Empty>
-        <Autocomplete.List className={listClassName}>
-          {({ group, items }: GroupedResult) => (
-            <Autocomplete.Group key={group.id} items={items} className={groupClassName}>
+        <Autocomplete.List className={listClassName} aria-label={resolvedListLabel}>
+          {groupedResults.map(({ group, items }) => (
+            <Autocomplete.Group key={group.id} className={groupClassName}>
               <Autocomplete.GroupLabel>
                 {renderGroupHeading ? renderGroupHeading(group) : group.label}
               </Autocomplete.GroupLabel>
-              <Autocomplete.Collection>
-                {(scored: ScoredItem) => (
+              {items.map((scored) => {
+                const { item } = scored
+                const content = renderItem ? (
+                  renderItem(item, scored.score)
+                ) : (
+                  <DefaultItem item={item} />
+                )
+                return item.disabled ? (
+                  <div
+                    key={item.id}
+                    role="option"
+                    aria-disabled="true"
+                    data-disabled=""
+                    className={itemClassName}
+                    // Keep focus in the input, as Base UI's own items do
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {content}
+                  </div>
+                ) : (
                   <Autocomplete.Item
-                    key={scored.item.id}
+                    key={item.id}
                     value={scored}
-                    disabled={scored.item.disabled}
                     className={itemClassName}
                     onClick={(e) => {
                       // The hook's select() drills down or runs the command and
                       // closes; skip Base UI's own item press.
                       e.preventBaseUIHandler()
-                      select(scored.item, { onSelect })
+                      select(item, { onSelect })
                     }}
                   >
-                    {renderItem ? (
-                      renderItem(scored.item, scored.score)
-                    ) : (
-                      <DefaultItem item={scored.item} />
-                    )}
+                    {content}
                   </Autocomplete.Item>
-                )}
-              </Autocomplete.Collection>
+                )
+              })}
             </Autocomplete.Group>
-          )}
+          ))}
         </Autocomplete.List>
         {/* After the list, so results don't shift while sources load */}
         <Autocomplete.Status>{isLoading && resolvedRenderLoading()}</Autocomplete.Status>
@@ -321,20 +347,52 @@ export function CommandPalette({
   return body
 }
 
+// Cmd or Ctrl plus `key`. A letter also matches with Caps Lock on (no Shift) and,
+// on non-Latin layouts (a non-ASCII key), by its physical key, but not with Alt:
+// AltGr+key types a character on some layouts.
+function matchesShortcut(e: KeyboardEvent, key: string) {
+  return (
+    (e.metaKey || e.ctrlKey) &&
+    (e.key === key ||
+      (!e.shiftKey &&
+        (e.key.toLowerCase() === key ||
+          (!e.altKey && e.key > '~' && e.code === 'Key' + key.toUpperCase()))))
+  )
+}
+
 /**
  * Hook to control the command palette open/close state.
- * Provides keyboard shortcut binding (Cmd+K / Ctrl+K).
+ * Binds Cmd+K / Ctrl+K to toggle it.
+ *
+ * `shortcut` is the key pressed with Cmd or Ctrl (default `'k'`). It also works
+ * with Caps Lock on and on non-Latin keyboard layouts. Or pass a function that
+ * decides the match itself, modifiers included, such as `(e) => e.key === '/'`.
+ * Define it outside the component: a new function re-binds the listener. Either
+ * way, holding the keys toggles only once.
  *
  * Must be used within a `<CommandEngineProvider>`.
  */
-export function useCommandPaletteShortcut(shortcut = 'k') {
-  const { isOpen, toggle } = useCommandPalette()
+export function useCommandPaletteShortcut(
+  shortcut: string | ((event: KeyboardEvent) => boolean) = 'k',
+) {
+  // Palette state only: the results pipeline runs once, in the palette.
+  const { isOpen, setIsOpen, setSearch: setSearchQuery, setActivePath } = usePaletteState()
+  // The same toggle as useCommandPalette()'s.
+  const toggle = useCallback(() => {
+    // Clear query/path when closing; keep setState updaters side-effect free.
+    if (isOpen) {
+      setSearchQuery('')
+      setActivePath([])
+    }
+    setIsOpen((prev) => !prev)
+  }, [isOpen, setIsOpen, setSearchQuery, setActivePath])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === shortcut && (e.metaKey || e.ctrlKey)) {
+      if (typeof shortcut === 'function' ? shortcut(e) : matchesShortcut(e, shortcut)) {
+        // Repeats too, or a held Ctrl+K reaches the browser's own shortcut
         e.preventDefault()
-        toggle()
+        if (!e.repeat) toggle()
       }
     }
 

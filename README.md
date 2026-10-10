@@ -165,6 +165,22 @@ const config = {
 }
 ```
 
+### Errors from commands
+
+A command's `action`, your `onSelect` or your `onNavigate` can throw or return
+a rejected promise. Set `onSelectError` to handle that; the palette still
+closes right away. Without it, errors propagate as before.
+
+```tsx
+import type { CommandItem } from 'cmdk-engine'
+
+const config = {
+  onSelectError: (error: unknown, item: CommandItem) => {
+    console.error(`"${item.label}" failed`, error) // or show a toast
+  },
+}
+```
+
 ### Or build your own UI with hooks
 
 ```tsx
@@ -332,9 +348,8 @@ props. Other differences:
 |---|---|---|
 | Vim keys | `vimBindings` (Ctrl+N/P/J/K) | None; there is no `vimBindings` prop |
 | Home / End | First / last item | Move the caret in the input |
-| Disabled items | Skipped by the arrow keys | Reachable by the arrow keys, and highlighted when first in the list; Enter and click do nothing |
 | Highlighted item | `[cmdk-item][data-selected="true"]` | `[role="option"][data-highlighted]` |
-| Loading row | `role="progressbar"`, inside the list | `role="status"` live region, after the list |
+| Loading row | `role="progressbar"`, after the list | `role="status"` live region, after the list |
 | Results change while open (async sources) | Keeps the highlighted item | Keeps the highlighted position |
 | IME input | The query updates while composing | The query updates when composition ends |
 
@@ -343,7 +358,9 @@ give your app's root element `isolation: isolate` so the dialog stays on top,
 and for iOS 26+ Safari give the backdrop (`overlayClassName`)
 `position: absolute` and add `body { position: relative }`. Like cmdk's, the
 dialog is unstyled. Its visually hidden close button is labelled by the
-`palette.close` translation key.
+`palette.close` translation key. With `@base-ui/react` 1.1, Firefox logs a
+`mozInputSource` deprecation warning the first time the input is clicked. It
+comes from Base UI and is gone in later versions.
 
 Base UI costs more than cmdk: about 44 kB min + brotli for Autocomplete and
 48 kB with Dialog, versus about 14 kB for cmdk with its Radix dialog. In Node,
@@ -497,6 +514,33 @@ useCommandRegister([
 
 ---
 
+## Search
+
+The built-in search matches labels, descriptions and keywords, and tolerates
+typos, partial words and initials.
+
+- **Words in any order:** "overview billing" finds "Billing Overview", and each
+  word can match a different field. These matches come after the ones that
+  match the whole query, and never score above the weakest of them.
+- **Accents, Unicode forms and spaces:** the query and the commands are
+  compared after Unicode compatibility decomposition (NFKD), with the combining
+  accents U+0300 to U+036F removed, in lowercase, with repeated whitespace
+  collapsed. "resume" finds "Résumé" and `billing  over` (two spaces) finds
+  "Billing Overview". Other marks (Indic vowel signs, kana voicing marks) are
+  kept, ß and dotless ı are not folded, and the built-in search compares
+  Korean by its letters (jamo), so a partial syllable already matches.
+- **match-sorter:** `createMatchSorterSearch()` from
+  `cmdk-engine/search/match-sorter` needs `match-sorter` (7 or 8) installed;
+  it is part of the bundle that imports this entry. It folds the query's
+  accents, compatibility forms and spaces the same way but keeps its case
+  (an exact-case match ranks first), and also matches synonym keywords
+  (ranked at most CONTAINS, below direct matches) and words in any order.
+  A keystroke with several words takes about 1.5 to 2 times as long as
+  match-sorter alone on Node 22 and 2 to 3 times on Node 20, the most for
+  three or more words.
+
+---
+
 ## Synonyms
 
 Synonyms work both ways. With this config, typing "money" or "payment" finds
@@ -511,21 +555,20 @@ const config = {
 }
 ```
 
-- **Query:** when the whole query (trimmed, any case) equals a key or a value,
-  the other terms are searched too: a key brings its values, a value its key.
-  Commands found only this way are listed after the direct matches and never
-  score above the weakest one. Frecency and context boosts apply afterwards,
-  so a command you use often can still move up.
-- **Commands:** with the built-in fuzzy search, a command whose keyword or
-  whole label equals a key or a value also matches the other terms, at a lower
-  weight.
+- **Query:** when the whole query (ignoring case, accents and extra spaces)
+  equals a key or a value, the other terms are searched too: a key brings its
+  values, a value its key. Commands found only this way are listed after the
+  direct matches and never score above the weakest one. Frecency and context
+  boosts apply afterwards, so a command you use often can still move up.
+- **Commands:** a command whose keyword or whole label equals a key or a value
+  also matches the other terms, at a lower weight (with match-sorter, ranked at
+  most CONTAINS).
 - **Not expanded:** the query, while it is a partial word ("mon" is searched
   as typed until "money" is complete) or a longer phrase that contains a
   synonym ("money transfer").
 
-match-sorter (`cmdk-engine/search/match-sorter`) does not see the command-side
-matches, so only the query side works with it. When the query expands, a
-custom `searchEngine` is called once more for each extra term.
+When the query expands, a custom `searchEngine` is called once more for each
+extra term.
 
 ---
 
@@ -565,6 +608,12 @@ Show a "Recent" group at the top of the palette when the search is empty:
 > keys, not prefixes, so everyone using a browser shares the defaults. If
 > several users can sign in on one browser, namespace both keys per user, e.g.
 > ``storageKey: `cmdk-frecency:${user.id}` ``.
+
+### Turning frecency off
+
+Set `frecency: { enabled: false }` to turn frecency off. Nothing is stored in
+or read from `localStorage`, results are not ranked by past use, and no
+"Recent" group shows, even with `showRecent`.
 
 ---
 
@@ -706,7 +755,9 @@ console.log(getTranslationKeys())
 > English text for now.
 
 `palette.close` (default "Close") names the visually hidden close button in the
-Base UI adapter's dialog.
+Base UI adapter's dialog. `palette.list` (default "Suggestions") names the
+results listbox in both adapters. A `t` that returns the key unchanged, like the
+one above, or an empty string keeps "Suggestions".
 
 ## Search History
 
@@ -737,6 +788,35 @@ function RecentSearches() {
   )
 }
 ```
+
+## Palette Events
+
+`useCommandPaletteEvents` reports what happens in the palette, for analytics.
+Call it once, in any component inside the provider:
+
+```tsx
+import { useCommandPaletteEvents } from 'cmdk-engine/react'
+
+function PaletteAnalytics() {
+  useCommandPaletteEvents((event) => {
+    if (event.type === 'search' && event.resultCount === 0) {
+      console.log('no results for', event.query) // your analytics call
+    }
+  })
+  return null
+}
+```
+
+| Event | When | Fields |
+|---|---|---|
+| `open`, `close` | The palette opens or closes | |
+| `search` | The results for a query settle, async sources included | `query` (trimmed), `resultCount` (`0`: nothing found) |
+| `select` | A command is selected (drilling into children is not) | `item`, `query`, `sourceId` (loaded items) |
+| `asyncError` | An async source fails or drops items | `sourceId`, `error` |
+
+`search` fires for every settled query while the user types, so debounce it
+before sending it anywhere. An error thrown by your handler never breaks the
+palette. Without the hook, nothing is reported.
 
 ## Async Command Sources
 
@@ -1070,6 +1150,26 @@ import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
 // import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 ```
 
+### Keyboard shortcut
+
+`useCommandPaletteShortcut(shortcut?)` toggles the palette and returns
+`{ isOpen, toggle }`. A string is the key pressed with Cmd or Ctrl (default
+`'k'`). It also matches with Caps Lock on and, on non-Latin layouts such as
+Russian or Greek, by the physical key. Holding the keys toggles once. For any
+other shortcut, pass a function that decides the whole match, modifiers
+included. Define it outside the component, or every render re-binds it:
+
+```ts
+// Cmd/Ctrl+Shift+P, as in VS Code
+const isPaletteKey = (e: KeyboardEvent) =>
+  (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p'
+
+function CommandMenu() {
+  useCommandPaletteShortcut(isPaletteKey)
+  return <CommandPalette dialog />
+}
+```
+
 ### Key hook return values
 
 ```ts
@@ -1167,6 +1267,13 @@ Element.prototype.scrollIntoView = () => {}
 | [#280](https://github.com/dip/cmdk/issues/280) | First item not selected with dynamic content | Auto-select first item after each render cycle |
 | [#375](https://github.com/dip/cmdk/issues/375) | Non-deterministic sorting | Deterministic: frecency → priority → registration order |
 | [#267](https://github.com/dip/cmdk/issues/267) | Items not updating on async changes | Reactive pub/sub registry; items update immediately |
+
+> With `@radix-ui/react-dialog` 1.1.x, which cmdk 1.1 can install, Radix logs
+> "`DialogContent` requires a `DialogTitle`" and a missing `Description` warning
+> each time the dialog opens, and points `aria-labelledby`/`aria-describedby` at
+> ids that do not exist. The dialog is still named by its `aria-label`. cmdk
+> exposes no dialog title, so the adapter cannot add one: update
+> `@radix-ui/react-dialog` to 1.2 or later (`npm update @radix-ui/react-dialog`).
 
 ---
 

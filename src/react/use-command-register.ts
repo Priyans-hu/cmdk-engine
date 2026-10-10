@@ -1,14 +1,18 @@
 import { useEffect, useRef } from 'react'
 import type { CommandItem } from '../core/types'
+import { isCommandVisible } from '../core/access-control'
 import { useEngineContext } from './context'
 
 /**
  * Register commands from within a component.
  * Commands are automatically unregistered when the component unmounts.
  *
- * By default (no `deps`), the hook re-registers whenever the *shape* of
- * `commands` changes (ids, labels, grouping, visibility, …), and command
- * `action` callbacks always invoke the latest closure — so an `action` that
+ * By default (no `deps`), the hook re-registers whenever a registered field
+ * changes: ids, labels, descriptions, `href`, `group`, `priority`, `disabled`,
+ * `hidden`, `keywords`, `permissions`, `accessMode`, `shortcut`, `scope`, text
+ * icons, children, or the result of `when` (evaluated on each render). Element
+ * icons and `meta` are not compared: pass `deps` when they change. Command
+ * `action` callbacks always invoke the latest closure, so an `action` that
  * closes over props/state never goes stale. Pass an explicit `deps` array to
  * take manual control of when re-registration happens.
  *
@@ -26,7 +30,7 @@ import { useEngineContext } from './context'
  * ```
  */
 export function useCommandRegister(commands: CommandItem[], deps?: unknown[]): void {
-  const { registry } = useEngineContext()
+  const { registry } = useEngineContext('useCommandRegister')
 
   // Always hold the latest commands so wrapped actions call fresh closures.
   const commandsRef = useRef(commands)
@@ -72,7 +76,7 @@ function findById(commands: CommandItem[], id: string): CommandItem | undefined 
   return undefined
 }
 
-/** A stable signature of the registration-relevant fields (no functions/icons). */
+/** A stable signature of the registration-relevant fields (no functions, element icons or meta). */
 function signatureOf(commands: CommandItem[]): string {
   const pick = (c: CommandItem): unknown => ({
     id: c.id,
@@ -87,6 +91,10 @@ function signatureOf(commands: CommandItem[]): string {
     permissions: c.permissions,
     accessMode: c.accessMode,
     shortcut: c.shortcut,
+    scope: c.scope,
+    // Resolved, so a flipped boolean or a closure over new props re-registers.
+    when: isCommandVisible(c),
+    icon: typeof c.icon === 'object' ? 0 : c.icon,
     hasAction: !!c.action,
     children: c.children?.map(pick),
   })

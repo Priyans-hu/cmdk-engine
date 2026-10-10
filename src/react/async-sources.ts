@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, isValidElement, useEffect, useMemo, useRef, useState } from 'react'
 import type { AsyncSource, CommandItem } from '../core/types'
 
 const DEFAULT_DEBOUNCE_MS = 200
@@ -146,6 +146,10 @@ export function useAsyncSources(
             resolve(source.load(search, { signal: controller.signal })),
           )
             .then((items) => {
+              // Otherwise a plain object or null fails as a minified "e is not iterable".
+              if (typeof Object(items)[Symbol.iterator] !== 'function') {
+                throw new TypeError('load() must resolve to an array')
+              }
               const dropped: Dropped = { id: 0, label: 0 }
               const loaded: LoadedSource = {
                 items: toAsyncItems(items, id, source.group, dropped),
@@ -280,18 +284,40 @@ function toAsyncItem(item: CommandItem, sourceId: string, dropped: Dropped): Com
     dropped.label++
     return null
   }
+  // Like registered commands, null, undefined and '' mean no restriction. A
+  // string is one permission and array entries become strings; anything else
+  // hides the item rather than showing it to everyone.
+  const permissions: unknown = item.permissions
+  if (typeof permissions !== 'string' && permissions != null && !Array.isArray(permissions)) {
+    return null
+  }
   const copy: AsyncItem = { ...item, [ASYNC_SOURCE]: sourceId }
+  if (permissions) copy.permissions = ([] as unknown[]).concat(permissions).map(String)
   // Remote hrefs reach window.location and custom renderItem anchors, so the
   // check happens here, once, for every consumer: anything else is stripped.
   if ('href' in copy && !isSafeHref(copy.href)) delete copy.href
+  // Objects that are not elements crash a renderer.
+  for (const key of ['icon', 'description', 'group'] as const) {
+    if (typeof copy[key] === 'object' && !isValidElement(copy[key])) delete copy[key]
+  }
   // cmdk trims every keyword, and unfiltered items skip the keyword engine.
   if ('keywords' in copy) {
     copy.keywords = Array.isArray(copy.keywords)
       ? copy.keywords.filter((kw) => typeof kw === 'string')
       : []
   }
+  for (const key of ['shortcut', 'scope'] as const) {
+    const value: unknown = copy[key]
+    if (Array.isArray(value)) copy[key] = value.filter((entry) => typeof entry === 'string')
+    else delete copy[key]
+  }
   if (item.children) {
-    copy.children = toAsyncItems(item.children, sourceId, undefined, dropped)
+    // One item with malformed children must not fail the whole load.
+    if (Array.isArray(item.children)) {
+      copy.children = toAsyncItems(item.children, sourceId, undefined, dropped)
+    } else {
+      delete copy.children
+    }
   }
   return copy
 }

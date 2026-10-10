@@ -1,4 +1,5 @@
 import type { CommandItem, SynonymMap } from './types'
+import { foldText } from './search'
 
 /**
  * Create a keyword engine for synonym expansion and user alias management.
@@ -6,10 +7,13 @@ import type { CommandItem, SynonymMap } from './types'
  * The engine enriches command items with additional searchable keywords
  * based on a synonym dictionary and optional user-defined aliases.
  *
- * A normalized, lowercased bidirectional index is built once (and rebuilt on
- * `setSynonyms`) so enrichment is O(keywords) with map lookups rather than
+ * A bidirectional index is built once (and rebuilt on `setSynonyms`) so
+ * enrichment is O(keywords) with map lookups rather than
  * O(keywords × synonym-entries) with per-iteration array allocation — this
- * runs on every keystroke via the results pipeline.
+ * runs on every keystroke via the results pipeline. It is keyed by folded
+ * text, like the search: accents, Unicode forms, case and repeated spaces do
+ * not matter ("resume" finds a "résumé" entry). Terms keep their lowercased
+ * spelling.
  */
 export function createKeywordEngine(
   synonyms: SynonymMap = {},
@@ -23,13 +27,17 @@ export function createKeywordEngine(
     valueToKeys = new Map()
     for (const [key, values] of Object.entries(dict)) {
       const k = key.toLowerCase()
+      const foldedKey = foldText(k)
       const lowerValues = values.map((v) => v.toLowerCase())
-      keyToValues.set(k, [...new Set([...(keyToValues.get(k) ?? []), ...lowerValues])])
+      keyToValues.set(foldedKey, [
+        ...new Set([...(keyToValues.get(foldedKey) ?? []), ...lowerValues]),
+      ])
       for (const v of lowerValues) {
-        let keys = valueToKeys.get(v)
+        const foldedValue = foldText(v)
+        let keys = valueToKeys.get(foldedValue)
         if (!keys) {
           keys = new Set()
-          valueToKeys.set(v, keys)
+          valueToKeys.set(foldedValue, keys)
         }
         keys.add(k)
       }
@@ -49,11 +57,13 @@ export function createKeywordEngine(
     const q = query.toLowerCase().trim()
     if (!q) return []
 
+    // The query itself (lowercased, trimmed) stays the first term.
     const expanded = new Set<string>([q])
+    const folded = foldText(q)
     // Query matches a synonym value → add its key(s).
-    for (const key of valueToKeys.get(q) ?? []) expanded.add(key)
+    for (const key of valueToKeys.get(folded) ?? []) expanded.add(key)
     // Query matches a key → add all its values.
-    for (const value of keyToValues.get(q) ?? []) expanded.add(value)
+    for (const value of keyToValues.get(folded) ?? []) expanded.add(value)
 
     return Array.from(expanded)
   }
@@ -63,6 +73,7 @@ export function createKeywordEngine(
    * Returns a new CommandItem with original keywords preserved and
    * synonym-expanded keywords stored separately in meta._synonymKeywords.
    * This lets the search engine score original keywords higher.
+   * `meta._synonymKeywords` is internal and may move in a minor release.
    */
   function enrichItem(item: CommandItem): CommandItem {
     // Items from plain JS or JSON can carry non-string keywords or no label.
@@ -74,7 +85,7 @@ export function createKeywordEngine(
     const synonymKeywords = new Set<string>()
 
     const addSynonymsFor = (term: string): void => {
-      const t = term.toLowerCase()
+      const t = foldText(term)
       for (const value of keyToValues.get(t) ?? []) {
         if (!originalKeywords.has(value)) synonymKeywords.add(value)
       }
@@ -116,7 +127,9 @@ export function createKeywordEngine(
     enrichAll,
 
     /**
-     * Add a user alias for a command.
+     * Add a user alias for a command. Takes effect the next time results are
+     * computed (for example, on the next keystroke); it does not re-render by
+     * itself.
      */
     addAlias(commandId: string, alias: string): void {
       const existing = userAliases.get(commandId) ?? []
@@ -126,7 +139,9 @@ export function createKeywordEngine(
     },
 
     /**
-     * Remove a user alias for a command.
+     * Remove a user alias for a command. Takes effect the next time results
+     * are computed (for example, on the next keystroke); it does not re-render
+     * by itself.
      */
     removeAlias(commandId: string, alias: string): void {
       const existing = userAliases.get(commandId) ?? []
@@ -144,12 +159,11 @@ export function createKeywordEngine(
     },
 
     /**
-     * Set the synonym dictionary (rebuilds the lookup index).
+     * Set the synonym dictionary (rebuilds the lookup index). The object is
+     * read, never changed.
      */
     setSynonyms(newSynonyms: SynonymMap): void {
-      Object.keys(synonyms).forEach((k) => delete synonyms[k])
-      Object.assign(synonyms, newSynonyms)
-      rebuildIndex(synonyms)
+      rebuildIndex(newSynonyms)
     },
   }
 }
