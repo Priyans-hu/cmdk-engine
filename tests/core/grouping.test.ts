@@ -157,9 +157,7 @@ describe('createGroupManager', () => {
     })
 
     it('keeps ungrouped items at the end even during search', () => {
-      const gm = createGroupManager([
-        { id: 'nav', label: 'Nav', priority: 10 },
-      ])
+      const gm = createGroupManager([{ id: 'nav', label: 'Nav', priority: 10 }])
 
       const items = [
         scored({ id: 'a', group: 'nav' }, 0.3),
@@ -173,9 +171,7 @@ describe('createGroupManager', () => {
 
   describe('extractGroups', () => {
     it('extracts unique groups from commands', () => {
-      const gm = createGroupManager([
-        { id: 'nav', label: 'Navigation', priority: 10 },
-      ])
+      const gm = createGroupManager([{ id: 'nav', label: 'Navigation', priority: 10 }])
 
       const commands: CommandItem[] = [
         { id: 'a', label: 'A', group: 'nav' },

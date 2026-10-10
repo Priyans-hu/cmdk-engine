@@ -17,9 +17,7 @@ function isEntry(value: unknown): value is FrecencyEntry {
  *
  * @param storageKey - Full localStorage key, not a prefix (default: 'cmdk-frecency')
  */
-export function createLocalStorageFrecencyStorage(
-  storageKey = 'cmdk-frecency',
-): FrecencyStorage {
+export function createLocalStorageFrecencyStorage(storageKey = 'cmdk-frecency'): FrecencyStorage {
   // The key is shared by every app on the origin, so it can hold anything.
   // Malformed data is ignored, and the next write replaces it.
   function readAll(): Record<string, FrecencyEntry> {

@@ -25,9 +25,7 @@ export function createContextEngine(boostWeight = 0.2) {
         }
 
         const matches = matchesContext(item.scope, context)
-        const boostedScore = matches
-          ? Math.min(score + boostWeight, 1)
-          : score
+        const boostedScore = matches ? Math.min(score + boostWeight, 1) : score
 
         return { item, score: boostedScore }
       })

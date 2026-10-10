@@ -100,10 +100,7 @@ export function createFrecencyEngine(options: FrecencyOptions = {}) {
         const rawFrecency = frecencyScores.get(item.id) ?? 0
         const normalizedFrecency = rawFrecency / Math.max(maxFrecency, 0.5)
 
-        const blendedScore = Math.min(
-          score * (1 - weight) + normalizedFrecency * weight,
-          1,
-        )
+        const blendedScore = Math.min(score * (1 - weight) + normalizedFrecency * weight, 1)
 
         return { item, score: blendedScore }
       })

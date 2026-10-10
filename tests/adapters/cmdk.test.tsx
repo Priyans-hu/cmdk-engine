@@ -16,7 +16,11 @@ import { CommandPalette, useCommandPaletteShortcut } from '../../src/adapters/cm
 import { useEngineContext } from '../../src/react/context'
 
 // Helper: register commands within the provider
-function RegisterCommands({ commands }: { commands: Parameters<ReturnType<typeof useEngineContext>['registry']['registerMany']>[0] }) {
+function RegisterCommands({
+  commands,
+}: {
+  commands: Parameters<ReturnType<typeof useEngineContext>['registry']['registerMany']>[0]
+}) {
   const { registry } = useEngineContext()
   React.useEffect(() => {
     return registry.registerMany(commands)
@@ -54,9 +58,7 @@ describe('CommandPalette (cmdk adapter)', () => {
   })
 
   it('shows empty state when no results match', async () => {
-    renderPalette([
-      { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-    ])
+    renderPalette([{ id: 'dashboard', label: 'Dashboard', href: '/dashboard' }])
 
     const input = screen.getByRole('combobox')
     await act(async () => {
@@ -87,12 +89,7 @@ describe('CommandPalette (cmdk adapter)', () => {
 
   it('calls onSelect when item is selected', async () => {
     const onSelect = vi.fn()
-    renderPalette(
-      [
-        { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-      ],
-      { onSelect },
-    )
+    renderPalette([{ id: 'dashboard', label: 'Dashboard', href: '/dashboard' }], { onSelect })
 
     const item = screen.getByText('Dashboard')
     await act(async () => {
@@ -105,26 +102,22 @@ describe('CommandPalette (cmdk adapter)', () => {
   })
 
   it('renders custom item renderer', () => {
-    renderPalette(
-      [{ id: 'test', label: 'Test Item', description: 'A test' }],
-      {
-        renderItem: (item) => (
-          <div data-testid="custom-item">{item.label} - {item.description}</div>
-        ),
-      },
-    )
+    renderPalette([{ id: 'test', label: 'Test Item', description: 'A test' }], {
+      renderItem: (item) => (
+        <div data-testid="custom-item">
+          {item.label} - {item.description}
+        </div>
+      ),
+    })
 
     expect(screen.getByTestId('custom-item')).toBeTruthy()
     expect(screen.getByText('Test Item - A test')).toBeTruthy()
   })
 
   it('renders custom empty state', async () => {
-    renderPalette(
-      [{ id: 'test', label: 'Test', href: '/test' }],
-      {
-        renderEmpty: () => <div>Nothing here!</div>,
-      },
-    )
+    renderPalette([{ id: 'test', label: 'Test', href: '/test' }], {
+      renderEmpty: () => <div>Nothing here!</div>,
+    })
 
     const input = screen.getByRole('combobox')
     await act(async () => {
@@ -135,18 +128,14 @@ describe('CommandPalette (cmdk adapter)', () => {
   })
 
   it('renders items with shortcuts', () => {
-    renderPalette([
-      { id: 'save', label: 'Save', shortcut: ['⌘', 'S'] },
-    ])
+    renderPalette([{ id: 'save', label: 'Save', shortcut: ['⌘', 'S'] }])
 
     expect(screen.getByText('⌘')).toBeTruthy()
     expect(screen.getByText('S')).toBeTruthy()
   })
 
   it('renders items with descriptions', () => {
-    renderPalette([
-      { id: 'billing', label: 'Billing', description: 'Manage your billing' },
-    ])
+    renderPalette([{ id: 'billing', label: 'Billing', description: 'Manage your billing' }])
 
     expect(screen.getByText('Manage your billing')).toBeTruthy()
   })
@@ -163,9 +152,7 @@ describe('CommandPalette (cmdk adapter)', () => {
   })
 
   it('passes disabled state to cmdk items', () => {
-    renderPalette([
-      { id: 'disabled-cmd', label: 'Disabled Command', disabled: true },
-    ])
+    renderPalette([{ id: 'disabled-cmd', label: 'Disabled Command', disabled: true }])
 
     expect(screen.getByText('Disabled Command')).toBeTruthy()
     // cmdk marks disabled items with data-disabled attribute

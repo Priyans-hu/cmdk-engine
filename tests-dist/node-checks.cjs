@@ -60,7 +60,10 @@ function checkEntries(label, { core, react, cmdk, router, matchSorter, sitemap, 
   assert.match(renderToString(withSource), /Loading\.\.\./)
   assert.equal(router.scanRoutes([{ path: '/billing' }])[0]?.label, 'Billing')
   assert.equal(matchSorter.createMatchSorterSearch().search('bill', items).length, 1)
-  assert.equal(sitemap.sitemapToCommands([{ id: 'b', path: '/b', label: 'B', keywords: [] }])[0]?.href, '/b')
+  assert.equal(
+    sitemap.sitemapToCommands([{ id: 'b', path: '/b', label: 'B', keywords: [] }])[0]?.href,
+    '/b',
+  )
   assert.equal(pkg.name, 'cmdk-engine')
 
   // Next.js App Router only honours the directive as the first statement.

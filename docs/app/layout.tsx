@@ -33,8 +33,19 @@ export const metadata: Metadata = {
     default: 'cmdk-engine: Permission-aware command palette engine for React',
     template: '%s | cmdk-engine',
   },
-  description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. ' + STACK_SENTENCE,
-  keywords: ['command palette', 'cmdk', 'react', 'cmd-k', 'ctrl-k', 'fuzzy search', 'command menu', 'keyboard shortcuts'],
+  description:
+    'Permission-aware command palette engine for React. Works with cmdk or Base UI. Auto-discover routes, fuzzy search with synonyms, RBAC filtering, frecency ranking, CLI tooling. ' +
+    STACK_SENTENCE,
+  keywords: [
+    'command palette',
+    'cmdk',
+    'react',
+    'cmd-k',
+    'ctrl-k',
+    'fuzzy search',
+    'command menu',
+    'keyboard shortcuts',
+  ],
   openGraph: {
     title: 'cmdk-engine',
     description: 'Permission-aware command palette engine for React. Works with cmdk or Base UI.',
@@ -51,13 +62,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -69,9 +80,7 @@ export default function RootLayout({
         <ThemeProvider>
           <PaletteDemo>
             <Navbar />
-            <div className="flex-1">
-              {children}
-            </div>
+            <div className="flex-1">{children}</div>
             <Footer />
           </PaletteDemo>
         </ThemeProvider>

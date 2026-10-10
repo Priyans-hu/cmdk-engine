@@ -9,7 +9,12 @@ function cmd(overrides: Partial<CommandItem>): CommandItem {
 }
 
 const items: CommandItem[] = [
-  cmd({ id: 'billing', label: 'Billing Overview', keywords: ['money', 'payment'], group: 'Billing' }),
+  cmd({
+    id: 'billing',
+    label: 'Billing Overview',
+    keywords: ['money', 'payment'],
+    group: 'Billing',
+  }),
   cmd({ id: 'settings', label: 'Settings', keywords: ['preferences', 'config'] }),
   cmd({ id: 'users', label: 'Team Members', keywords: ['users', 'people'] }),
   cmd({ id: 'dashboard', label: 'Dashboard', description: 'Main overview page' }),
@@ -72,7 +77,9 @@ describe('createFuzzySearch', () => {
   })
 
   it('finds hidden items when a query matches their keywords', () => {
-    const testItems = [cmd({ id: 'hidden-kw', label: 'Internal Tool', hidden: true, keywords: ['admin-only'] })]
+    const testItems = [
+      cmd({ id: 'hidden-kw', label: 'Internal Tool', hidden: true, keywords: ['admin-only'] }),
+    ]
     const results = search.search('admin-only', testItems)
     expect(results.find((r) => r.item.id === 'hidden-kw')).toBeDefined()
   })

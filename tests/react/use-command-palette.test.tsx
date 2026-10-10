@@ -18,7 +18,9 @@ const leaf = (o: Partial<CommandItem>): CommandItem => ({ id: 'a', label: 'Alpha
 describe('useCommandPalette · select()', () => {
   it('calls config.onNavigate for href commands instead of hard navigation', () => {
     const onNavigate = vi.fn()
-    const { result } = renderHook(() => useCommandPalette(), { wrapper: wrapperWith({ onNavigate }) })
+    const { result } = renderHook(() => useCommandPalette(), {
+      wrapper: wrapperWith({ onNavigate }),
+    })
     act(() => result.current.select(leaf({ href: '/home' })))
     expect(onNavigate).toHaveBeenCalledWith('/home', expect.objectContaining({ id: 'a' }))
   })
@@ -61,10 +63,9 @@ describe('useCommandPalette · select()', () => {
   it('shares open + search state across every consumer under one provider', () => {
     // Previously each useCommandPalette() owned its own state, so a Cmd+K
     // shortcut hook and the rendered palette never synced (broken quickstart).
-    const { result } = renderHook(
-      () => ({ a: useCommandPalette(), b: useCommandPalette() }),
-      { wrapper: wrapperWith({}) },
-    )
+    const { result } = renderHook(() => ({ a: useCommandPalette(), b: useCommandPalette() }), {
+      wrapper: wrapperWith({}),
+    })
     expect(result.current.a.isOpen).toBe(false)
     expect(result.current.b.isOpen).toBe(false)
 
@@ -121,9 +122,7 @@ describe('useCommandPalette · select()', () => {
     const action = vi.fn()
     const { result } = renderHook(() => useCommandPalette(), { wrapper: wrapperWith({}) })
     act(() =>
-      result.current.select(
-        leaf({ children: [leaf({ id: 'child', label: 'Child', action })] }),
-      ),
+      result.current.select(leaf({ children: [leaf({ id: 'child', label: 'Child', action })] })),
     )
     expect(action).not.toHaveBeenCalled()
     expect(result.current.depth).toBe(1)

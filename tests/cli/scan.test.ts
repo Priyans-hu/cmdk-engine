@@ -11,10 +11,7 @@ import {
   DEFAULT_EXCLUDE as ADAPTER_DEFAULT_EXCLUDE,
   type ExcludePattern as AdapterExcludePattern,
 } from '../../src/adapters/react-router/route-scanner'
-import {
-  DEFAULT_EXCLUDE,
-  matchesExcludePattern,
-} from '../../src/core/route-defaults'
+import { DEFAULT_EXCLUDE, matchesExcludePattern } from '../../src/core/route-defaults'
 import type { SitemapRoute } from '../../src/core/types'
 
 function makeRoute(path: string): SitemapRoute {
@@ -278,8 +275,20 @@ describe('scanNextJsPagesDir', () => {
 describe('generateSitemap', () => {
   it('generates valid sitemap', () => {
     const routes = [
-      { id: 'dashboard', path: '/dashboard', label: 'Dashboard', keywords: ['dashboard'], group: 'Nav' },
-      { id: 'settings', path: '/settings', label: 'Settings', keywords: ['settings'], group: 'Nav' },
+      {
+        id: 'dashboard',
+        path: '/dashboard',
+        label: 'Dashboard',
+        keywords: ['dashboard'],
+        group: 'Nav',
+      },
+      {
+        id: 'settings',
+        path: '/settings',
+        label: 'Settings',
+        keywords: ['settings'],
+        group: 'Nav',
+      },
     ]
 
     const sitemap = generateSitemap(routes, 'react-router')

@@ -121,8 +121,8 @@ describe('createKeywordEngine', () => {
       ]
 
       const enriched = engine.enrichAll(items)
-      expect((enriched[0].meta?._synonymKeywords as string[])).toContain('money')
-      expect((enriched[1].meta?._synonymKeywords as string[])).toContain('config')
+      expect(enriched[0].meta?._synonymKeywords as string[]).toContain('money')
+      expect(enriched[1].meta?._synonymKeywords as string[]).toContain('config')
     })
   })
 

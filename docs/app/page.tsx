@@ -73,47 +73,78 @@ export default function Home() {
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.core}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">Core engine (types, registry, search, keywords, access control, frecency)</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  Core engine (types, registry, search, keywords, access control, frecency)
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/react</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/react
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.react}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">React hooks (provider, useCommandPalette, useCommandRegister)</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  React hooks (provider, useCommandPalette, useCommandRegister)
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/cmdk</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/adapters/cmdk
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.cmdkAdapter}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired cmdk components</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  Pre-wired cmdk components
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/react-router</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.reactRouterAdapter}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">React Router v6/v7/v8 route scanner</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/adapters/react-router
+                </td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  {SIZES.reactRouterAdapter}
+                </td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  React Router v6/v7/v8 route scanner
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/search/match-sorter</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/search/match-sorter
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.matchSorter}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">Optional match-sorter search backend</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  Optional match-sorter search backend
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/base-ui</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/adapters/base-ui
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.baseUiAdapter}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">Pre-wired Base UI components</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  Pre-wired Base UI components
+                </td>
               </tr>
               <tr className="hover:bg-[var(--surface-hover)] transition-colors">
-                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">cmdk-engine/adapters/sitemap</td>
+                <td className="px-4 py-3 font-mono text-accent dark:text-accent-dark text-xs">
+                  cmdk-engine/adapters/sitemap
+                </td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{SIZES.sitemapAdapter}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">Turns the CLI route sitemap into commands</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                  Turns the CLI route sitemap into commands
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-4">
           Minified + brotli, each entry&apos;s own code; siblings and peers excluded. The Quick
-          Start stack (provider, register hook, cmdk adapter and shortcut) is {SIZES.quickStartStack} in total. All
-          entry points are tree-shakeable. The core has zero runtime dependencies.
+          Start stack (provider, register hook, cmdk adapter and shortcut) is{' '}
+          {SIZES.quickStartStack} in total. All entry points are tree-shakeable. The core has zero
+          runtime dependencies.
         </p>
       </section>
     </>

@@ -58,22 +58,38 @@ export interface UseCommandPaletteReturn extends CommandPaletteState {
  */
 export function useCommandPalette(): UseCommandPaletteReturn {
   const {
-    registry, search, keywords, accessFilter, frecency,
-    groupManager, contextEngine, searchHistory, t, config, observer,
+    registry,
+    search,
+    keywords,
+    accessFilter,
+    frecency,
+    groupManager,
+    contextEngine,
+    searchHistory,
+    t,
+    config,
+    observer,
   } = useEngineContext('useCommandPalette') as EngineInternals
 
   // Shared across all consumers under the same provider (see context.tsx).
   const {
-    isOpen, setIsOpen,
-    search: searchQuery, setSearch: setSearchQuery,
-    activePath, setActivePath,
+    isOpen,
+    setIsOpen,
+    search: searchQuery,
+    setSearch: setSearchQuery,
+    activePath,
+    setActivePath,
   } = usePaletteState()
 
   // Async sources load once in the provider; every consumer reads the same state.
   const { loaded, isLoading, errors: asyncErrors } = useContext(AsyncSourcesContext)
 
   // Subscribe to registry changes
-  const commands = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
+  const commands = useSyncExternalStore(
+    registry.subscribe,
+    registry.getSnapshot,
+    registry.getSnapshot,
+  )
 
   // Loaded async items join the root level (registered ids win, then source order).
   const asyncItems = useMemo(() => mergeAsyncItems(commands, loaded), [commands, loaded])
@@ -156,9 +172,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
         }
 
         // Sort recent items by recency order
-        recentItems.sort(
-          (a, b) => recentIds.indexOf(a.item.id) - recentIds.indexOf(b.item.id),
-        )
+        recentItems.sort((a, b) => recentIds.indexOf(a.item.id) - recentIds.indexOf(b.item.id))
 
         // Rank the remainder by frecency so previously-used items still surface
         // above never-used items (preserving priority order within each tier).
@@ -172,8 +186,17 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   }, [
     // activePath: close() always sets a fresh [], so the next open shows the
     // usage recorded by a pick made without typing.
-    enrichedCommands, searchQuery, search, keywords, accessFilter, frecency,
-    contextEngine, recentLabel, config.context, config.frecency, activePath,
+    enrichedCommands,
+    searchQuery,
+    search,
+    keywords,
+    accessFilter,
+    frecency,
+    contextEngine,
+    recentLabel,
+    config.context,
+    config.frecency,
+    activePath,
   ])
 
   // Limit results
@@ -244,11 +267,14 @@ export function useCommandPalette(): UseCommandPaletteReturn {
   }, [isOpen, setIsOpen, setSearchQuery, setActivePath])
 
   // Nested navigation
-  const drillDown = useCallback((item: CommandItem) => {
-    if (!item.children?.length) return
-    setActivePath((prev) => [...prev, item])
-    setSearchQuery('')
-  }, [setActivePath, setSearchQuery])
+  const drillDown = useCallback(
+    (item: CommandItem) => {
+      if (!item.children?.length) return
+      setActivePath((prev) => [...prev, item])
+      setSearchQuery('')
+    },
+    [setActivePath, setSearchQuery],
+  )
 
   const drillUp = useCallback(() => {
     setActivePath((prev) => prev.slice(0, -1))

@@ -16,7 +16,8 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
       <div className="flex gap-12">
         <Sidebar />
         <main className="min-w-0 flex-1">
-          <article className="prose prose-slate dark:prose-invert max-w-none
+          <article
+            className="prose prose-slate dark:prose-invert max-w-none
             prose-headings:scroll-mt-20
             prose-h1:text-3xl prose-h1:font-bold prose-h1:tracking-tight
             prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-10 prose-h2:border-b prose-h2:border-[var(--border)] prose-h2:pb-2
@@ -28,7 +29,8 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
             prose-table:text-sm
             prose-th:text-left prose-th:font-semibold prose-th:text-[var(--text-primary)]
             prose-td:text-[var(--text-secondary)]
-          ">
+          "
+          >
             {children}
           </article>
 
@@ -40,19 +42,31 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
                   href={prev.href}
                   className="group flex flex-col items-start gap-1 p-4 rounded-xl border border-[var(--border)] hover:border-accent/50 transition-colors flex-1"
                 >
-                  <span className="text-xs text-[var(--text-muted)] group-hover:text-accent transition-colors">Previous</span>
-                  <span className="text-sm font-medium text-[var(--text-primary)]">{prev.label}</span>
+                  <span className="text-xs text-[var(--text-muted)] group-hover:text-accent transition-colors">
+                    Previous
+                  </span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                    {prev.label}
+                  </span>
                 </Link>
-              ) : <div />}
+              ) : (
+                <div />
+              )}
               {next ? (
                 <Link
                   href={next.href}
                   className="group flex flex-col items-end gap-1 p-4 rounded-xl border border-[var(--border)] hover:border-accent/50 transition-colors flex-1"
                 >
-                  <span className="text-xs text-[var(--text-muted)] group-hover:text-accent transition-colors">Next</span>
-                  <span className="text-sm font-medium text-[var(--text-primary)]">{next.label}</span>
+                  <span className="text-xs text-[var(--text-muted)] group-hover:text-accent transition-colors">
+                    Next
+                  </span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                    {next.label}
+                  </span>
                 </Link>
-              ) : <div />}
+              ) : (
+                <div />
+              )}
             </div>
           )}
         </main>

@@ -30,8 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     function apply() {
-      const isDark =
-        theme === 'dark' || (theme === 'system' && mediaQuery.matches)
+      const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
       root.classList.toggle('dark', isDark)
       setResolvedTheme(isDark ? 'dark' : 'light')
     }
