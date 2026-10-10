@@ -18,6 +18,7 @@ const STARTER_CSS = `[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; ba
   box-sizing: border-box; width: 100%; padding: 14px 16px; border: 0;
   border-bottom: 1px solid #e5e7eb; font: inherit; font-size: 16px; outline: none;
 }
+[cmdk-input]:focus-visible { border-bottom-color: #6366f1; box-shadow: inset 0 -1px 0 #6366f1; }
 [cmdk-list] { max-height: 320px; overflow-y: auto; padding: 8px; }
 [cmdk-group-heading] { padding: 8px 8px 4px; font-size: 12px; color: #6b7280; }
 [cmdk-item] { padding: 8px; border-radius: 8px; cursor: pointer; }
@@ -36,7 +37,7 @@ const STARTER_CSS = `[cmdk-overlay] { position: fixed; inset: 0; z-index: 50; ba
 const TAILWIND_CSS = `[cmdk-overlay] { @apply fixed inset-0 z-50 bg-black/40; }
 [cmdk-dialog] { @apply fixed left-1/2 top-[15vh] z-50 w-[min(560px,calc(100vw-32px))] -translate-x-1/2; }
 [cmdk-root] { @apply overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-900 shadow-2xl; }
-[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none; }
+[cmdk-input] { @apply w-full border-0 border-b border-gray-200 px-4 py-3.5 text-base outline-none focus-visible:border-indigo-500 focus-visible:shadow-[inset_0_-1px_0_#6366f1]; }
 [cmdk-list] { @apply max-h-80 overflow-y-auto p-2; }
 [cmdk-group-heading] { @apply px-2 pb-1 pt-2 text-xs text-gray-500; }
 [cmdk-item] { @apply cursor-pointer rounded-lg p-2 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50; }
@@ -63,6 +64,11 @@ export default function Styling() {
         with <code>dialog</code>:
       </p>
       <CodeBlock language="css" filename="palette.css" code={STARTER_CSS} />
+      <p>
+        The accent underline on <code>[cmdk-input]:focus-visible</code> replaces the outline the
+        input drops, so keyboard users can see where focus is. Keep a focus style if you restyle the
+        input.
+      </p>
 
       <h2>With Tailwind</h2>
       <p>
@@ -135,6 +141,13 @@ export default function Styling() {
           ['data-cmdk-engine-breadcrumb-separator', 'The separator between crumbs'],
         ]}
       />
+      <p>
+        The cmdk adapter renders the empty state and the loading row right after the results list,
+        not inside it, because a list box may only hold groups and options. Style them with{' '}
+        <code>[cmdk-empty]</code> and <code>[cmdk-loading]</code> (or the{' '}
+        <code>data-cmdk-engine-*</code> attributes above) directly, not as list descendants such as{' '}
+        <code>[cmdk-list] [cmdk-empty]</code>. The Base UI adapter already worked this way.
+      </p>
       <p>
         cmdk documents its parts in{' '}
         <a href="https://github.com/dip/cmdk#parts-and-styling">Parts and styling</a> and has{' '}
