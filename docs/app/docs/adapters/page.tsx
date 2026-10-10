@@ -372,6 +372,8 @@ export function App() {
               Include routes with a dynamic segment (<code>:id</code>, <code>[id]</code> or{' '}
               <code>*</code>). They are skipped by default, because a command cannot navigate
               without a real value. A route with <code>handle.command</code> is always included.
+              Here it is a boolean; only the CLI (<code>includeDynamic</code> in the config, or{' '}
+              <code>--include-dynamic</code>) also accepts a list of segment names.
             </>,
           ],
         ]}
