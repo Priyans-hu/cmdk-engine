@@ -624,6 +624,8 @@ function ThemeCommands() {
   Closing the palette returns to the root.
 - Opening a sub-menu is not recorded in frecency or search history; running a child is.
 - Async sources load at the root level only.
+- Changes to the registered command's `children` show up while you are inside the
+  sub-menu. A parent that is no longer registered keeps showing the children it had.
 - In a custom UI, `useCommandPalette()` returns `breadcrumbs`, `depth`,
   `drillDown(item)`, `drillUp()` and `resetPath()`. Both adapters take
   `renderBreadcrumbs(crumbs, onBack)` and mark the chevron and the trail with
@@ -672,6 +674,10 @@ export function Root({ children }: { children: React.ReactNode }) {
 - A group's `icon` is not rendered by the built-in components; `renderGroupHeading(group)`
   receives it.
 - `maxResults` (default 50) caps the total number of results across groups.
+- The Recent group (`frecency.showRecent`) comes first, above your configured groups.
+  The palette highlights the first item when it opens, so with groups configured that
+  is the most recent command. To keep your groups on top, leave `showRecent` off, or
+  render your own list from `groupedResults`.
 
 ## Internationalization (i18n)
 
@@ -971,6 +977,7 @@ import {
   useCommandContext,    // Read the context config (read-only)
   useEngineContext,     // The engine singletons, for custom UIs; throws outside the provider
   usePaletteState,      // The shared open, search and path state; throws outside the provider
+  useCommandPaletteEvents, // Report palette events, for analytics
 } from 'cmdk-engine/react'
 ```
 
@@ -979,6 +986,7 @@ import {
 ```ts
 import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/cmdk'
 import { scanRoutes } from 'cmdk-engine/adapters/react-router'
+import { sitemapToCommands } from 'cmdk-engine/adapters/sitemap'
 // The same CommandPalette and useCommandPaletteShortcut, built on Base UI:
 // import { CommandPalette, useCommandPaletteShortcut } from 'cmdk-engine/adapters/base-ui'
 ```
@@ -1029,6 +1037,7 @@ import type {
   CmdkEngineConfig,    // the CLI config file (cmdk-engine.config.ts)
   CommandEngineConfig, // the provider's `config` prop
   CommandPaletteState,
+  CommandPaletteEvent,
   AccessCheckMode,
   FrecencyEntry,
   FrecencyStorage,
@@ -1064,6 +1073,8 @@ Element.prototype.scrollIntoView = () => {}
 - Frecency and search history persist to `localStorage` (`cmdk-frecency` and
   `cmdk-search-history`). Clear them between tests, or pass `frecency.storage`, so one
   test's selections do not rank the next test's results.
+- The cmdk adapter renders the empty state and the loading row right after the list,
+  not inside its `role="listbox"`. Search the palette for them, not the list.
 - The Base UI adapter needs no stubs. Its dialog stays in the DOM for a moment after
   Escape, so use `waitFor` before asserting that it is gone.
 
