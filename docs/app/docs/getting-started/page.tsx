@@ -144,7 +144,11 @@ function CommandMenu() {
       <h3>
         <code>... must be used within a &lt;CommandEngineProvider&gt;</code>
       </h3>
-      <p>A cmdk-engine hook or component ran outside the provider. The usual causes:</p>
+      <p>
+        A cmdk-engine hook or component ran outside the provider. The message starts with the name
+        of the hook that failed, such as <code>useCommandRegister</code>, and lists the usual
+        causes:
+      </p>
       <ul>
         <li>
           The hook is called in the component that renders <code>CommandEngineProvider</code>. Move
