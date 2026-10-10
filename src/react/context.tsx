@@ -108,8 +108,11 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
 
   // In-memory fallbacks outlive engine rebuilds, so an inline config does not
   // wipe frecency and search history where storage is unavailable. (The search
-  // history fallback keeps the options it was created with.)
+  // history fallback keeps the options it was created with.) The storage probe
+  // runs once: each probe writes to localStorage, which fires a `storage` event
+  // in the site's other tabs.
   const memory = useRef<{
+    persist?: boolean
     frecency?: FrecencyStorage
     history?: ReturnType<typeof createInMemorySearchHistory>
   }>({}).current
@@ -135,7 +138,7 @@ export function CommandEngineProvider({ children, config = EMPTY }: CommandEngin
   // unrelated field — e.g. `context` on every route change — doesn't rebuild
   // the search/keyword/frecency engines on every render.
   const engines = useMemo(() => {
-    const persist = canUseLocalStorage()
+    const persist = (memory.persist ??= canUseLocalStorage())
     return {
       search: config.searchEngine ?? createFuzzySearch(),
       keywords: createKeywordEngine(config.synonyms ?? {}),

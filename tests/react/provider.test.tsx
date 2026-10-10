@@ -136,6 +136,33 @@ describe('CommandEngineProvider · storage that cannot be written', () => {
   })
 })
 
+describe('CommandEngineProvider · storage probe', () => {
+  it('probes storage once, not on each engine rebuild', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    // A new config object (and new frecency/searchHistory objects) on every render
+    function App(_: { n: number }) {
+      return (
+        <CommandEngineProvider
+          config={{ frecency: { showRecent: true }, searchHistory: { enabled: true } }}
+        >
+          <Palette />
+        </CommandEngineProvider>
+      )
+    }
+    function Palette() {
+      useCommandPalette()
+      return null
+    }
+    const { rerender } = render(<App n={1} />)
+    rerender(<App n={2} />)
+    rerender(<App n={3} />)
+    rerender(<App n={4} />)
+
+    const probes = setItem.mock.calls.filter(([key]) => key === 'cmdk-engine-probe')
+    expect(probes).toHaveLength(1)
+  })
+})
+
 describe('CommandEngineProvider · in-memory fallback', () => {
   it('survives an engine rebuild from an inline config', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
