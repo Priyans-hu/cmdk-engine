@@ -117,6 +117,37 @@ describe('built package: Base UI adapter', () => {
     }
   })
 
+  // Also runs on the floor version (vitest.dist.floor.config.ts matches "ESM").
+  it('highlights only enabled items through the ESM entries', async () => {
+    function Register() {
+      useCommandRegister([
+        { id: 'archive', label: 'Archive', disabled: true },
+        { id: 'billing', label: 'Billing' },
+        { id: 'reports', label: 'Reports', disabled: true },
+        { id: 'team', label: 'Team' },
+      ])
+      return null
+    }
+    render(
+      <CommandEngineProvider>
+        <Register />
+        <CommandPalette />
+      </CommandEngineProvider>,
+    )
+    await act(async () => {})
+    const input = screen.getByRole('combobox')
+    input.focus()
+    expect(highlighted()).toBe('Billing')
+    const press = (key: string) =>
+      act(async () => {
+        fireEvent.keyDown(input, { key })
+      })
+    await press('ArrowDown')
+    expect(highlighted()).toBe('Team')
+    await press('ArrowDown')
+    expect(highlighted()).toBe('Billing')
+  })
+
   it('filters, navigates and drills down through the CJS entries', async () => {
     const require = createRequire(import.meta.url)
     await checkBaseUi({
