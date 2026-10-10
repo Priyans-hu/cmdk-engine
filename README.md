@@ -410,8 +410,10 @@ and for iOS 26+ Safari give the backdrop (`overlayClassName`)
 `position: absolute` and add `body { position: relative }`. Like cmdk's, the
 dialog is unstyled. Its visually hidden close button is labelled by the
 `palette.close` translation key. With `@base-ui/react` 1.1, Firefox logs a
-`mozInputSource` deprecation warning the first time the input is clicked. It
-comes from Base UI and is gone in later versions.
+`mozInputSource` deprecation warning the first time the input is clicked, and
+axe reports that the combobox input lacks `aria-expanded`. Both come from Base
+UI and are gone in later versions (1.9 is clean). In WebKit, axe also flags
+Base UI's focus guards as elements without a name; that one is upstream too.
 
 Base UI costs more than cmdk: about 44 kB min + brotli for Autocomplete and
 48 kB with Dialog, versus about 14 kB for cmdk with its Radix dialog. In Node,
