@@ -47,7 +47,7 @@ It cannot backfill the missing v0.5.1 release: a run on that tag uses the `relea
 ## Release
 
 1. Merge the PRs that carry changesets.
-2. On a branch from `main`, run `bun run changeset version`. It bumps `package.json`, writes `CHANGELOG.md` and removes the used changesets. Commit it as `chore(release): x.y.z`, then open a PR to `main` and merge it.
+2. On a branch from `main`, run `bun run changeset version`. It bumps `package.json`, writes `CHANGELOG.md` and removes the used changesets. Commit it as `chore(release): x.y.z`, then open a PR to `main` and merge it. When the minor changes, bump the `cmdk-engine` range in `examples/*/package.json` in the same PR.
 3. Rehearse, as above.
 4. Tag the merge commit and push the tag:
 

@@ -1,0 +1,86 @@
+name: Examples
+
+# Builds each example and the docs site against this repo's build, never the npm
+# release, and checks the docs export in a real browser. Not a required check: the
+# examples have no lockfiles, so a new upstream release can break them too.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: examples-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [vite-react-router, nextjs-app-router, shadcn]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Build the shadcn registry items
+        if: matrix.example == 'shadcn'
+        run: node docs/scripts/build-registry.mjs
+
+      # For shadcn, also deletes the item files and installs them again from the
+      # registry JSON with the shadcn CLI, then builds again.
+      - name: Build examples/${{ matrix.example }} with this build
+        run: >-
+          node scripts/local-build.mjs example ${{ matrix.example }}
+          ${{ matrix.example == 'shadcn' && '--registry docs/public/r' || '' }}
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Install docs dependencies
+        working-directory: docs
+        run: bun install --frozen-lockfile
+
+      - name: Use this repo's build in the docs
+        run: node scripts/local-build.mjs docs
+
+      - name: Build docs
+        working-directory: docs
+        run: bun run build
+
+      # Every page, in Chrome: fails on console errors (hydration included), then
+      # opens the palette, navigates with it and fetches the registry items.
+      - name: Check the docs in a browser
+        run: node scripts/browser-check.mjs docs docs/out

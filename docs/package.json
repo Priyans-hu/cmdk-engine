@@ -3,12 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/build-registry.mjs && next dev",
+    "build": "node scripts/build-registry.mjs && next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "cmdk": "^1.1.1",
     "next": "^15.0",
     "react": "^19.3",
     "react-dom": "^19.3"

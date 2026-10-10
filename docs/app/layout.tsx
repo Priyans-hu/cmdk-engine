@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
+import { PaletteDemo } from '@/components/palette-demo'
 import './globals.css'
 
 const inter = Inter({
@@ -54,11 +55,13 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
         <ThemeProvider>
-          <Navbar />
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
+          <PaletteDemo>
+            <Navbar />
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+          </PaletteDemo>
         </ThemeProvider>
       </body>
     </html>

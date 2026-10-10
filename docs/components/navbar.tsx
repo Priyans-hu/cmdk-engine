@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { ThemeToggle } from './theme-toggle'
 import { MobileMenu } from './mobile-menu'
+import { SearchButton } from './search-button'
 import { SITE } from '@/lib/constants'
 
 const NAV_LINKS = [
@@ -49,6 +50,7 @@ export function Navbar() {
 
             {/* Right side */}
             <div className="flex items-center gap-1">
+              <SearchButton />
               <ThemeToggle />
               <a
                 href={SITE.github}
