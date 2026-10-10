@@ -114,11 +114,9 @@ describe('useCommandRegister without deps', () => {
     expect(shown(result)).toEqual(['sso'])
   })
 
-  it('updates scope and a text icon', async () => {
+  it('updates scope', async () => {
     const { result, rerender } = renderCommands(
-      ({ page }: { page: string }) => [
-        { id: 'x', label: 'X', scope: [`/${page}`], icon: page === 'a' ? '🅰️' : '🅱️' },
-      ],
+      ({ page }: { page: string }) => [{ id: 'x', label: 'X', scope: [`/${page}`] }],
       { page: 'a' },
     )
     await flush()
@@ -126,7 +124,20 @@ describe('useCommandRegister without deps', () => {
     rerender({ page: 'b' })
     await flush()
 
-    expect(result.current.registry.getById('x')).toMatchObject({ scope: ['/b'], icon: '🅱️' })
+    expect(result.current.registry.getById('x')!.scope).toEqual(['/b'])
+  })
+
+  it('updates a text icon', async () => {
+    const { result, rerender } = renderCommands(
+      ({ dark }: { dark: boolean }) => [{ id: 'theme', label: 'Theme', icon: dark ? '🌙' : '☀️' }],
+      { dark: false },
+    )
+    await flush()
+
+    rerender({ dark: true })
+    await flush()
+
+    expect(result.current.registry.getById('theme')!.icon).toBe('🌙')
   })
 
   it('does not re-register for a new element icon on every render', async () => {
