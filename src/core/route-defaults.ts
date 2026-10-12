@@ -2,7 +2,7 @@
  * Default route exclusion patterns shared between the runtime React Router
  * adapter and the CLI scanners.
  *
- * Single source of truth — keeps the adapter and CLI in sync so the README's
+ * Single source of truth — keeps the adapter and CLI in sync so the documented
  * "smart defaults" claim holds for both.
  */
 

@@ -23,7 +23,7 @@ import type {
 
 type Load = AsyncSource['load']
 
-// The README Quick Start config and command.
+// The GUIDE's Synonyms config, for the README Quick Start's command.
 const README_SYNONYMS = {
   billing: ['money', 'payment', 'credits'],
   settings: ['preferences', 'config', 'options'],
