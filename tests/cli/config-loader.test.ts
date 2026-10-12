@@ -107,7 +107,7 @@ describe('TS config: same result as the 0.5.1 parser for every config it accepte
 })
 
 describe('TS config: static values the 0.5.1 parser ignored', () => {
-  it('loads the README example, RegExp included', async () => {
+  it('loads the GUIDE example, RegExp included', async () => {
     const file = write(
       'readme.config.ts',
       `// cmdk-engine.config.ts

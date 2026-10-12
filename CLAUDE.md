@@ -57,7 +57,7 @@ bun run size      # Size budgets (after build)
 - `src/adapters/`: cmdk, base-ui, react-router and sitemap adapters
 - `src/cli/`: CLI tool (scan, init, validate commands)
 - `tests/`: Mirrors src/ structure
-- `tests-dist/`: Tests of the built package, including the README fences marked `<!-- readme-test: ... -->`
+- `tests-dist/`: Tests of the built package, including the README and GUIDE fences marked `<!-- readme-test: ... -->`
 - `examples/`: Runnable apps (Vite + React Router, Next.js App Router, shadcn/ui)
 - `docs/`: Next.js docs site. It runs this repo's build: `bun run build`, then `node scripts/local-build.mjs docs` (again after each build and after `bun install` in `docs/`)
 

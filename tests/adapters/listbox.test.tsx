@@ -75,7 +75,7 @@ describe.each([
     })
 
     it('stays "Suggestions" when the translation echoes the key', () => {
-      // The README pattern: `(key) => dictionary[key] ?? key`, for a dictionary without the key
+      // The GUIDE's pattern: `(key) => dictionary[key] ?? key`, for a dictionary without the key
       const echo: TranslationFn = (key) => (key === 'palette.list' ? key : english(key))
       renderPalette({ t: echo })
       expect(listName()).toBe('Suggestions')

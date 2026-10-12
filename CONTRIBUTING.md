@@ -171,7 +171,7 @@ cmdk-engine/
 
 - Add JSDoc comments to exported functions and types
 - Update docs if you change public API
-- Put `<!-- readme-test: typecheck -->` on the line directly above a README code fence that should keep compiling. `bun run test:dist` type-checks it against the built package. Exactly one fence, the Quick Start, is marked `render` and also runs
+- Put `<!-- readme-test: typecheck -->` on the line directly above a code fence in README.md or GUIDE.md that should keep compiling. `bun run test:dist` type-checks it against the built package. Exactly one fence, the README Quick Start, is marked `render` and also runs
 
 ## Commit Messages
 

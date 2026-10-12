@@ -54,7 +54,7 @@ npx cmdk-engine validate  # Validate config
 - [Core API](https://priyans-hu.github.io/cmdk-engine/docs/core/): registry, frecency, groups and the other framework-agnostic parts
 - [Adapters](https://priyans-hu.github.io/cmdk-engine/docs/adapters/): CommandPalette props for cmdk and Base UI, scanRoutes for React Router
 - [Examples](https://priyans-hu.github.io/cmdk-engine/docs/examples/): runnable apps, React Router, RBAC, a custom UI, hooks and a test
-- [The README as plain text](https://priyans-hu.github.io/cmdk-engine/llms-full.txt)
+- [The README and the full guide as plain text](https://priyans-hu.github.io/cmdk-engine/llms-full.txt)
 
 ## Links
 
