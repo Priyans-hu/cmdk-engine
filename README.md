@@ -119,6 +119,18 @@ Next steps: [split it into files, navigate with your router, handle errors, or b
 
 ---
 
+## Use with AI coding agents (Agent Skill)
+
+This repo ships an [Agent Skill](https://github.com/Priyans-hu/cmdk-engine/tree/main/skills/cmdk-engine) that teaches coding agents (Claude Code, Codex, Cursor, Copilot, Gemini CLI and more) to add a cmdk-engine palette to a React app: install, setup, commands and groups, the shortcut, ranking, SSR and styling.
+
+```bash
+npx skills add Priyans-hu/cmdk-engine   # add -g for all projects
+```
+
+Then ask your agent to "add a Cmd+K command palette".
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
